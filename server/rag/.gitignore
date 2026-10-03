@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.venv-api/
+.venv-win/
+.env
+data/
+*.egg-info/

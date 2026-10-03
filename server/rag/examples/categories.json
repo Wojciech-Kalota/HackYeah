@@ -1,0 +1,8 @@
+[
+  {"id": "integracja_spoleczna", "label": "Integracja społeczna i przeciwdziałanie samotności"},
+  {"id": "wlaczenie_cyfrowe", "label": "Włączenie cyfrowe"},
+  {"id": "bezpieczenstwo", "label": "Bezpieczeństwo"},
+  {"id": "cyberbezpieczenstwo", "label": "Cyberbezpieczeństwo"},
+  {"id": "infrastruktura_drogowa", "label": "Infrastruktura drogowa"},
+  {"id": "transport_i_mobilnosc", "label": "Transport i mobilność"}
+]
