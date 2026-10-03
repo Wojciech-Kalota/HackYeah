@@ -179,3 +179,50 @@ export const completedProject = {
   image:
     'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=800&q=80',
 };
+
+export type IdeaRelations = {
+  comments: Comment[];
+  upvotes: Upvote[];
+  duplicates: Duplicate[];
+};
+
+export const exampleIdeaRelations: IdeaRelations = {
+  comments: [
+    {
+      user_id: 'usr_krk_1042',
+      date: '2026-10-02T17:42:00Z',
+      text: 'To przejście jest szczególnie niebezpieczne po zmroku. Bardzo potrzebna inicjatywa.',
+    },
+    {
+      user_id: 'usr_krk_0871',
+      date: '2026-10-01T09:18:00Z',
+      text: 'Warto uwzględnić również obniżenie krawężników dla wózków i osób z niepełnosprawnościami.',
+    },
+    {
+      user_id: 'usr_krk_2215',
+      date: '2026-09-29T20:05:00Z',
+      text: 'Popieram. Rano korzysta z tego przejścia bardzo dużo dzieci idących do pobliskiej szkoły.',
+    },
+  ],
+  upvotes: [
+    { user_id: 'usr_krk_1042', date: '2026-10-02T17:40:00Z' },
+    { user_id: 'usr_krk_0871', date: '2026-10-01T09:15:00Z', quantity: 1 },
+    { user_id: 'usr_krk_2215', date: '2026-09-29T20:01:00Z' },
+    { user_id: 'usr_krk_0314', date: '2026-09-28T14:22:00Z', quantity: 1 },
+  ],
+  duplicates: [
+    {
+      idea_id: 'idea_0021',
+      title: 'Lepsze oświetlenie przejścia przy Słowackiego',
+      desc: 'Montaż dodatkowych lamp nad przejściem dla pieszych oraz poprawa widoczności oznakowania.',
+      img: 'https://images.unsplash.com/photo-1494522358652-f30e61a60313?auto=format&fit=crop&w=640&q=80',
+    },
+    {
+      idea_id: 'idea_0148',
+      title: 'Bezpieczna droga do szkoły w Krowodrzy',
+      desc: 'Doświetlenie przejść, montaż progów wyspowych i odnowienie oznakowania w rejonie szkoły.',
+      img: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=640&q=80',
+    },
+  ],
+};
+import type { Comment, Duplicate, Upvote } from '../types/domain';

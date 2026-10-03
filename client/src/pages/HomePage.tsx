@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { useAuth } from '../auth/AuthContext';
 import { ReportCard } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import {
@@ -88,6 +89,9 @@ function StatCard({ stat }: { stat: (typeof stats)[number] }) {
 }
 
 export function HomePage() {
+  const { user } = useAuth();
+  const ideaPath = user ? '/dodaj-pomysl' : '/logowanie';
+
   return (
     <main className={uiTheme.layout.content}>
       <section
@@ -99,19 +103,22 @@ export function HomePage() {
               <ShieldCheck size={13} /> Profil zaufany
             </span>
             <span>•</span>
-            <span>Dzielnica V Krowodrza</span>
+            <span>{user ? `Dzielnica ${user.district}` : 'Kraków'}</span>
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            Dzień dobry, Igor <span aria-hidden="true">👋</span>
+            Dzień dobry{user ? `, ${user.firstName}` : ''}{' '}
+            <span aria-hidden="true">👋</span>
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Masz pomysł, jak ulepszyć Kraków i swoją dzielnicę? Dołącz do
             współdecydowania o lokalnych inwestycjach miejskich.
           </p>
         </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-900">
-          <CheckCircle2 size={15} /> Mieszkaniec zweryfikowany
-        </span>
+        {user && (
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-900">
+            <CheckCircle2 size={15} /> Mieszkaniec zalogowany
+          </span>
+        )}
       </section>
 
       <section className="relative mt-6 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950 via-blue-800 to-indigo-700 px-6 py-8 text-white shadow-lg shadow-blue-950/15 md:px-9 md:py-10">
@@ -128,12 +135,12 @@ export function HomePage() {
             pomoże przygotować kompletne zgłoszenie.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link className={uiTheme.button.accent} to="/zgloszenia?nowe=true">
+            <Link className={uiTheme.button.accent} to={ideaPath}>
               <Plus size={17} /> Zgłoś nowy problem
             </Link>
             <Link
               className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/20 transition hover:bg-white/15"
-              to="/zgloszenia"
+              to="/pomysly"
             >
               Przeglądaj zgłoszenia <ArrowRight size={16} />
             </Link>
@@ -162,7 +169,7 @@ export function HomePage() {
             </div>
             <Link
               className="hidden text-sm font-semibold text-blue-800 hover:text-blue-950 sm:block"
-              to="/zgloszenia"
+              to="/pomysly"
             >
               Wszystkie zgłoszenia
             </Link>
@@ -174,7 +181,7 @@ export function HomePage() {
           </div>
           <Link
             className="mx-auto mt-6 flex w-fit items-center gap-2 text-sm font-semibold text-blue-800 hover:text-blue-950"
-            to="/zgloszenia"
+            to="/pomysly"
           >
             Zobacz wszystkie zgłoszenia w Krakowie <ArrowRight size={16} />
           </Link>
@@ -247,7 +254,7 @@ export function HomePage() {
             </p>
             <Link
               className={`${uiTheme.button.primary} mt-5 w-full text-xs`}
-              to="/zgloszenia?nowe=true"
+              to={ideaPath}
             >
               <Sparkles size={15} /> Rozpocznij z Asystentem AI
             </Link>

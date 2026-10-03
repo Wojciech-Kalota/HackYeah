@@ -1,4 +1,5 @@
 import { CalendarDays, MessageSquare, ThumbsUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { uiTheme } from '../styles/theme';
 import type { Report, ReportStatus } from '../utils/dummyData';
@@ -37,7 +38,12 @@ export function ReportCard({
             <span className={uiTheme.badge.neutral}>{report.category}</span>
           </div>
           <h3 className="mt-5 text-base leading-snug font-semibold text-slate-950">
-            {report.title}
+            <Link
+              className="hover:text-blue-800 hover:underline"
+              to={`/pomysly/${report.id}`}
+            >
+              {report.title}
+            </Link>
           </h3>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">
             {report.description}
@@ -49,12 +55,14 @@ export function ReportCard({
           >
             {statusLabels[report.status]}
           </span>
-          <img
-            alt="Ilustracja zgłoszenia"
-            className="h-28 w-full rounded-xl object-cover"
-            loading="lazy"
-            src={report.image}
-          />
+          <Link to={`/pomysly/${report.id}`}>
+            <img
+              alt="Ilustracja zgłoszenia"
+              className="h-28 w-full rounded-xl object-cover transition hover:opacity-90"
+              loading="lazy"
+              src={report.image}
+            />
+          </Link>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-slate-100 pt-4 text-[11px] text-slate-600">

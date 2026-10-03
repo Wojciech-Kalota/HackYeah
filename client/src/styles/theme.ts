@@ -27,6 +27,7 @@ export const uiTheme = Object.freeze({
     accepted: 'bg-emerald-100 text-emerald-800',
     in_progress: 'bg-indigo-100 text-indigo-800',
     completed: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
   },
 });
 

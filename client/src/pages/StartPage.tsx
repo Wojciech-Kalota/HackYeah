@@ -18,7 +18,7 @@ const roles = [
     description:
       'Zarządzaj zgłoszeniami, aktualizuj statusy i publikuj odpowiedzi.',
     icon: ShieldCheck,
-    to: '/admin',
+    to: '/administrator',
     iconClass: 'bg-emerald-100 text-emerald-800',
     hoverClass: 'hover:border-emerald-300 hover:shadow-emerald-900/10',
   },
