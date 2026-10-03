@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -15,9 +15,21 @@ import { StartPage } from './pages/StartPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <StartPage /> },
-  { path: '/admin', element: <AdminLoginPage /> },
-  { path: '/admin/panel', element: <AdminPage /> },
-  { path: '/admin/panel/projekty', element: <AdminPage view="projects" /> },
+  { path: '/administrator', element: <AdminLoginPage /> },
+  { path: '/administrator/panel', element: <AdminPage /> },
+  {
+    path: '/administrator/projekty',
+    element: <AdminPage view="projects" />,
+  },
+  { path: '/admin', element: <Navigate replace to="/administrator" /> },
+  {
+    path: '/admin/panel',
+    element: <Navigate replace to="/administrator/panel" />,
+  },
+  {
+    path: '/admin/panel/projekty',
+    element: <Navigate replace to="/administrator/projekty" />,
+  },
   {
     element: <App />,
     children: [
