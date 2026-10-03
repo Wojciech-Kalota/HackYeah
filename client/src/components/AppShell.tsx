@@ -46,7 +46,11 @@ function CitizenLogo() {
   return (
     <Link className="flex items-center gap-3" to="/mieszkaniec">
       <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
-        <Building2 size={20} />
+        <img
+          alt=""
+          className="h-7 w-9 object-contain"
+          src="/sukiennice-logo.png"
+        />
       </span>
       <span className="leading-tight">
         <span className="block font-bold text-blue-950">Głos Miasta</span>

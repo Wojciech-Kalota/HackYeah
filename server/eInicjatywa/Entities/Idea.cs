@@ -4,13 +4,15 @@ namespace eInicjatywa.Entities;
 
 public class Idea
 {
-    public int Id { get; set; }
-    public string District { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string? Image { get; set; } = string.Empty;
-    
-    
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string Title { get; set; }
+    public string Description { get; set; }
+    public string? ImageUrl { get; set; } = string.Empty;
+
+    public Guid DistrictId { get; set; }
+    public Guid CategoryId { get; set; }
+    public Guid StatusId { get; set; }
+    public Guid UserId { get; set; }
+
+    public List<Guid> Duplicates { get; set; } = new List<Guid>();
 }
