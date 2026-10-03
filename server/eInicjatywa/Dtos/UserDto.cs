@@ -6,6 +6,8 @@ namespace eInicjatywa.Dtos
         string Email,
         string NameFirst,
         string NameLast,
-        List<string> Roles
+        List<string> Roles,
+        Guid? DistrictId,
+        string? DistrictName
     );
 }

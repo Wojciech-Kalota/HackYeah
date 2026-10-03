@@ -14,7 +14,7 @@ export type CitizenUser = {
   email: string;
   firstName: string;
   lastName: string;
-  district: string;
+  district: string | null;
   roles: Role[];
 };
 
@@ -34,7 +34,7 @@ function mapUser(user: ApiUser): CitizenUser {
     email: user.email,
     firstName: user.nameFirst,
     lastName: user.nameLast,
-    district: 'Wszystkie dzielnice',
+    district: user.districtName,
     roles: user.roles,
   };
 }

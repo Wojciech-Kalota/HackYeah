@@ -36,8 +36,7 @@ export function ReportsPage() {
       .finally(() => setLoading(false));
   }, []);
   const query = searchParams.get('q') ?? '';
-  const residentDistrict =
-    user?.district.replace(/^[IVXLCDM]+\s+/, '') ?? 'all';
+  const residentDistrict = user?.district ?? 'all';
   const defaultDistrict = districts.includes(residentDistrict)
     ? residentDistrict
     : 'all';

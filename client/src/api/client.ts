@@ -55,6 +55,8 @@ export type ApiUser = {
   nameFirst: string;
   nameLast: string;
   roles: Role[];
+  districtId: string | null;
+  districtName: string | null;
 };
 
 export type RegisterRequest = {

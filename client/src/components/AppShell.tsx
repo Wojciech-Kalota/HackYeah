@@ -107,7 +107,7 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
               {user.firstName} {user.lastName}
             </p>
             <p className="mt-0.5 truncate text-[10px] text-slate-500">
-              {user.district}
+              {user.district ?? 'Brak przypisanej dzielnicy'}
             </p>
           </div>
           <button

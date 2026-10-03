@@ -24,7 +24,7 @@ import { loadCatalog, type ApiCatalog } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
-import { IDEA_CATEGORIES, LOCATIONS } from '../constants/ideaOptions';
+import { IDEA_CATEGORIES } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Idea } from '../types/domain';
 
@@ -91,7 +91,7 @@ export function AddIdeaPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [idea, setIdea] = useState<Idea>(() => ({
-    district: user?.district ?? 'V Krowodrza',
+    district: '',
     category: 'Infrastruktura drogowa',
     title: '',
     desc: '',
@@ -113,9 +113,21 @@ export function AddIdeaPage() {
 
   useEffect(() => {
     void loadCatalog()
-      .then(setCatalog)
+      .then((loadedCatalog) => {
+        setCatalog(loadedCatalog);
+        setIdea((current) => ({
+          ...current,
+          district:
+            current.district ||
+            loadedCatalog.districts.find(
+              (district) => district.name === user?.district,
+            )?.name ||
+            loadedCatalog.districts[0]?.name ||
+            '',
+        }));
+      })
       .catch((error) => setSubmitError(getApiErrorMessage(error)));
-  }, []);
+  }, [user?.district]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -348,9 +360,9 @@ export function AddIdeaPage() {
                   required
                   value={idea.district}
                 >
-                  {LOCATIONS.map((district) => (
-                    <option key={district} value={district}>
-                      {district}
+                  {catalog?.districts.map((district) => (
+                    <option key={district.id} value={district.name}>
+                      {district.name}
                     </option>
                   ))}
                 </select>

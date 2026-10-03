@@ -35,6 +35,7 @@ import { AiScoreBadge } from '../components/AiScoreBadge';
 import { api, getApiErrorMessage } from '../api/client';
 import { ideaStatus } from '../api/reports';
 import { useReportsData } from '../api/useReports';
+import { useAuth } from '../auth/AuthContext';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
@@ -375,8 +376,6 @@ const adminProjectFilters: AdminProjectFilter[] = [
   ...reportStatuses,
 ];
 const savedProjectIds = new Set<string | number>([1, 2, 3, 5, 6, 7, 8]);
-const currentAdminRegion = 'Krowodrza';
-
 type ProjectSortKey =
   'id' | 'title' | 'district' | 'category' | 'status' | 'support' | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
@@ -390,10 +389,12 @@ function formatAdminDate(date: string) {
 }
 
 function AdminProjectsView() {
-  const { reports, error, loading } = useReportsData();
-  const projectRegions = [
-    ...new Set(reports.map((report) => report.district)),
-  ].sort((a, b) => a.localeCompare(b, 'pl'));
+  const { user } = useAuth();
+  const { reports, catalog, error, loading } = useReportsData();
+  const currentAdminRegion = user?.district;
+  const projectRegions = catalog.districts
+    .map((district) => district.name)
+    .sort((a, b) => a.localeCompare(b, 'pl'));
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStatus = searchParams.get('status');
   const initialStatus = adminProjectFilters.includes(
@@ -425,7 +426,8 @@ function AdminProjectsView() {
         matchesQuery &&
         (region === 'all' ||
           (region === 'mine'
-            ? report.district === currentAdminRegion
+            ? Boolean(currentAdminRegion) &&
+              report.district === currentAdminRegion
             : report.district === region)) &&
         (status === 'all' ||
           (status === 'saved'
@@ -469,7 +471,15 @@ function AdminProjectsView() {
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [query, region, reports, sortDirection, sortKey, status]);
+  }, [
+    currentAdminRegion,
+    query,
+    region,
+    reports,
+    sortDirection,
+    sortKey,
+    status,
+  ]);
 
   function handleStatusFilter(nextStatus: AdminProjectFilter) {
     setStatus(nextStatus);
@@ -493,7 +503,7 @@ function AdminProjectsView() {
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 ring-1 ring-emerald-100">
-          <MapPin size={15} /> Dzielnica V Krowodrza
+          <MapPin size={15} /> {currentAdminRegion ?? 'Wszystkie rejony'}
         </div>
       </div>
       {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
@@ -530,7 +540,9 @@ function AdminProjectsView() {
                 value={region}
               >
                 <option value="all">Wszystkie rejony</option>
-                <option value="mine">Mój rejon — {currentAdminRegion}</option>
+                {currentAdminRegion && (
+                  <option value="mine">Mój rejon — {currentAdminRegion}</option>
+                )}
                 {projectRegions.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -1052,7 +1064,9 @@ export function AdminPage({
 }: {
   view?: 'dashboard' | 'projects' | 'project' | 'decision' | 'analytics';
 }) {
+  const { user } = useAuth();
   const { reports } = useReportsData();
+  const adminRegion = user?.district;
   const [menuOpen, setMenuOpen] = useState(false);
   const sidebarView =
     view === 'dashboard'
@@ -1139,7 +1153,7 @@ export function AdminPage({
                   <h1
                     className={`${uiTheme.text.heading} text-3xl md:text-4xl`}
                   >
-                    Dzień dobry, Anno
+                    Dzień dobry{user ? `, ${user.firstName}` : ''}
                   </h1>
                   <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
                     Najważniejsze sprawy i projekty z Twojego rejonu w jednym
@@ -1158,7 +1172,7 @@ export function AdminPage({
                       Twój rejon odpowiedzialności
                     </p>
                     <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
-                      Dzielnica V Krowodrza
+                      {adminRegion ?? 'Wszystkie rejony'}
                     </p>
                   </div>
                   <button
@@ -1191,7 +1205,9 @@ export function AdminPage({
                         Najnowsze projekty
                       </h2>
                       <p className="mt-1 text-xs text-slate-500">
-                        Ostatnie zgłoszenia z Dzielnicy V Krowodrza
+                        {adminRegion
+                          ? `Ostatnie zgłoszenia z rejonu ${adminRegion}`
+                          : 'Ostatnie zgłoszenia ze wszystkich rejonów'}
                       </p>
                     </div>
                     <Link
@@ -1203,16 +1219,22 @@ export function AdminPage({
                   </div>
 
                   <div className="space-y-4 p-4 md:p-5">
-                    {reports.slice(0, 3).map((report) => (
-                      <ReportCard
-                        detailsHref={`/administrator/projekty/${report.id}`}
-                        key={report.id}
-                        nested
-                        report={report}
-                        showProjectId
-                        supportIsAction={false}
-                      />
-                    ))}
+                    {reports
+                      .filter(
+                        (report) =>
+                          !adminRegion || report.district === adminRegion,
+                      )
+                      .slice(0, 3)
+                      .map((report) => (
+                        <ReportCard
+                          detailsHref={`/administrator/projekty/${report.id}`}
+                          key={report.id}
+                          nested
+                          report={report}
+                          showProjectId
+                          supportIsAction={false}
+                        />
+                      ))}
                   </div>
                 </section>
               </div>

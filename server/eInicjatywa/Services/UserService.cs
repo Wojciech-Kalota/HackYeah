@@ -82,7 +82,7 @@ namespace eInicjatywa.Services
             await _db.Users.AddAsync(user);
             await _db.SaveChangesAsync();
 
-            return new UserDto(user.Id,user.Email,user.Name,user.Surname,request.Roles);
+            return new UserDto(user.Id,user.Email,user.Name,user.Surname,request.Roles, null, null);
         }
 
         public async Task<UserDto> MeAsync(ClaimsPrincipal? claimsPrincipal)
@@ -97,7 +97,9 @@ namespace eInicjatywa.Services
             }
 
             var userId = await _utilsService.GetUserId(claimsPrincipal);
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _db.Users
+                .Include(existingUser => existingUser.District)
+                .FirstOrDefaultAsync(existingUser => existingUser.Id == userId);
 
             if(user == null)
             {
@@ -106,7 +108,14 @@ namespace eInicjatywa.Services
 
             var roles = await _db.UserRoles.Where(ur => ur.UserId == user.Id).Select(ur=> ur.Role.Name).ToListAsync();
 
-            return new UserDto(user.Id, user.Email, user.Name, user.Surname, roles);
+            return new UserDto(
+                user.Id,
+                user.Email,
+                user.Name,
+                user.Surname,
+                roles,
+                user.DistrictId,
+                user.District?.Name);
         }
     }
 }
