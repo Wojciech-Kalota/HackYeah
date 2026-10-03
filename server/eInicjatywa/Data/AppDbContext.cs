@@ -10,10 +10,14 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
-    public DbSet<Duplicate> Duplicates => Set<Duplicate>();
+    public DbSet<Category> Categories => Set<Category>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Idea> Ideas => Set<Idea>();
-    public DbSet<Upvote> Upvotes => Set<Upvote>();
+    public DbSet<District> Districts => Set<District>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Status> Statuses => Set<Status>();
+    public DbSet<Vote> Votes => Set<Vote>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

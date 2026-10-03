@@ -4,10 +4,13 @@ namespace eInicjatywa.Entities;
 
 public class User
 {
-    public int Id;
-    public string Imie { get; set; } = string.Empty;
-    public string Nazwisko { get; set; } = string.Empty;
-    public string District { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public string Name { get; set; }
+    public string? Surname { get; set; }
+    public string Password { get; set; }
+    public string Email { get; set; }
+
+    public Guid RoleId { get; set; }
+    public Guid DistrictId { get; set; }
+    public List<Guid> AuthoredIdeaIds { get; set; } = new List<Guid>();
 }
