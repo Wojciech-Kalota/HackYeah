@@ -44,5 +44,16 @@ public class AppDbContext : DbContext
                 new Role {Id = Guid.Parse(ADMIN_USER_ID) , Name = "ADMIN_USER"},
                 new Role {Id = Guid.Parse(NORMAL_USER_ID) , Name = "NORMAL_USER"}
             );
+
+        modelBuilder.Entity<IdeaCategory>()
+            .HasKey(ic => new { ic.CategoryId, ic.IdeaId });
+        modelBuilder.Entity<IdeaCategory>()
+            .HasOne(ic => ic.Categorie)
+            .WithMany(c => c.IdeaCategories)
+            .HasForeignKey(ic => ic.CategoryId);
+        modelBuilder.Entity<IdeaCategory>()
+            .HasOne(ic => ic.Idea)
+            .WithMany(i => i.IdeaCategorys)
+            .HasForeignKey(ic=> ic.IdeaId);
     }
 }
