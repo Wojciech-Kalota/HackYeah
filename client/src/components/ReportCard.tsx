@@ -1,4 +1,10 @@
-import { CalendarDays, MessageSquare, ThumbsUp } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronRight,
+  MapPin,
+  MessageSquare,
+  ThumbsUp,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { uiTheme } from '../styles/theme';
@@ -14,73 +20,81 @@ const statusLabels: Record<ReportStatus, string> = {
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat('pl-PL', {
-    day: 'numeric',
+    day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(new Date(date));
 }
 
-export function ReportCard({
-  report,
-  compact = false,
-}: {
-  report: Report;
-  compact?: boolean;
-}) {
+export function ReportCard({ report }: { report: Report }) {
   return (
-    <article className={`${uiTheme.surface.card} p-5`}>
-      <div
-        className={`grid gap-5 ${compact ? 'sm:grid-cols-[1fr_180px]' : 'md:grid-cols-[1fr_210px]'}`}
-      >
-        <div className="min-w-0">
-          <div className="flex flex-wrap gap-2">
-            <span className={uiTheme.badge.info}>{report.district}</span>
-            <span className={uiTheme.badge.neutral}>{report.category}</span>
+    <article
+      className={`${uiTheme.surface.card} group overflow-hidden transition hover:border-blue-200`}
+    >
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center md:p-5">
+        <Link className="shrink-0" to={`/pomysly/${report.id}`}>
+          <img
+            alt="Ilustracja pomysłu"
+            className="h-36 w-full rounded-xl object-cover transition group-hover:opacity-90 sm:size-24"
+            loading="lazy"
+            src={report.image}
+          />
+        </Link>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-blue-700">
+              BO-{String(report.id).padStart(3, '0')}
+            </span>
+            <span className="text-[10px] text-slate-300">•</span>
+            <span className="text-[10px] font-medium text-slate-500">
+              {report.category}
+            </span>
           </div>
-          <h3 className="mt-5 text-base leading-snug font-semibold text-slate-950">
-            <Link
-              className="hover:text-blue-800 hover:underline"
-              to={`/pomysly/${report.id}`}
-            >
-              {report.title}
-            </Link>
-          </h3>
-          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">
+          <Link
+            className="mt-2 block text-base leading-snug font-semibold text-slate-950 hover:text-blue-800"
+            to={`/pomysly/${report.id}`}
+          >
+            {report.title}
+          </Link>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
             {report.description}
           </p>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1">
+              <MapPin size={12} /> {report.district}
+            </span>
+            <span className="flex items-center gap-1">
+              <CalendarDays size={12} /> {formatDate(report.updatedAt)}
+            </span>
+            <span className="flex items-center gap-1">
+              <MessageSquare size={12} /> {report.comments} komentarzy
+            </span>
+          </div>
         </div>
-        <div>
+
+        <div className="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end">
           <span
-            className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium ${uiTheme.status[report.status]}`}
+            className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${uiTheme.status[report.status]}`}
           >
             {statusLabels[report.status]}
           </span>
-          <Link to={`/pomysly/${report.id}`}>
-            <img
-              alt="Ilustracja zgłoszenia"
-              className="h-28 w-full rounded-xl object-cover transition hover:opacity-90"
-              loading="lazy"
-              src={report.image}
-            />
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 transition hover:bg-blue-100"
+              type="button"
+            >
+              <ThumbsUp size={14} /> {report.support}
+            </button>
+            <Link
+              aria-label={`Otwórz pomysł ${report.title}`}
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-blue-800"
+              to={`/pomysly/${report.id}`}
+            >
+              <ChevronRight size={18} />
+            </Link>
+          </div>
         </div>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-slate-100 pt-4 text-[11px] text-slate-600">
-        <span className="flex items-center gap-1.5">
-          <MessageSquare size={14} /> {report.comments} komentarzy
-        </span>
-        <span className="flex items-center gap-1.5">
-          <CalendarDays size={14} /> {formatDate(report.updatedAt)}
-        </span>
-        <button
-          className={`${uiTheme.button.secondary} ml-auto px-3 py-2 text-xs`}
-          type="button"
-        >
-          <ThumbsUp size={15} /> Poprzyj
-          <span className="border-l border-blue-200 pl-2">
-            {report.support}
-          </span>
-        </button>
       </div>
     </article>
   );
