@@ -1,6 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Building2,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -120,7 +122,11 @@ function AdminLogo() {
   return (
     <Link className="flex items-center gap-3" to="/administrator/panel">
       <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
-        <Building2 size={20} />
+        <img
+          alt=""
+          className="h-8 w-7 object-contain mix-blend-screen"
+          src="/st-marys-logo.png"
+        />
       </span>
       <span className="leading-tight">
         <span className="block font-bold text-blue-950">Głos Miasta</span>
@@ -277,6 +283,11 @@ const reportStatuses = Object.keys(statusLabels) as ReportStatus[];
 const projectRegions = [
   ...new Set(reports.map((report) => report.district)),
 ].sort((a, b) => a.localeCompare(b, 'pl'));
+const currentAdminRegion = 'Krowodrza';
+
+type ProjectSortKey =
+  'id' | 'title' | 'district' | 'category' | 'status' | 'support' | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
 
 function formatAdminDate(date: string) {
   return new Intl.DateTimeFormat('pl-PL', {
@@ -286,15 +297,60 @@ function formatAdminDate(date: string) {
   }).format(new Date(date));
 }
 
+function SortableHeader({
+  activeKey,
+  align = 'left',
+  direction,
+  label,
+  onSort,
+  sortKey,
+}: {
+  activeKey: ProjectSortKey;
+  align?: 'left' | 'right';
+  direction: SortDirection;
+  label: string;
+  onSort: (key: ProjectSortKey) => void;
+  sortKey: ProjectSortKey;
+}) {
+  const active = activeKey === sortKey;
+  const SortIcon = !active
+    ? ArrowUpDown
+    : direction === 'asc'
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <th
+      aria-sort={
+        active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'
+      }
+      className="px-4 py-3.5"
+    >
+      <button
+        className={`flex w-full items-center gap-1.5 transition hover:text-blue-800 ${
+          active ? 'text-blue-800' : ''
+        } ${align === 'right' ? 'justify-end' : ''}`}
+        onClick={() => onSort(sortKey)}
+        type="button"
+      >
+        {label}
+        <SortIcon size={12} strokeWidth={2.2} />
+      </button>
+    </th>
+  );
+}
+
 function AdminProjectsView() {
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState('all');
   const [status, setStatus] = useState<ReportStatus | 'all'>('all');
+  const [sortKey, setSortKey] = useState<ProjectSortKey>('title');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const filteredReports = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pl');
 
-    return reports.filter((report) => {
+    const matchingReports = reports.filter((report) => {
       const matchesQuery =
         !normalizedQuery ||
         [report.title, report.district, report.category].some((value) =>
@@ -303,11 +359,51 @@ function AdminProjectsView() {
 
       return (
         matchesQuery &&
-        (region === 'all' || report.district === region) &&
+        (region === 'all' ||
+          (region === 'mine'
+            ? report.district === currentAdminRegion
+            : report.district === region)) &&
         (status === 'all' || report.status === status)
       );
     });
-  }, [query, region, status]);
+
+    return [...matchingReports].sort((a, b) => {
+      let comparison: number;
+
+      switch (sortKey) {
+        case 'id':
+        case 'support':
+          comparison = a[sortKey] - b[sortKey];
+          break;
+        case 'updatedAt':
+          comparison =
+            new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'status':
+          comparison = statusLabels[a.status].localeCompare(
+            statusLabels[b.status],
+            'pl',
+          );
+          break;
+        default:
+          comparison = a[sortKey].localeCompare(b[sortKey], 'pl', {
+            sensitivity: 'base',
+          });
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [query, region, sortDirection, sortKey, status]);
+
+  function handleSort(nextSortKey: ProjectSortKey) {
+    if (nextSortKey === sortKey) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(nextSortKey);
+    setSortDirection('asc');
+  }
 
   return (
     <main className={uiTheme.layout.content}>
@@ -359,6 +455,7 @@ function AdminProjectsView() {
                 value={region}
               >
                 <option value="all">Wszystkie rejony</option>
+                <option value="mine">Mój rejon — {currentAdminRegion}</option>
                 {projectRegions.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -390,13 +487,56 @@ function AdminProjectsView() {
           <table className="w-full min-w-[940px] border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                <th className="px-5 py-3.5">Numer</th>
-                <th className="px-4 py-3.5">Projekt</th>
-                <th className="px-4 py-3.5">Dzielnica</th>
-                <th className="px-4 py-3.5">Kategoria</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="px-4 py-3.5 text-right">Poparcie</th>
-                <th className="px-4 py-3.5">Aktualizacja</th>
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Numer"
+                  onSort={handleSort}
+                  sortKey="id"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Projekt"
+                  onSort={handleSort}
+                  sortKey="title"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Dzielnica"
+                  onSort={handleSort}
+                  sortKey="district"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Kategoria"
+                  onSort={handleSort}
+                  sortKey="category"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Status"
+                  onSort={handleSort}
+                  sortKey="status"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  align="right"
+                  direction={sortDirection}
+                  label="Poparcie"
+                  onSort={handleSort}
+                  sortKey="support"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Aktualizacja"
+                  onSort={handleSort}
+                  sortKey="updatedAt"
+                />
                 <th className="w-14 px-4 py-3.5">
                   <span className="sr-only">Akcje</span>
                 </th>

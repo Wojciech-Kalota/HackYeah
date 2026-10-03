@@ -2,7 +2,6 @@ import {
   Accessibility,
   BadgeCheck,
   Bell,
-  Building2,
   ChevronDown,
   CircleHelp,
   FileText,
@@ -47,7 +46,11 @@ function Logo() {
   return (
     <NavLink className="flex items-center gap-3" to="/mieszkaniec">
       <div className="grid size-9 place-items-center rounded-xl bg-blue-700 text-white shadow-sm">
-        <Building2 size={19} strokeWidth={2.2} />
+        <img
+          alt=""
+          className="h-7 w-6 object-contain mix-blend-screen"
+          src="/st-marys-logo.png"
+        />
       </div>
       <div className="leading-tight">
         <p className="font-bold text-blue-950">Głos Miasta</p>
