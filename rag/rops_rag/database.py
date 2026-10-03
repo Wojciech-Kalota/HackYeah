@@ -32,7 +32,6 @@ class Database:
             "CREATE TABLE IF NOT EXISTS submission_concepts (submission_id TEXT NOT NULL REFERENCES submissions(id), concept_id BIGINT NOT NULL REFERENCES concepts(id), reason TEXT NOT NULL, PRIMARY KEY(submission_id,concept_id))",
             "CREATE TABLE IF NOT EXISTS concept_embeddings (concept_id BIGINT NOT NULL REFERENCES concepts(id), model TEXT NOT NULL, text_hash TEXT NOT NULL, vector_json TEXT NOT NULL, PRIMARY KEY(concept_id,model))",
             "CREATE TABLE IF NOT EXISTS processing_results (submission_id TEXT PRIMARY KEY REFERENCES submissions(id), result_json TEXT NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS concept_relations (concept_id BIGINT NOT NULL REFERENCES concepts(id), related_id BIGINT NOT NULL REFERENCES concepts(id), reason TEXT NOT NULL, PRIMARY KEY(concept_id,related_id))",
         ]
         with self.connection.transaction():
             for statement in statements:

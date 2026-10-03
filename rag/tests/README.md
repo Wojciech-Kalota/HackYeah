@@ -1,40 +1,23 @@
 # Testy
 
-Uruchamiaj z głównego katalogu projektu po instalacji dodatków `api,test`:
+Z głównego katalogu projektu po instalacji dodatków api,test:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## Testy jednostkowe
-
-Sprawdzają ekstrakcję, cytaty źródłowe, walidację kategorii, schemat OpenAI
-i endpointy HTTP z atrapą procesu. Nie wymagają klucza OpenAI ani PostgreSQL.
+Jednostkowe sprawdzają ekstrakcję, cytaty, dynamiczne kategorie, HTTP i ranking.
 Testy nie wykonują płatnych wywołań API.
-
-## Testy PostgreSQL
-
-Ustaw adres bazy testowej w środowisku procesu:
+Testy integracyjne wymagają istniejącej bazy i TEST_DATABASE_URL w środowisku:
 
 ```powershell
-$env:TEST_DATABASE_URL = "postgresql://rops:twoje-haslo@localhost:5432/rops_test"
+$env:TEST_DATABASE_URL="postgresql://rops:haslo@localhost:5432/rops_test"
 .\.venv-win\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Baza musi istnieć, a konto musi móc tworzyć schematy. Każdy test tworzy
-losowy schemat `rops_test_*` i usuwa wyłącznie swój schemat po zakończeniu.
-Testy nie wczytują `TEST_DATABASE_URL` z `.env`.
-Bez tej zmiennej testy integracyjne są jawnie pomijane.
-
-Zakres: integralność powiązań, liczniki, indeksowanie i ranking na kontrolowanych
-wektorach, zapis decyzji, rollback całego zgłoszenia, ponowienia po ID,
-blokada równoległego przetwarzania i integracja HTTP z bazą.
-LLM i embeddingi są zastępowane atrapami także w testach PostgreSQL.
-
-## Ocena modeli
-
-Testy automatyczne nie mierzą trafności rzeczywistych modeli. Przed prezentacją
-sprawdź ręcznie: parafrazy tego samego pomysłu, różne rozwiązania tego samego
-problemu, bliskie warianty, brakujące informacje i pomysły spoza bazy.
-Oceń osobno wydzielenie koncepcji, kategorię, obecność właściwego kandydata
-w pierwszej piątce oraz decyzję porównania.
+Konto musi móc tworzyć schematy. Każdy test tworzy losowy schemat rops_test_*
+i usuwa wyłącznie swój schemat po zakończeniu. Bez zmiennej testy są pomijane.
+TEST_DATABASE_URL nie jest wczytywane z .env.
+Integracyjne sprawdzają zapis, powiązania, liczniki, replay, konflikt kategorii,
+puste solution i rollback całego zgłoszenia po błędzie.
+Modele są zastąpione atrapami. Trafność modeli oceniaj dodatkowo ręcznie.

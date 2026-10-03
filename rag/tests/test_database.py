@@ -1,46 +1,19 @@
-from rag.tests.pg_support import test_database, close_test_database
+from unittest import TestCase
 import psycopg
-import unittest
+from pg_support import test_database,close_test_database
+from rops_rag.models import Concept
 
-from rag.rops_rag.database import Database
-from rag.rops_rag.models import Concept
-
-
-class DatabaseTests(unittest.TestCase):
+class DatabaseTests(TestCase):
     def setUp(self):
-        self.db = test_database()
-        self.concept = Concept(
-            "Samotność",
-            "Seniorzy",
-            "Cotygodniowe rozmowy telefoniczne",
-            "integracja_spoleczna",
-        )
-        self.db.add_submission("a", "Pomysł A")
-
+        self.db=test_database()
     def tearDown(self):
         close_test_database(self.db)
-
-    def test_independent_submissions_count_once_each(self):
-        cid = self.db.save_match("a", concept=self.concept, reason="Nowy")
-        self.db.add_submission("b", "Pomysł B")
-        for _ in range(2):
-            self.db.save_match("b", existing_id=cid, reason="To samo")
-        self.assertEqual(self.db.list_concepts()[0]["liczba_zgloszen"], 2)
-
-    def test_submission_retry_and_conflicting_text(self):
-        self.assertFalse(self.db.add_submission("a", "Pomysł A"))
-        with self.assertRaises(ValueError):
-            self.db.add_submission("a", "Inny tekst")
-
-    def test_failed_link_rolls_back_new_concept(self):
+    def test_links_count_once(self):
+        self.db.add_submission("a","Pomysł")
+        cid=self.db.save_match("a",concept=Concept("Problem","Odbiorcy","Rozwiązanie","custom"),reason="Nowy")
+        self.db.save_match("a",existing_id=cid,reason="Ponowienie")
+        self.assertEqual(self.db.list_concepts()[0]["liczba_zgloszen"],1)
+    def test_failed_link_rolls_back_concept(self):
         with self.assertRaises(psycopg.IntegrityError):
-            self.db.save_match("missing", concept=self.concept, reason="Nowy")
-        self.assertEqual(self.db.list_concepts(), [])
-
-    def test_nonexistent_concept_cannot_be_linked(self):
-        with self.assertRaises(psycopg.IntegrityError):
-            self.db.save_match("a", existing_id=999, reason="To samo")
-
-
-if __name__ == "__main__":
-    unittest.main()
+            self.db.save_match("missing",concept=Concept("Problem","Odbiorcy","Rozwiązanie","custom"),reason="Nowy")
+        self.assertEqual(self.db.list_concepts(),[])

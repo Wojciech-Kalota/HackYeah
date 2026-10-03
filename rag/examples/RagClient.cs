@@ -5,6 +5,8 @@ using System.Text.Json;
 // Odpowiedź koncepcji: problem, audience, solution, category, context.
 // solution opisuje rozwiązanie wraz ze sposobem działania.
 // Kategorie przekazuje backend .NET razem z tekstem.
+// Python zapisuje wynik w PostgreSQL i obsługuje idempotencję po submission_id.
+// .NET nie wykonuje dodatkowego zapisu koncepcji ani zwiększania liczników.
 public sealed class RagClient(HttpClient http)
 {
     public async Task<JsonElement> AnalyzeAsync(
