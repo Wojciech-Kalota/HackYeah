@@ -1,9 +1,0 @@
-C:\out\eInicjatywa.exe
-C:\out\appsettings.Development.json
-C:\out\appsettings.json
-C:\out\eInicjatywa.dll
-C:\out\eInicjatywa.deps.json
-C:\out\eInicjatywa.runtimeconfig.json
-C:\out\eInicjatywa.pdb
-C:\out\Microsoft.AspNetCore.OpenApi.dll
-C:\out\Microsoft.OpenApi.dll
