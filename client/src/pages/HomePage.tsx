@@ -215,31 +215,6 @@ export function HomePage() {
         </section>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl bg-blue-950 p-5 text-white shadow-lg shadow-blue-950/10">
-            <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10">
-                <Sparkles size={18} />
-              </span>
-              <div>
-                <p className="text-sm font-bold">Budżet Obywatelski 2026</p>
-                <p className="mt-0.5 text-[11px] text-blue-200">
-                  Nabór projektów trwa
-                </p>
-              </div>
-            </div>
-            <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-blue-100">
-              42 mln zł czekają na inicjatywy krakowian. Opisz problem, a
-              asystent pomoże przygotować kompletne zgłoszenie.
-            </p>
-            <Link
-              className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300"
-              to={ideaPath}
-            >
-              <Plus size={15} /> Dodaj własny pomysł{' '}
-              <ArrowRight className="ml-auto" size={15} />
-            </Link>
-          </section>
-
           <section className={`${uiTheme.surface.card} overflow-hidden p-5`}>
             <div className="flex items-center justify-between gap-3">
               <div>
