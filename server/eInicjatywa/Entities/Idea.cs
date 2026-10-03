@@ -9,6 +9,12 @@ public class Idea
     public string Description { get; set; }
     public string? ImageUrl { get; set; } = string.Empty;
 
+    public Guid DistrictId { get; set; }
+    public Guid CategoryId { get; set; }
+    public Guid StatusId { get; set; }
+    public Guid AuthorId { get; set; }
+    public Guid OriginalId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
