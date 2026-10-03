@@ -88,11 +88,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
-      "projectName": "eIncijatywa",
-      "projectPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
+      "projectUniqueName": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj",
+      "projectName": "eInicjatywa",
+      "projectPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj",
       "packagesPath": "C:\\Users\\Jakub\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\obj\\",
+      "outputPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Jakub\\AppData\\Roaming\\NuGet\\NuGet.Config"
