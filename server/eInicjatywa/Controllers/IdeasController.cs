@@ -1,7 +1,9 @@
 ﻿using eInicjatywa.Dtos;
+using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Build.Tasks;
 using System.Diagnostics.Contracts;
 
 namespace eInicjatywa.Controllers
@@ -10,24 +12,34 @@ namespace eInicjatywa.Controllers
     [ApiController]
     public class IdeasController : ControllerBase
     {
+        private readonly IIdeasService _ideasService;
+
+        public IdeasController(IIdeasService ideasService)
+        {
+            _ideasService = ideasService;
+        }
+
+
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
         {
-
-            return Ok();
+            var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
+            return Ok(results);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetIdeas()
         {
-            return Ok();
+            var results = await _ideasService.GetIdeasAsync();
+            return Ok(results);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetIdea(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.GetIdeaByIdAsync(id);
+            return Ok(results);
         }
 
         [HttpPatch("{id}")]
@@ -41,20 +53,23 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteIdea(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.DeleteIdeaAsync(User, id);
+            return results ? NoContent() : BadRequest();
         }
 
         [HttpPost("{id}/comments")]
         [Authorize]
         public async Task<IActionResult> AddComment(Guid id, [FromBody] CommentDto commentDto)
         {
-            return Ok();
+            var results = await _ideasService.AddCommentAsync(User, id, commentDto);
+            return Ok(results);
         }
 
         [HttpGet("{id}/comments")]
         public async Task<IActionResult> GetComments(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.GetCommentsByIdeaIdAsync(id);
+            return Ok(results);
         }
 
         [HttpPut("{id}/comments")]
@@ -68,7 +83,14 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteComment(Guid id)
         {
-            return Ok();
+            try{
+                var results = await _ideasService.DeleteCommentAsync(User, id);
+                return results ? NoContent() : BadRequest();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

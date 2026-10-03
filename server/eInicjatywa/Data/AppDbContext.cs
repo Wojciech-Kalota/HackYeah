@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Status> Statuses => Set<Status>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<IdeaCategory> IdeaCategories => Set<IdeaCategory>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

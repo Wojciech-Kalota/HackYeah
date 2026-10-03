@@ -10,10 +10,10 @@ namespace eInicjatywa.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "ADMIN_USER")]
-    public class CatgoriesController : ControllerBase
+    public class CategoriesController : ControllerBase
     {
         private readonly ICategoryService _categoryService;
-        public CatgoriesController(ICategoryService categoryService)
+        public CategoriesController(ICategoryService categoryService)
         {
             _categoryService = categoryService;
         }

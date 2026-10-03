@@ -8,8 +8,10 @@ public class Idea
     public string Title { get; set; }
     public string Description { get; set; }
     public string? ImageUrl { get; set; } = string.Empty;
+
     public Guid? DuplicateOfId { get; set; }
     public Idea? DuplicateOf { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -19,7 +21,7 @@ public class Idea
     public Status Status { get; set; } = null!;
     public Guid StatusId { get; set; }
     public User Author { get; set; } = null!;
-    public Guid UserId { get; set; }
+    public Guid AuthorId { get; set; }
 
     public ICollection<Idea> Duplicates { get; set; } = new List<Idea>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
