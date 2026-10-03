@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using eInicjatywa.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics.Contracts;
 
@@ -9,8 +11,10 @@ namespace eInicjatywa.Controllers
     public class IdeasController : ControllerBase
     {
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
         {
+
             return Ok();
         }
 
@@ -27,18 +31,21 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpPatch("{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateIdea(Guid id, [FromBody] IdeaDto ideaDto)
         {
             return Ok();
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteIdea(Guid id)
         {
             return Ok();
         }
 
         [HttpPost("{id}/comments")]
+        [Authorize]
         public async Task<IActionResult> AddComment(Guid id, [FromBody] CommentDto commentDto)
         {
             return Ok();
@@ -51,12 +58,14 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpPut("{id}/comments")]
+        [Authorize]
         public async Task<IActionResult> UpdateComment(Guid id, [FromBody] CommentDto commentDto)
         {
             return Ok();
         }
 
         [HttpDelete("{id}/comments")]
+        [Authorize]
         public async Task<IActionResult> DeleteComment(Guid id)
         {
             return Ok();
