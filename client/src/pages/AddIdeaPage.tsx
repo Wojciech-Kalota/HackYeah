@@ -80,9 +80,9 @@ export function AddIdeaPage() {
   return (
     <main className={uiTheme.layout.content}>
       <div className="max-w-4xl">
-        <p className="text-xs font-semibold tracking-wide text-blue-800 uppercase">
-          Nowa inicjatywa
-        </p>
+        <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+          <Lightbulb size={14} /> Nowa inicjatywa
+        </div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
           Dodaj pomysł dla Krakowa
         </h1>

@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Building2,
   Eye,
   EyeOff,
   LockKeyhole,
@@ -48,52 +47,55 @@ export function AdminLoginPage() {
   }
 
   return (
-    <main className={`${uiTheme.layout.page} relative overflow-hidden`}>
+    <main
+      className={`${uiTheme.layout.page} relative min-h-dvh overflow-x-hidden`}
+    >
       <div className="pointer-events-none absolute -top-32 -left-28 size-96 rounded-full bg-blue-200/35 blur-3xl" />
       <div className="pointer-events-none absolute -right-24 -bottom-40 size-[28rem] rounded-full bg-emerald-200/30 blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 md:px-8">
-        <div className="grid w-full overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-2xl shadow-blue-950/10 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="relative hidden overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-800 p-10 text-white lg:flex lg:flex-col lg:justify-between">
-            <div className="relative z-10">
-              <Link className="inline-flex items-center gap-3" to="/">
-                <span className="grid size-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                  <Building2 size={22} />
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl items-center px-3 py-3 sm:px-4 md:px-6 md:py-4">
+        <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_20px_60px_rgba(30,50,100,0.08)] sm:rounded-3xl lg:h-[calc(100dvh-2rem)] lg:max-h-[760px] lg:min-h-[560px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <section className="relative hidden overflow-hidden bg-[linear-gradient(145deg,#172d68_0%,#234497_65%,#3746b0_100%)] p-8 text-white lg:block xl:p-10">
+            <div className="relative z-10 h-full">
+              <div className="flex items-center gap-3">
+                <span className="grid size-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-sm">
+                  <img
+                    alt=""
+                    className="h-8 w-10 object-contain"
+                    src="/sukiennice-logo.png"
+                  />
                 </span>
-                <span>
-                  <span className="block font-bold">Głos Miasta</span>
-                  <span className="block text-[10px] font-semibold tracking-[0.2em] text-blue-200 uppercase">
+                <span className="leading-tight">
+                  <span className="block text-sm font-bold">Głos Miasta</span>
+                  <span className="block text-[9px] font-semibold tracking-[0.22em] text-blue-200 uppercase">
                     Kraków
                   </span>
                 </span>
-              </Link>
+              </div>
 
-              <div className="mt-20">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/15">
-                  <ShieldCheck size={14} /> Bezpieczny dostęp urzędnika
-                </span>
-                <h1 className="mt-6 text-4xl leading-tight font-bold tracking-tight">
-                  Wspólnie dbamy o sprawy mieszkańców.
+              <div className="mt-[clamp(5rem,18vh,8rem)] w-full">
+                <h1 className="max-w-md text-[clamp(2rem,3.1vw,2.5rem)] leading-[1.15] font-bold tracking-[-0.025em]">
+                  <span className="block">Wspólnie dbamy o</span>
+                  <span className="block">sprawy mieszkańców.</span>
                 </h1>
-                <p className="mt-4 max-w-md text-sm leading-6 text-blue-100">
-                  Zaloguj się, aby obsługiwać zgłoszenia, aktualizować ich
-                  status i publikować odpowiedzi miasta.
+                <p className="mt-5 max-w-[450px] text-sm leading-6 text-blue-100">
+                  Zarządzaj zgłoszeniami mieszkańców, aktualizuj ich status i
+                  publikuj odpowiedzi miasta.
                 </p>
               </div>
             </div>
 
-            <div className="relative z-10 flex items-center gap-3 text-xs text-blue-100">
-              <span className="grid size-9 place-items-center rounded-xl bg-emerald-300 text-blue-950">
-                <ShieldCheck size={17} />
-              </span>
-              <span>Dostęp wyłącznie dla upoważnionych pracowników</span>
-            </div>
-
-            <div className="absolute -right-24 -bottom-28 size-80 rounded-full bg-white/10" />
-            <div className="absolute top-28 -right-16 size-48 rounded-full bg-cyan-300/10 blur-sm" />
+            <img
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute right-[-31%] bottom-[-6%] h-[90%] w-[115%] [mask-image:linear-gradient(to_bottom,transparent_0%,black_25%)] object-contain object-right-bottom opacity-[0.08] mix-blend-screen"
+              src="/krakow-cathedral.png"
+            />
+            <div className="absolute -right-24 -bottom-28 size-80 rounded-full bg-white/5" />
+            <div className="absolute top-28 -right-16 size-48 rounded-full bg-blue-200/[0.07] blur-sm" />
           </section>
 
-          <section className="flex min-h-[640px] flex-col justify-center p-6 sm:p-10 lg:p-14">
+          <section className="flex min-h-0 flex-col justify-center p-5 sm:p-7 md:p-9 lg:p-[clamp(2rem,4vw,2.75rem)]">
             <div className="mx-auto w-full max-w-md">
               <Link
                 className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-800"
@@ -102,7 +104,7 @@ export function AdminLoginPage() {
                 <ArrowLeft size={16} /> Wróć do wyboru widoku
               </Link>
 
-              <div className="mt-9 flex items-start justify-between gap-4">
+              <div className="mt-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold tracking-[0.16em] text-emerald-700 uppercase">
                     Panel administratora
@@ -119,7 +121,7 @@ export function AdminLoginPage() {
                 </span>
               </div>
 
-              <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+              <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-700">
                     Adres e-mail
@@ -131,7 +133,7 @@ export function AdminLoginPage() {
                     />
                     <input
                       autoComplete="username"
-                      className={`${uiTheme.field} h-12 pl-11`}
+                      className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] pl-11 focus:bg-white`}
                       onChange={(event) => {
                         setEmail(event.target.value);
                         setError('');
@@ -155,7 +157,7 @@ export function AdminLoginPage() {
                     />
                     <input
                       autoComplete="current-password"
-                      className={`${uiTheme.field} h-12 px-11`}
+                      className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] px-11 focus:bg-white`}
                       onChange={(event) => {
                         setPassword(event.target.value);
                         setError('');
@@ -209,20 +211,20 @@ export function AdminLoginPage() {
                 </button>
               </form>
 
-              <div className="my-6 flex items-center gap-3 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-                <span className="h-px flex-1 bg-slate-200" />
+              <div className="my-4 flex items-center gap-3 text-[11px] font-semibold tracking-wider text-slate-300 uppercase">
+                <span className="h-px flex-1 bg-slate-100" />
                 lub szybki dostęp
-                <span className="h-px flex-1 bg-slate-200" />
+                <span className="h-px flex-1 bg-slate-100" />
               </div>
 
               <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-100 px-5 text-sm font-bold text-emerald-900 ring-1 ring-emerald-200 transition hover:bg-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-50/70 px-5 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200/80 transition hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
                 onClick={handleDemoLogin}
                 type="button"
               >
                 <Sparkles size={17} /> Demo login
               </button>
-              <p className="mt-3 text-center text-[11px] leading-5 text-slate-400">
+              <p className="mt-2 text-center text-[11px] leading-5 text-slate-400">
                 Tryb demonstracyjny nie wymaga podawania danych logowania.
               </p>
             </div>

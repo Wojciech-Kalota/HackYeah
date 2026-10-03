@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using System.Text.Json;
+using eInicjatywa.Data;
 using eInicjatywa.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace eInicjatywa.Services
 {
@@ -11,18 +14,31 @@ namespace eInicjatywa.Services
 
     public class SessionService : ISessionService
     {
+        private readonly AppDbContext _db;
         private readonly ICacheService _cacheService;
         private readonly UtilsService _utilsService;
-        public SessionService(ICacheService cacheService, UtilsService utilsService)
+        public SessionService(AppDbContext db,ICacheService cacheService, UtilsService utilsService)
         {
+            _db = db;
             _cacheService = cacheService;
             _utilsService = utilsService;
         }
         public async Task<InternalSessionDto> LoginAsync(ClaimsPrincipal? claimsPrincipal, LoginDto request)
         {
-            // db strike check if email and password is correct
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.Password == request.Password);
+
+            if(user == null)
+            {
+                throw new Exception("Invalid creadentials");
+            }
+
             DateTime timeNow = DateTime.UtcNow;
-            return new InternalSessionDto(Guid.CreateVersion7(), Guid.CreateVersion7(), timeNow, timeNow.AddHours(2));
+            InternalSessionDto sessionDto = new InternalSessionDto(Guid.CreateVersion7(), user.Id,timeNow, timeNow.AddHours(2));
+
+            var redisKey = $"eInicjatywa:Session:{sessionDto.Token}";
+            await _cacheService.SetValueAtKeyAsync(redisKey, JsonSerializer.Serialize(sessionDto), timeNow.AddHours(2));
+
+            return sessionDto;
         }
 
         public async Task LogoutAsync(ClaimsPrincipal? claimsPrincipal)

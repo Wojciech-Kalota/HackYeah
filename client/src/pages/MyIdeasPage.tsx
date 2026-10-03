@@ -1,28 +1,40 @@
-import { CheckCircle2, Lightbulb, Plus } from 'lucide-react';
+import { CheckCircle2, FileText, Lightbulb, Plus } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
+import { mockCitizenIdeas } from '../utils/dummyData';
 import { getLocalIdeas } from '../utils/localIdeas';
 
 export function MyIdeasPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const ideas = getLocalIdeas(user?.id);
+  const mockedIdeas = mockCitizenIdeas.map((idea) => ({
+    id: `mock-${idea.id}`,
+    user_id: user?.id ?? 'demo-citizen',
+    district: idea.district,
+    category: idea.category,
+    title: idea.title,
+    desc: idea.description,
+    status: idea.status,
+    img: idea.image,
+    created_at: idea.updatedAt,
+  }));
+  const ideas = [...getLocalIdeas(user?.id), ...mockedIdeas];
 
   return (
     <main className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-wide text-blue-800 uppercase">
-            Twoje konto
-          </p>
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+            <FileText size={14} /> Twoje konto
+          </div>
           <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
             Moje pomysły
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Pomysły zapisane przez Ciebie na tym urządzeniu.
+            Pomysły przypisane do Twojego konta mieszkańca.
           </p>
         </div>
         <Link className={uiTheme.button.primary} to="/dodaj-pomysl">
@@ -43,9 +55,10 @@ export function MyIdeasPage() {
               (item) => item.value === idea.status,
             );
             return (
-              <article
-                className={`${uiTheme.surface.card} overflow-hidden`}
+              <Link
+                className={`${uiTheme.surface.card} group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md`}
                 key={idea.id}
+                to={`/pomysly/${idea.id}`}
               >
                 {idea.img ? (
                   <img
@@ -82,7 +95,7 @@ export function MyIdeasPage() {
                     </time>
                   </div>
                 </div>
-              </article>
+              </Link>
             );
           })}
         </div>

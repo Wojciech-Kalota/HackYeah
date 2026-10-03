@@ -1,29 +1,47 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  ArrowLeft,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  BarChart3,
+  Bookmark,
   Building2,
-  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
-  CircleUserRound,
-  ClipboardCheck,
+  CircleAlert,
   Clock3,
   FileText,
   LayoutDashboard,
   LogOut,
   MapPin,
   Menu,
+  MessageSquare,
+  Save,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
+  ThumbsUp,
+  UserRound,
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
-import { reports, type ReportStatus } from '../utils/dummyData';
+import {
+  exampleIdeaRelations,
+  reports,
+  type ReportStatus,
+} from '../utils/dummyData';
 
 type AdminStat = {
   label: string;
@@ -31,44 +49,47 @@ type AdminStat = {
   description: string;
   icon: LucideIcon;
   iconClass: string;
-  trend?: string;
+  href: string;
 };
 
 const adminStats: AdminStat[] = [
   {
-    label: 'Nowe projekty',
+    label: 'Nowe pomysły',
     value: 12,
-    description: 'od ostatniego logowania',
+    description: 'Od ostatniego logowania',
     icon: FileText,
     iconClass: 'bg-blue-100 text-blue-800',
-    trend: '+4 dziś',
+    href: '/administrator/projekty?status=submitted',
   },
   {
-    label: 'Do weryfikacji',
-    value: 8,
-    description: 'oczekuje na pierwszą ocenę',
-    icon: ClipboardCheck,
-    iconClass: 'bg-amber-100 text-amber-800',
+    label: 'Zapisane do przejrzenia',
+    value: 7,
+    description: 'Twoja lista',
+    icon: Bookmark,
+    iconClass: 'bg-violet-100 text-violet-700',
+    href: '/administrator/projekty?status=saved',
   },
   {
-    label: 'Bliski termin',
-    value: 5,
-    description: 'mniej niż 48 godzin',
-    icon: CalendarClock,
-    iconClass: 'bg-red-100 text-red-700',
+    label: 'Nierozstrzygnięte',
+    value: 23,
+    description: 'Wymagają decyzji',
+    icon: CircleAlert,
+    iconClass: 'bg-orange-100 text-orange-700',
+    href: '/administrator/projekty?status=unresolved',
   },
   {
-    label: 'Obsłużone',
-    value: 34,
-    description: 'w bieżącym miesiącu',
+    label: 'Rozstrzygnięte',
+    value: 84,
+    description: 'W tym miesiącu',
     icon: CheckCircle2,
     iconClass: 'bg-emerald-100 text-emerald-800',
-    trend: '+18%',
+    href: '/administrator/projekty?status=resolved',
   },
 ];
 
 const recentProjects = [
   {
+    reportId: 1,
     id: 'BO-KRK-2026-184',
     title: 'Bezpieczne przejście przy ul. Wrocławskiej',
     category: 'Bezpieczeństwo',
@@ -77,6 +98,7 @@ const recentProjects = [
     statusClass: 'bg-blue-50 text-blue-800 ring-blue-100',
   },
   {
+    reportId: 2,
     id: 'BO-KRK-2026-183',
     title: 'Zielony skwer na rogu Mazowieckiej i Kmiecej',
     category: 'Zieleń miejska',
@@ -85,6 +107,7 @@ const recentProjects = [
     statusClass: 'bg-blue-50 text-blue-800 ring-blue-100',
   },
   {
+    reportId: 3,
     id: 'BO-KRK-2026-179',
     title: 'Stojaki rowerowe przy Parku Krakowskim',
     category: 'Mobilność',
@@ -94,25 +117,76 @@ const recentProjects = [
   },
 ] as const;
 
-const navigation: Array<{
+type AdminNavigationItem = {
   label: string;
   icon: LucideIcon;
   href: string;
-  activeOn?: 'dashboard' | 'projects';
+  activeOn: 'dashboard' | 'projects' | 'analytics';
+  filter?: AdminProjectFilter;
   badge?: string;
+};
+
+const navigationSections: Array<{
+  label: string;
+  items: AdminNavigationItem[];
 }> = [
   {
-    label: 'Pulpit',
-    icon: LayoutDashboard,
-    href: '/administrator/panel',
-    activeOn: 'dashboard',
+    label: 'Główne',
+    items: [
+      {
+        label: 'Pulpit',
+        icon: LayoutDashboard,
+        href: '/administrator/panel',
+        activeOn: 'dashboard',
+      },
+    ],
   },
   {
-    label: 'Projekty',
-    icon: Sparkles,
-    href: '/administrator/projekty',
-    activeOn: 'projects',
-    badge: '8',
+    label: 'Pomysły',
+    items: [
+      {
+        label: 'Wszystkie pomysły',
+        icon: Sparkles,
+        href: '/administrator/projekty',
+        activeOn: 'projects',
+        filter: 'all',
+        badge: '8',
+      },
+      {
+        label: 'Zapisane do przejrzenia',
+        icon: Bookmark,
+        href: '/administrator/projekty?status=saved',
+        activeOn: 'projects',
+        filter: 'saved',
+        badge: '7',
+      },
+      {
+        label: 'Nierozstrzygnięte',
+        icon: CircleAlert,
+        href: '/administrator/projekty?status=unresolved',
+        activeOn: 'projects',
+        filter: 'unresolved',
+        badge: '23',
+      },
+      {
+        label: 'Rozstrzygnięte',
+        icon: CheckCircle2,
+        href: '/administrator/projekty?status=resolved',
+        activeOn: 'projects',
+        filter: 'resolved',
+      },
+    ],
+  },
+  {
+    label: 'Analiza',
+    items: [
+      {
+        label: 'Statystyki',
+        icon: BarChart3,
+        href: '/administrator/statystyki',
+        activeOn: 'analytics',
+      },
+    ],
   },
 ];
 
@@ -120,7 +194,11 @@ function AdminLogo() {
   return (
     <Link className="flex items-center gap-3" to="/administrator/panel">
       <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
-        <Building2 size={20} />
+        <img
+          alt=""
+          className="h-7 w-9 object-contain"
+          src="/sukiennice-logo.png"
+        />
       </span>
       <span className="leading-tight">
         <span className="block font-bold text-blue-950">Głos Miasta</span>
@@ -136,10 +214,24 @@ function AdminSidebar({
   currentView,
   onClose,
 }: {
-  currentView: 'dashboard' | 'projects';
+  currentView: 'dashboard' | 'projects' | 'analytics';
   onClose?: () => void;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const location = useLocation();
+  const activeFilter =
+    (new URLSearchParams(location.search).get(
+      'status',
+    ) as AdminProjectFilter | null) ?? 'all';
+
+  function isNavigationItemActive(item: AdminNavigationItem) {
+    if (item.activeOn !== currentView) return false;
+    if (item.activeOn !== 'projects') return true;
+    if (item.filter === 'all') {
+      return !['saved', 'unresolved', 'resolved'].includes(activeFilter);
+    }
+    return (item.filter ?? 'all') === activeFilter;
+  }
 
   return (
     <aside className="flex h-full flex-col bg-white px-4 py-5">
@@ -157,37 +249,49 @@ function AdminSidebar({
         )}
       </div>
 
-      <nav className="mt-8 space-y-1" aria-label="Nawigacja panelu urzędnika">
-        {navigation.map(({ label, icon: Icon, href, activeOn, badge }) => {
-          const active = activeOn === currentView;
+      <nav className="mt-8 space-y-6" aria-label="Nawigacja panelu urzędnika">
+        {navigationSections.map((section) => (
+          <div key={section.label}>
+            <p className="px-3 text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">
+              {section.label}
+            </p>
+            <div className="mt-2 space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active = isNavigationItemActive(item);
 
-          return (
-            <Link
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                active
-                  ? 'bg-blue-800 font-semibold text-white shadow-sm shadow-blue-800/15'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-              }`}
-              key={label}
-              onClick={onClose}
-              to={href}
-            >
-              <Icon size={18} strokeWidth={1.9} />
-              <span>{label}</span>
-              {badge && (
-                <span
-                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    active
-                      ? 'bg-white/15 text-white'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
+                      active
+                        ? 'bg-blue-800 font-semibold text-white shadow-sm shadow-blue-800/15'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                    }`}
+                    key={item.label}
+                    onClick={onClose}
+                    to={item.href}
+                  >
+                    <Icon className="shrink-0" size={17} strokeWidth={1.9} />
+                    <span className="min-w-0 flex-1 truncate">
+                      {item.label}
+                    </span>
+                    {item.badge && (
+                      <span
+                        className={`ml-auto min-w-5 shrink-0 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                          active
+                            ? 'bg-white/15 text-white'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="relative mt-auto border-t border-slate-100 pt-4">
@@ -247,36 +351,49 @@ function StatCard({ stat }: { stat: AdminStat }) {
   const Icon = stat.icon;
 
   return (
-    <article className={`${uiTheme.surface.card} p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={`grid size-10 place-items-center rounded-xl ${stat.iconClass}`}
-        >
-          <Icon size={19} />
-        </span>
-        {stat.trend && (
-          <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
-            {stat.trend}
-          </span>
-        )}
-      </div>
-      <div className="mt-5 flex items-end gap-2">
-        <strong className="text-3xl leading-none text-slate-950">
-          {stat.value}
-        </strong>
-        <span className="pb-0.5 text-sm font-semibold text-slate-700">
-          {stat.label}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-slate-500">{stat.description}</p>
-    </article>
+    <Link
+      aria-label={`${stat.label}: ${stat.value}. ${stat.description}`}
+      className={`${uiTheme.surface.card} group block p-4 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-blue-950/[0.05] focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:outline-none`}
+      to={stat.href}
+    >
+      <span
+        className={`grid size-9 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${stat.iconClass}`}
+      >
+        <Icon size={18} strokeWidth={2} />
+      </span>
+      <strong className="mt-3 block text-[34px] leading-none font-bold tracking-[-0.03em] text-slate-950">
+        {stat.value}
+      </strong>
+      <span className="mt-2 block text-sm leading-5 font-bold text-slate-800">
+        {stat.label}
+      </span>
+      <span className="mt-1 block text-xs leading-4 text-slate-500">
+        {stat.description}
+      </span>
+    </Link>
   );
 }
 
 const reportStatuses = Object.keys(statusLabels) as ReportStatus[];
+type AdminProjectFilter =
+  ReportStatus | 'all' | 'saved' | 'unresolved' | 'resolved';
+
+const adminProjectFilters: AdminProjectFilter[] = [
+  'all',
+  'saved',
+  'unresolved',
+  'resolved',
+  ...reportStatuses,
+];
+const savedProjectIds = new Set([1, 2, 3, 5, 6, 7, 8]);
 const projectRegions = [
   ...new Set(reports.map((report) => report.district)),
 ].sort((a, b) => a.localeCompare(b, 'pl'));
+const currentAdminRegion = 'Krowodrza';
+
+type ProjectSortKey =
+  'id' | 'title' | 'district' | 'category' | 'status' | 'support' | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
 
 function formatAdminDate(date: string) {
   return new Intl.DateTimeFormat('pl-PL', {
@@ -286,15 +403,67 @@ function formatAdminDate(date: string) {
   }).format(new Date(date));
 }
 
+function SortableHeader({
+  activeKey,
+  align = 'left',
+  direction,
+  label,
+  onSort,
+  sortKey,
+}: {
+  activeKey: ProjectSortKey;
+  align?: 'left' | 'right';
+  direction: SortDirection;
+  label: string;
+  onSort: (key: ProjectSortKey) => void;
+  sortKey: ProjectSortKey;
+}) {
+  const active = activeKey === sortKey;
+  const SortIcon = !active
+    ? ArrowUpDown
+    : direction === 'asc'
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <th
+      aria-sort={
+        active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'
+      }
+      className="px-4 py-3.5"
+    >
+      <button
+        className={`flex w-full items-center gap-1.5 transition hover:text-blue-800 ${
+          active ? 'text-blue-800' : ''
+        } ${align === 'right' ? 'justify-end' : ''}`}
+        onClick={() => onSort(sortKey)}
+        type="button"
+      >
+        {label}
+        <SortIcon size={12} strokeWidth={2.2} />
+      </button>
+    </th>
+  );
+}
+
 function AdminProjectsView() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedStatus = searchParams.get('status');
+  const initialStatus = adminProjectFilters.includes(
+    requestedStatus as AdminProjectFilter,
+  )
+    ? (requestedStatus as AdminProjectFilter)
+    : 'all';
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState('all');
-  const [status, setStatus] = useState<ReportStatus | 'all'>('all');
+  const [status, setStatus] = useState<AdminProjectFilter>(initialStatus);
+  const [sortKey, setSortKey] = useState<ProjectSortKey>('title');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const filteredReports = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pl');
 
-    return reports.filter((report) => {
+    const matchingReports = reports.filter((report) => {
       const matchesQuery =
         !normalizedQuery ||
         [report.title, report.district, report.category].some((value) =>
@@ -303,11 +472,71 @@ function AdminProjectsView() {
 
       return (
         matchesQuery &&
-        (region === 'all' || report.district === region) &&
-        (status === 'all' || report.status === status)
+        (region === 'all' ||
+          (region === 'mine'
+            ? report.district === currentAdminRegion
+            : report.district === region)) &&
+        (status === 'all' ||
+          (status === 'saved'
+            ? savedProjectIds.has(report.id)
+            : status === 'unresolved'
+              ? report.status === 'submitted' ||
+                report.status === 'under_review'
+              : status === 'resolved'
+                ? report.status === 'accepted' ||
+                  report.status === 'in_progress' ||
+                  report.status === 'completed'
+                : report.status === status))
       );
     });
-  }, [query, region, status]);
+
+    return [...matchingReports].sort((a, b) => {
+      let comparison: number;
+
+      switch (sortKey) {
+        case 'id':
+        case 'support':
+          comparison = a[sortKey] - b[sortKey];
+          break;
+        case 'updatedAt':
+          comparison =
+            new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'status':
+          comparison = statusLabels[a.status].localeCompare(
+            statusLabels[b.status],
+            'pl',
+          );
+          break;
+        default:
+          comparison = a[sortKey].localeCompare(b[sortKey], 'pl', {
+            sensitivity: 'base',
+          });
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [query, region, sortDirection, sortKey, status]);
+
+  function handleSort(nextSortKey: ProjectSortKey) {
+    if (nextSortKey === sortKey) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(nextSortKey);
+    setSortDirection('asc');
+  }
+
+  function handleStatusFilter(nextStatus: AdminProjectFilter) {
+    setStatus(nextStatus);
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (nextStatus === 'all') nextParams.delete('status');
+    else nextParams.set('status', nextStatus);
+
+    setSearchParams(nextParams, { replace: true });
+  }
 
   return (
     <main className={uiTheme.layout.content}>
@@ -359,6 +588,7 @@ function AdminProjectsView() {
                 value={region}
               >
                 <option value="all">Wszystkie rejony</option>
+                <option value="mine">Mój rejon — {currentAdminRegion}</option>
                 {projectRegions.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -371,11 +601,14 @@ function AdminProjectsView() {
               <select
                 className={uiTheme.field}
                 onChange={(event) =>
-                  setStatus(event.target.value as ReportStatus | 'all')
+                  handleStatusFilter(event.target.value as AdminProjectFilter)
                 }
                 value={status}
               >
                 <option value="all">Wszystkie statusy</option>
+                <option value="saved">Zapisane do przejrzenia</option>
+                <option value="unresolved">Nierozstrzygnięte</option>
+                <option value="resolved">Rozstrzygnięte</option>
                 {reportStatuses.map((item) => (
                   <option key={item} value={item}>
                     {statusLabels[item]}
@@ -386,17 +619,54 @@ function AdminProjectsView() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[940px] border-collapse text-left">
+        <div className="hidden md:block">
+          <table className="w-full table-fixed border-collapse text-left">
+            <colgroup>
+              <col />
+              <col className="w-[120px]" />
+              <col className="w-[130px]" />
+              <col className="w-[80px]" />
+              <col className="w-[105px]" />
+              <col className="w-14" />
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                <th className="px-5 py-3.5">Numer</th>
-                <th className="px-4 py-3.5">Projekt</th>
-                <th className="px-4 py-3.5">Dzielnica</th>
-                <th className="px-4 py-3.5">Kategoria</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="px-4 py-3.5 text-right">Poparcie</th>
-                <th className="px-4 py-3.5">Aktualizacja</th>
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Projekt"
+                  onSort={handleSort}
+                  sortKey="title"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Dzielnica"
+                  onSort={handleSort}
+                  sortKey="district"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Status"
+                  onSort={handleSort}
+                  sortKey="status"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  align="right"
+                  direction={sortDirection}
+                  label="Poparcie"
+                  onSort={handleSort}
+                  sortKey="support"
+                />
+                <SortableHeader
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  label="Aktualizacja"
+                  onSort={handleSort}
+                  sortKey="updatedAt"
+                />
                 <th className="w-14 px-4 py-3.5">
                   <span className="sr-only">Akcje</span>
                 </th>
@@ -408,22 +678,22 @@ function AdminProjectsView() {
                   className="group transition hover:bg-blue-50/40"
                   key={report.id}
                 >
-                  <td className="px-5 py-4 text-xs font-bold whitespace-nowrap text-blue-700">
-                    BO-{String(report.id).padStart(3, '0')}
-                  </td>
-                  <td className="max-w-sm px-4 py-4">
-                    <p className="truncate text-sm font-semibold text-slate-900">
+                  <td className="min-w-0 px-5 py-4">
+                    <div className="flex min-w-0 items-center gap-2 text-[10px]">
+                      <span className="shrink-0 font-bold text-blue-700">
+                        BO-{String(report.id).padStart(3, '0')}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="truncate font-medium text-slate-400">
+                        {report.category}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                       {report.title}
-                    </p>
-                    <p className="mt-1 truncate text-[11px] text-slate-400">
-                      {report.description}
                     </p>
                   </td>
                   <td className="px-4 py-4 text-xs font-medium whitespace-nowrap text-slate-600">
                     {report.district}
-                  </td>
-                  <td className="px-4 py-4 text-xs whitespace-nowrap text-slate-600">
-                    {report.category}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span
@@ -435,22 +705,55 @@ function AdminProjectsView() {
                   <td className="px-4 py-4 text-right text-sm font-bold text-slate-800">
                     {report.support}
                   </td>
-                  <td className="px-4 py-4 text-xs whitespace-nowrap text-slate-500">
+                  <td className="truncate px-4 py-4 text-xs whitespace-nowrap text-slate-500">
                     {formatAdminDate(report.updatedAt)}
                   </td>
                   <td className="px-4 py-4">
-                    <button
+                    <Link
                       aria-label={`Otwórz projekt BO-${String(report.id).padStart(3, '0')}`}
                       className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-blue-800 hover:shadow-sm"
-                      type="button"
+                      to={`/administrator/projekty/${report.id}`}
                     >
                       <ChevronRight size={18} />
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="divide-y divide-slate-100 md:hidden">
+          {filteredReports.map((report) => (
+            <Link
+              className="group block p-4 transition hover:bg-blue-50/40"
+              key={report.id}
+              to={`/administrator/projekty/${report.id}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-bold text-blue-700">
+                  BO-{String(report.id).padStart(3, '0')}
+                </span>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
+                >
+                  {statusLabels[report.status]}
+                </span>
+              </div>
+              <h3 className="mt-2 text-sm leading-5 font-bold text-slate-900">
+                {report.title}
+              </h3>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={13} /> {report.district}
+                </span>
+                <span>{report.category}</span>
+                <span className="ml-auto font-bold text-slate-700">
+                  {report.support} głosów
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
 
         {filteredReports.length === 0 && (
@@ -471,17 +774,404 @@ function AdminProjectsView() {
   );
 }
 
+function AdminProjectDetailsView() {
+  const { id } = useParams();
+  const report = reports.find((item) => item.id === Number(id));
+  const { comments } = exampleIdeaRelations;
+
+  if (!report) {
+    return (
+      <main
+        className={`${uiTheme.layout.content} grid min-h-[70vh] place-items-center`}
+      >
+        <div className="text-center">
+          <p className="text-sm font-bold text-blue-800">404</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+            Nie znaleziono projektu
+          </h1>
+          <Link
+            className={`${uiTheme.button.secondary} mt-5`}
+            to="/administrator/projekty"
+          >
+            <ArrowLeft size={16} /> Wróć do rejestru
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
+
+  return (
+    <main className={uiTheme.layout.content}>
+      <Link
+        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-800"
+        to="/administrator/projekty"
+      >
+        <ArrowLeft size={16} /> Wróć do rejestru projektów
+      </Link>
+
+      <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold tracking-wide text-blue-800 uppercase">
+              Projekt {projectNumber}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
+            >
+              {statusLabels[report.status]}
+            </span>
+          </div>
+          <h1 className="mt-3 max-w-4xl text-2xl leading-tight font-bold tracking-tight text-slate-950 md:text-3xl">
+            {report.title}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Widok administracyjny zgłoszenia mieszkańca
+          </p>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 ring-1 ring-blue-100">
+          <MapPin size={15} /> {report.district}
+        </span>
+      </div>
+
+      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          <article className={`${uiTheme.surface.card} overflow-hidden`}>
+            <img
+              alt="Ilustracja projektu"
+              className="max-h-[420px] w-full bg-slate-100 object-cover"
+              src={report.image}
+            />
+            <div className="p-5 md:p-7">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={uiTheme.badge.info}>{report.district}</span>
+                <span className={uiTheme.badge.neutral}>{report.category}</span>
+              </div>
+              <h2 className="mt-5 text-lg font-bold text-slate-950">
+                Opis pomysłu
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
+                {report.description} Projekt zostanie zweryfikowany pod kątem
+                wykonalności, kosztów, własności terenu oraz zgodności z
+                miejskimi planami inwestycyjnymi.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
+                <span className="flex items-center gap-2">
+                  <CalendarDays size={15} /> Aktualizacja:{' '}
+                  {formatAdminDate(report.updatedAt)}
+                </span>
+                <span className="flex items-center gap-2">
+                  <ThumbsUp size={15} /> {report.support} głosów
+                </span>
+                <span className="flex items-center gap-2">
+                  <MessageSquare size={15} /> {report.comments} komentarzy
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <section className={`${uiTheme.surface.card} p-5 md:p-7`}>
+            <div>
+              <p className="text-xs font-semibold tracking-wide text-blue-800 uppercase">
+                Głos mieszkańców
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-950">
+                Ostatnie komentarze
+              </h2>
+            </div>
+            <div className="mt-5 divide-y divide-slate-100">
+              {comments.map((comment) => (
+                <article
+                  className="flex gap-3 py-4 first:pt-0 last:pb-0"
+                  key={`${comment.user_id}-${comment.date}`}
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500">
+                    <UserRound size={16} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {comment.user_id}
+                      </p>
+                      <time className="text-[11px] text-slate-400">
+                        {formatAdminDate(comment.date)}
+                      </time>
+                    </div>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-600">
+                      {comment.text}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-5 xl:sticky xl:top-6">
+          <section className={`${uiTheme.surface.card} p-5`}>
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-blue-100 text-blue-800">
+                <ShieldCheck size={18} />
+              </span>
+              <div>
+                <p className="font-bold text-slate-950">
+                  Decyzja administracyjna
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Zmień status, przypisz jednostkę i dodaj notatkę.
+                </p>
+              </div>
+            </div>
+            <Link
+              className={`${uiTheme.button.primary} mt-5 w-full`}
+              to={`/administrator/projekty/${report.id}/decyzja`}
+            >
+              <ShieldCheck size={16} /> Podejmij decyzję
+            </Link>
+          </section>
+
+          <section className={`${uiTheme.surface.card} p-5`}>
+            <h2 className="font-bold text-slate-950">Aktywność pomysłu</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-blue-50 p-3">
+                <p className="text-2xl font-bold text-blue-950">
+                  {report.support}
+                </p>
+                <p className="mt-1 text-[11px] text-blue-700">Głosów</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-2xl font-bold text-slate-950">
+                  {report.comments}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">Komentarzy</p>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+function AdminProjectDecisionView() {
+  const { id } = useParams();
+  const report = reports.find((item) => item.id === Number(id));
+  const [status, setStatus] = useState<ReportStatus>(
+    report?.status ?? 'submitted',
+  );
+  const [unit, setUnit] = useState('Zarząd Dróg Miasta Krakowa');
+
+  if (!report) {
+    return (
+      <main
+        className={`${uiTheme.layout.content} grid min-h-[70vh] place-items-center`}
+      >
+        <div className="text-center">
+          <p className="text-sm font-bold text-blue-800">404</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+            Nie znaleziono projektu
+          </h1>
+          <Link
+            className={`${uiTheme.button.secondary} mt-5`}
+            to="/administrator/projekty"
+          >
+            <ArrowLeft size={16} /> Wróć do rejestru
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
+
+  return (
+    <main className={uiTheme.layout.content}>
+      <div className="mx-auto max-w-3xl">
+        <Link
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-800"
+          to={`/administrator/projekty/${report.id}`}
+        >
+          <ArrowLeft size={16} /> Wróć do szczegółów projektu
+        </Link>
+
+        <div className="mt-5">
+          <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
+            Projekt {projectNumber}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+            Podejmij decyzję
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Ustal dalszy sposób obsługi pomysłu i przekaż go do właściwej
+            jednostki miejskiej.
+          </p>
+        </div>
+
+        <section className={`${uiTheme.surface.card} mt-6 overflow-hidden`}>
+          <div className="flex items-start gap-4 border-b border-slate-100 bg-slate-50/70 p-5 md:p-6">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800">
+              <ShieldCheck size={21} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-950">
+                Decyzja administracyjna
+              </p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                {report.title}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 md:p-6">
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-slate-700">
+                  Status projektu
+                </span>
+                <select
+                  className={uiTheme.field}
+                  onChange={(event) =>
+                    setStatus(event.target.value as ReportStatus)
+                  }
+                  value={status}
+                >
+                  {reportStatuses.map((item) => (
+                    <option key={item} value={item}>
+                      {statusLabels[item]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-slate-700">
+                  Jednostka odpowiedzialna
+                </span>
+                <span className="relative block">
+                  <Building2
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                    size={16}
+                  />
+                  <select
+                    className={`${uiTheme.field} pl-9`}
+                    onChange={(event) => setUnit(event.target.value)}
+                    value={unit}
+                  >
+                    <option>Zarząd Dróg Miasta Krakowa</option>
+                    <option>Zarząd Zieleni Miejskiej</option>
+                    <option>Wydział Gospodarki Komunalnej</option>
+                    <option>Wydział Polityki Społecznej</option>
+                  </select>
+                </span>
+              </label>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="mb-2 block text-sm font-bold text-slate-700">
+                Notatka wewnętrzna
+              </span>
+              <textarea
+                className={`${uiTheme.field} min-h-36 resize-y py-3`}
+                placeholder="Dodaj informację dla zespołu..."
+              />
+              <span className="mt-2 block text-[11px] text-slate-400">
+                Notatka jest widoczna wyłącznie dla pracowników urzędu.
+              </span>
+            </label>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <Link
+                className={`${uiTheme.button.secondary} sm:min-w-32`}
+                to={`/administrator/projekty/${report.id}`}
+              >
+                Anuluj
+              </Link>
+              <button
+                className={`${uiTheme.button.primary} sm:min-w-44`}
+                type="button"
+              >
+                <Save size={16} /> Zapisz decyzję
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function AdminAnalyticsView() {
+  const statusSummary = reportStatuses.map((status) => ({
+    status,
+    label: statusLabels[status],
+    value: reports.filter((report) => report.status === status).length,
+  }));
+  const highestValue = Math.max(...statusSummary.map((item) => item.value), 1);
+
+  return (
+    <main className={uiTheme.layout.content}>
+      <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+        <BarChart3 size={14} /> Analiza
+      </div>
+      <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+        Statystyki pomysłów
+      </h1>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+        Podsumowanie aktywności mieszkańców i etapów obsługi zgłoszeń.
+      </p>
+
+      <section className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {adminStats.map((stat) => (
+          <StatCard key={stat.label} stat={stat} />
+        ))}
+      </section>
+
+      <section className={`${uiTheme.surface.card} mt-7 p-5 md:p-6`}>
+        <h2 className="font-bold text-slate-950">Pomysły według statusu</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Rozkład projektów dostępnych w bieżącym rejestrze
+        </p>
+        <div className="mt-6 space-y-4">
+          {statusSummary.map((item) => (
+            <div key={item.status}>
+              <div className="flex items-center justify-between gap-4 text-xs">
+                <span className="font-semibold text-slate-700">
+                  {item.label}
+                </span>
+                <span className="font-bold text-slate-950">{item.value}</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-blue-700"
+                  style={{ width: `${(item.value / highestValue) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export function AdminPage({
   view = 'dashboard',
 }: {
-  view?: 'dashboard' | 'projects';
+  view?: 'dashboard' | 'projects' | 'project' | 'decision' | 'analytics';
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const sidebarView =
+    view === 'dashboard'
+      ? 'dashboard'
+      : view === 'analytics'
+        ? 'analytics'
+        : 'projects';
 
   return (
     <div className={uiTheme.layout.page}>
       <div className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 lg:block">
-        <AdminSidebar currentView={view} />
+        <AdminSidebar currentView={sidebarView} />
       </div>
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -493,7 +1183,7 @@ export function AdminPage({
           />
           <div className="relative h-full w-72 shadow-2xl">
             <AdminSidebar
-              currentView={view}
+              currentView={sidebarView}
               onClose={() => setMenuOpen(false)}
             />
           </div>
@@ -514,6 +1204,12 @@ export function AdminPage({
 
         {view === 'projects' ? (
           <AdminProjectsView />
+        ) : view === 'project' ? (
+          <AdminProjectDetailsView />
+        ) : view === 'decision' ? (
+          <AdminProjectDecisionView />
+        ) : view === 'analytics' ? (
+          <AdminAnalyticsView />
         ) : (
           <main className={uiTheme.layout.content} id="pulpit">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -553,7 +1249,7 @@ export function AdminPage({
             </div>
 
             <section
-              className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+              className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
               aria-label="Podsumowanie"
             >
               {adminStats.map((stat) => (
@@ -561,7 +1257,7 @@ export function AdminPage({
               ))}
             </section>
 
-            <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+            <div className="mt-7">
               <section
                 className={`${uiTheme.surface.card} overflow-hidden`}
                 id="nowe"
@@ -615,85 +1311,18 @@ export function AdminPage({
                         >
                           {project.status}
                         </span>
-                        <button
+                        <Link
                           aria-label={`Otwórz projekt ${project.id}`}
                           className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-800 hover:shadow-sm"
-                          type="button"
+                          to={`/administrator/projekty/${project.reportId}`}
                         >
                           <ChevronRight size={18} />
-                        </button>
+                        </Link>
                       </div>
                     </article>
                   ))}
                 </div>
               </section>
-
-              <aside className="space-y-5">
-                <section className={`${uiTheme.surface.card} p-5`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold text-slate-950">
-                        Termin odpowiedzi
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Najpilniejsze sprawy
-                      </p>
-                    </div>
-                    <span className="grid size-9 place-items-center rounded-xl bg-red-100 text-red-700">
-                      <CalendarClock size={17} />
-                    </span>
-                  </div>
-                  <div className="mt-5 space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-700">
-                          Do 24 godzin
-                        </span>
-                        <span className="font-bold text-red-700">2 sprawy</span>
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full w-2/5 rounded-full bg-red-500" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-700">
-                          Do 48 godzin
-                        </span>
-                        <span className="font-bold text-amber-700">
-                          3 sprawy
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full w-3/5 rounded-full bg-amber-500" />
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="rounded-2xl bg-blue-950 p-5 text-white shadow-lg shadow-blue-950/10">
-                  <div className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10">
-                      <CircleUserRound size={18} />
-                    </span>
-                    <div>
-                      <p className="text-sm font-bold">Anna Nowak</p>
-                      <p className="mt-0.5 text-[11px] text-blue-200">
-                        Inspektor · identyfikator K-0941
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 border-t border-white/10 pt-4">
-                    <p className="text-[10px] font-bold tracking-wider text-blue-300 uppercase">
-                      Zakres decyzji
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-blue-100">
-                      Weryfikacja formalna i przekazywanie projektów do
-                      jednostek miejskich w Dzielnicy V.
-                    </p>
-                  </div>
-                </section>
-              </aside>
             </div>
           </main>
         )}

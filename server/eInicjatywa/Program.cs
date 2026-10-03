@@ -5,13 +5,21 @@ using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
+using eInicjatywa.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ADDING SERVICES
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<UtilsService, UtilsService>();
+
+string postgresConnStr = builder.Configuration.GetConnectionString("Local_Database_Postgres")!;
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString(postgresConnStr)));
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddCors();
