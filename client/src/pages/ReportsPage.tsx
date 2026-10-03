@@ -1,10 +1,4 @@
-import {
-  Lightbulb,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-} from 'lucide-react';
+import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -85,10 +79,7 @@ export function ReportsPage() {
     <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className={uiTheme.text.eyebrow}>
-            <Lightbulb size={14} /> Baza pomysłów
-          </div>
-          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+          <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
             Pomysły mieszkańców
           </h1>
           <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>

@@ -12,6 +12,7 @@ import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
@@ -49,7 +50,7 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
       }`}
     >
       {report.image && (
-        <div className="flex min-h-64 items-center justify-center bg-slate-50 sm:p-6 lg:min-h-[480px] lg:border-r lg:border-slate-100">
+        <div className="flex min-h-64 items-center justify-center bg-slate-50/60 backdrop-blur-sm sm:p-6 lg:min-h-[480px] lg:border-r lg:border-slate-100">
           <img
             alt={`Zdjęcie do pomysłu: ${report.title}`}
             className="h-auto max-h-[520px] w-full rounded-xl object-contain"
@@ -68,6 +69,7 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
               (status) => status.value === report.status,
             )?.label ?? report.status}
           </span>
+          <AiScoreBadge title={report.title} />
         </div>
         <h1
           className={`${uiTheme.text.heading} mt-5 text-2xl leading-tight md:text-4xl`}
@@ -131,9 +133,6 @@ function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
                   <Copy size={12} /> Potencjalny duplikat
-                </span>
-                <span className="text-app-text-subtle text-[10px]">
-                  ID: {duplicate.idea_id}
                 </span>
               </div>
               <h3 className="mt-3 text-sm font-semibold text-slate-800">
@@ -232,7 +231,7 @@ function CommentsSection({
           tabIndex={0}
         >
           {isLoggedIn ? (
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+            <div className="mt-5 rounded-2xl bg-slate-50/60 p-4 backdrop-blur-sm">
               <label className="sr-only" htmlFor="new-comment">
                 Treść komentarza
               </label>

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 
 import { AuthProvider } from './auth/AuthContext';
+import { PanoramaLayer } from './components/PanoramaLayer';
 import './index.css';
 import { router } from './router';
 
@@ -12,8 +13,13 @@ if (localStorage.getItem('glos-miasta:theme') === 'contrast') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <div className="global-app-background">
+      <PanoramaLayer />
+      <div className="global-app-content">
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </div>
+    </div>
   </StrictMode>,
 );

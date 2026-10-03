@@ -5,7 +5,6 @@ import {
   ChevronRight,
   ClipboardCheck,
   FileText,
-  LayoutDashboard,
   MapPin,
   MessageSquare,
   ShieldCheck,
@@ -16,6 +15,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
@@ -42,17 +42,28 @@ const statStyles: Record<
   },
 };
 
+const statFilters: Record<DashboardStatId, string> = {
+  submitted: 'all',
+  under_review: 'under_review',
+  in_progress: 'in_progress',
+  completed: 'completed',
+};
+
 function StatCard({ stat }: { stat: (typeof stats)[number] }) {
   const style = statStyles[stat.id];
   const Icon = style.icon;
 
   return (
-    <article className={`${uiTheme.surface.card} p-5`}>
+    <Link
+      aria-label={`${stat.label}: pokaż odpowiednio przefiltrowane moje pomysły`}
+      className={`${uiTheme.surface.card} group block p-5 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-blue-950/[0.05] focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:outline-none`}
+      to={`/moje-pomysly?status=${statFilters[stat.id]}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <span
-          className={`grid size-10 place-items-center rounded-xl ${style.iconClass}`}
+          className={`grid size-10 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${style.iconClass}`}
         >
-          <Icon size={19} />
+          <Icon size={19} strokeWidth={2} />
         </span>
         <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">
           {stat.badge}
@@ -67,7 +78,7 @@ function StatCard({ stat }: { stat: (typeof stats)[number] }) {
         </span>
       </div>
       <p className="mt-2 text-xs text-slate-500">{stat.description}</p>
-    </article>
+    </Link>
   );
 }
 
@@ -87,10 +98,7 @@ export function HomePage() {
     <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className={uiTheme.text.eyebrow}>
-            <LayoutDashboard size={14} /> Pulpit mieszkańca
-          </div>
-          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+          <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
             Dzień dobry{user ? `, ${user.firstName}` : ''}
           </h1>
           <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
@@ -148,11 +156,13 @@ export function HomePage() {
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div>
             {reports.slice(0, 4).map((report) => (
-              <article
-                className="group flex flex-col gap-4 px-5 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center"
+              <Link
+                aria-label={`Otwórz pomysł ${report.title}`}
+                className={`${uiTheme.focusRing} group flex flex-col gap-4 border border-transparent border-b-slate-100 px-5 py-4 transition-colors last:border-b-transparent hover:border-blue-200 sm:flex-row sm:items-center`}
                 key={report.id}
+                to={`/pomysly/${report.id}`}
               >
                 <img
                   alt={`Zdjęcie do pomysłu: ${report.title}`}
@@ -161,20 +171,14 @@ export function HomePage() {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold text-blue-700">
-                      BO-{String(report.id).padStart(3, '0')}
-                    </span>
-                    <span className="text-[10px] text-slate-300">•</span>
                     <span className="text-[10px] font-medium text-slate-500">
                       {report.category}
                     </span>
+                    <AiScoreBadge title={report.title} />
                   </div>
-                  <Link
-                    className={`${uiTheme.text.link} mt-1 block truncate text-sm`}
-                    to={`/pomysly/${report.id}`}
-                  >
+                  <h3 className="text-app-primary-strong mt-1 truncate text-sm font-semibold">
                     {report.title}
-                  </Link>
+                  </h3>
                   <div className="text-app-text-subtle mt-1 flex flex-wrap items-center gap-3 text-[11px]">
                     <span className="flex items-center gap-1">
                       <MapPin size={12} /> {report.district}
@@ -197,15 +201,11 @@ export function HomePage() {
                       {report.comments}
                     </p>
                   </div>
-                  <Link
-                    aria-label={`Otwórz pomysł ${report.title}`}
-                    className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
-                    to={`/pomysly/${report.id}`}
-                  >
+                  <span className="text-app-text-muted grid size-9 place-items-center">
                     <ChevronRight size={18} />
-                  </Link>
+                  </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </section>
@@ -233,6 +233,9 @@ export function HomePage() {
             <h3 className="mt-4 text-sm font-semibold">
               {completedProject.title}
             </h3>
+            <div className="mt-3">
+              <AiScoreBadge title={completedProject.title} />
+            </div>
             <p className="mt-2 text-xs leading-5 text-slate-500">
               {completedProject.description}
             </p>
