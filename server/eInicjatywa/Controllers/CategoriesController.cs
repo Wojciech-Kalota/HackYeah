@@ -1,4 +1,6 @@
 ﻿using eInicjatywa.Dtos;
+using eInicjatywa.Entities;
+using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,17 +12,38 @@ namespace eInicjatywa.Controllers
     [Authorize(Roles = "ADMIN_USER")]
     public class CategoriesController : ControllerBase
     {
+        private readonly ICategoryService _categoryService;
+        public CategoriesController(ICategoryService categoryService)
+        {
+            _categoryService = categoryService;
+        }
         [HttpPost]
         [Authorize(Roles = "ADMIN_USER")]
-        public async Task<IActionResult> CreateCategory([FromBody] CategoryDto categoryDto)
+        public async Task<IActionResult> CreateCategory([FromBody] CategoryAddDto request)
         {
-            return Ok();
+            try
+            {
+                var result = await _categoryService.AddCategory(User, request);
+                return Ok(result);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCategories()
         {
-            return Ok();
+            try
+            {
+                var result = await _categoryService.GetCategorys(User);
+                return Ok(result);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPatch("{id}")]
