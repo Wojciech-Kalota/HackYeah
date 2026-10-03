@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "+yh7MoI4qE4=",
+  "dgSpecHash": "DXZWir3nKuI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
+  "projectFilePath": "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Jakub\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.12\\microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512",
-    "C:\\Users\\Jakub\\.nuget\\packages\\microsoft.openapi\\2.12.0\\microsoft.openapi.2.12.0.nupkg.sha512"
+    "C:\\Users\\Wojtek\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.12\\microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512",
+    "C:\\Users\\Wojtek\\.nuget\\packages\\microsoft.openapi\\2.12.0\\microsoft.openapi.2.12.0.nupkg.sha512"
   ],
   "logs": []
 }
