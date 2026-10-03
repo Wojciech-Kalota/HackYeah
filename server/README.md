@@ -24,7 +24,7 @@ docker build -f redis_einicjatywa.Dockerfile -t redis_einicjatywa_image .
 
 ## Launch Redis Container (Memory restricted to 150MB)
 ```dockerfile
-docker run -d --name redis_einicjatywa_container --network koala_network --restart always --env-file .env -p 6379:6379 redis_einicjatywa_image
+docker run -d --name redis_einicjatywa_container --network network_einicjatywa --restart always --env-file .env -p 6379:6379 redis_einicjatywa_image
 ```
 
 # Backend Setups
