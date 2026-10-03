@@ -23,5 +23,15 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        const string ADMIN_USER_ID = "01a102e0-2f5c-70af-97a4-d6080a3ac21c";
+        const string NORMAL_USER_ID =  "01a102e0-2f5c-7f30-b99c-88b488f589c0";
+
+        modelBuilder.Entity<Role>()
+            .HasData
+            (
+                new Role {Id = Guid.Parse(ADMIN_USER_ID) , Name = "ADMIN_USER"},
+                new Role {Id = Guid.Parse(NORMAL_USER_ID) , Name = "NORMAL_USER"}
+            );
     }
 }
