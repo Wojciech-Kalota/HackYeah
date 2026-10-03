@@ -1,46 +1,40 @@
 from unittest import TestCase
 from unittest.mock import Mock
-
+from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from openai.lib._pydantic import to_strict_json_schema
-
 from rops_rag.api import create_app
-from rops_rag.categories import Category, category_catalog
-from rops_rag.extraction import ExtractedConcept, ExtractionResult
-from rops_rag.models import Concept
-
+from rops_rag.categories import validate_categories
+from rops_rag.extraction import ExtractedConcept, ExtractionResult, ExtractionError, OpenAIExtractor
 
 class CategoryTests(TestCase):
-    def data(self):
-        return dict(problem="Samotność", audience="Seniorzy",
-                    solution="Wolontariusz dzwoni co tydzień", category="integracja_spoleczna",
-                    context="", source_quote="Wolontariusz dzwoni co tydzień")
-
-    def test_combined_solution_and_category(self):
-        extracted = ExtractedConcept(**self.data())
-        concept = extracted.to_concept()
-        self.assertEqual(concept.category, Category.INTEGRATION)
-        self.assertNotIn("mechanism", extracted.model_dump())
-        self.assertIn(concept.solution, concept.retrieval_text())
-
-    def test_unknown_category_and_old_field_rejected(self):
-        data = self.data()
-        data["category"] = "nowa_kategoria"
-        with self.assertRaises(ValidationError):
-            ExtractedConcept(**data)
-        with self.assertRaises(ValidationError):
-            ExtractedConcept(**self.data(), mechanism="Stare pole")
-        with self.assertRaises(ValueError):
-            Concept("Problem", "Odbiorcy", "Działanie", "nieznana")
-
-    def test_sdk_schema_has_enum(self):
-        schema = to_strict_json_schema(ExtractionResult)
-        self.assertEqual(set(schema["$defs"]["Category"]["enum"]), {c.value for c in Category})
-
-    def test_categories_endpoint_without_openai(self):
-        processor = Mock()
-        response = TestClient(create_app(processor)).get("/api/categories")
+    def test_backend_categories_are_passed_to_processor(self):
+        categories = [{"id": "custom-123", "label": "Kategoria backendu"}]
+        processor = Mock(return_value={"ok": True})
+        client = TestClient(create_app(processor))
+        response = client.post("/api/ideas/analyze", json={"submission_id": "a", "text": "Pomysł", "categories": categories})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), category_catalog())
+        processor.assert_called_once_with("a", "Pomysł", categories)
+
+    def test_missing_empty_or_duplicate_categories_rejected(self):
+        processor = Mock()
+        client = TestClient(create_app(processor))
+        base = {"submission_id": "a", "text": "Pomysł"}
+        for cats in [None, [], [{"id": "x", "label": "X"}]*2, [{"id": 1, "label": "X"}]]:
+            body = dict(base)
+            if cats is not None:
+                body["categories"] = cats
+            self.assertEqual(client.post("/api/ideas/analyze", json=body).status_code, 422)
         processor.assert_not_called()
+
+    def test_model_cannot_invent_category(self):
+        result = ExtractionResult(status="ok", questions=[], concepts=[ExtractedConcept(
+            problem="Problem", audience="Odbiorcy", solution="Działanie", category="invented",
+            context="", source_quote="Pomysł")])
+        client = Mock()
+        client.responses.parse.return_value = SimpleNamespace(status="completed", output_parsed=result)
+        with self.assertRaisesRegex(ExtractionError, "spoza listy"):
+            OpenAIExtractor(client, "test-model").extract("Pomysł", [{"id": "allowed", "label": "Dozwolona"}])
+
+    def test_no_category_catalog_endpoint(self):
+        self.assertEqual(TestClient(create_app(Mock())).get("/api/categories").status_code, 404)

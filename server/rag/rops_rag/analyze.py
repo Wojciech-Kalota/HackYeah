@@ -1,3 +1,4 @@
+import json
 import argparse
 import os
 import sys
@@ -13,6 +14,7 @@ from .extraction import ExtractionError, OpenAIExtractor
 def main() -> int:
     parser = argparse.ArgumentParser(description="Wydziel koncepcje z opisu projektu (bez zapisu do bazy)")
     parser.add_argument("file", type=Path, help="Plik tekstowy UTF-8 z pomysłem")
+    parser.add_argument("--categories", type=Path, required=True, help="JSON: lista kategorii z backendu")
     args = parser.parse_args()
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     if not os.getenv("OPENAI_API_KEY", "").strip():
@@ -21,7 +23,7 @@ def main() -> int:
     try:
         text = args.file.read_text(encoding="utf-8-sig")
         with OpenAI(timeout=60.0, max_retries=1) as client:
-            result = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text)
+            result = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text, json.loads(args.categories.read_text(encoding="utf-8-sig")))
         print(result.model_dump_json(indent=2))
         return 0
     except ExtractionError as error:

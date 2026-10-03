@@ -1,5 +1,6 @@
 import json
 from .errors import BusyError
+from .categories import validate_categories
 
 from .retrieval import text_hash, validate_vector
 
@@ -9,7 +10,9 @@ class Pipeline:
         self.db, self.extractor = db, extractor
         self.retriever, self.comparator = retriever, comparator
 
-    def process(self, submission_id, text):
+    def process(self, submission_id, text, categories):
+        categories = validate_categories(categories)
+        categories = sorted(categories, key=lambda item: item["id"])
         if not isinstance(submission_id, str) or not submission_id.strip() or len(submission_id) > 200:
             raise ValueError("Identyfikator musi mieć od 1 do 200 znaków")
         if not isinstance(text, str) or not text.strip() or len(text) > 30000:
@@ -28,16 +31,20 @@ class Pipeline:
                 cached = conn.execute("SELECT result_json FROM processing_results WHERE submission_id=%s", (submission_id,)).fetchone()
                 if cached:
                     result = json.loads(cached["result_json"])
+                    if result.get("categories") != categories:
+                        raise ValueError("Ten identyfikator należy do innej listy kategorii; użyj nowego ID")
                     result["replayed"] = True
                     conn.commit()
                     return result
                 raise ValueError("Zgłoszenie istnieje bez wyniku procesu; użyj nowego ID")
-            extraction = self.extractor.extract(text)
+            extraction = self.extractor.extract(text, categories)
             result = {"submission_id": submission_id, "replayed": False,
-                      "extraction": extraction.model_dump(), "decisions": []}
+                      "categories": categories, "extraction": extraction.model_dump(), "decisions": []}
             conn.execute("INSERT INTO submissions (id, original_text) VALUES (%s, %s)", (submission_id, text))
             if extraction.status == "ok":
                 for extracted in extraction.concepts:
+                    if extracted.category not in {item["id"] for item in categories}:
+                        raise ValueError("Kategoria spoza listy backendu")
                     concept = extracted.to_concept()
                     candidates = self.retriever.search(concept)
                     decision = self.comparator.compare(concept, candidates)

@@ -1,18 +1,17 @@
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 // Przykład dla .NET 8. Przekaż HttpClient z DI / IHttpClientFactory.
 // Odpowiedź koncepcji: problem, audience, solution, category, context.
-// solution zawiera sposób działania; mechanism już nie istnieje.
-// Kategorie do formularza: GET api/categories (pola id i label).
+// solution opisuje rozwiązanie wraz ze sposobem działania.
+// Kategorie przekazuje backend .NET razem z tekstem.
 public sealed class RagClient(HttpClient http)
 {
     public async Task<JsonElement> AnalyzeAsync(
-        string submissionId, string text, CancellationToken cancellationToken = default)
+        string submissionId, string text, IReadOnlyList<RagCategory> categories, CancellationToken cancellationToken = default)
     {
         using var response = await http.PostAsJsonAsync("api/ideas/analyze",
-            new { submission_id = submissionId, text }, cancellationToken);
+            new { submission_id = submissionId, text, categories }, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             // Przy 503/busy użyj Retry-After, przy 502 sprawdź przyczynę.
@@ -31,3 +30,5 @@ public sealed class RagClient(HttpClient http)
 //     client.BaseAddress = new Uri("http://127.0.0.1:8000/");
 //     client.Timeout = TimeSpan.FromMinutes(15);
 // });
+
+public sealed record RagCategory(string id, string label);

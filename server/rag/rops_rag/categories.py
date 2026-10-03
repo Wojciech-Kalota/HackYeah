@@ -1,25 +1,22 @@
-from enum import Enum
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+from typing import Annotated
 
-class Category(str, Enum):
-    SAFETY = "bezpieczenstwo"
-    CYBERSECURITY = "cyberbezpieczenstwo"
-    ROADS = "infrastruktura_drogowa"
-    TRANSPORT = "transport_i_mobilnosc"
-    HEALTH = "zdrowie"
-    MENTAL_HEALTH = "zdrowie_psychiczne"
-    EDUCATION = "edukacja"
-    DIGITAL = "wlaczenie_cyfrowe"
-    INTEGRATION = "integracja_spoleczna"
-    ACCESSIBILITY = "dostepnosc"
-    CARE = "opieka_i_wsparcie"
-    ENVIRONMENT = "srodowisko"
-    WORK = "rynek_pracy"
-    OTHER = "inne"
 
-CATEGORY_LABELS = dict(zip(Category, ["Bezpieczeństwo", "Cyberbezpieczeństwo",
-    "Infrastruktura drogowa", "Transport i mobilność", "Zdrowie", "Zdrowie psychiczne",
-    "Edukacja", "Włączenie cyfrowe", "Integracja społeczna", "Dostępność",
-    "Opieka i wsparcie", "Środowisko", "Rynek pracy", "Inne"]))
+class CategoryDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str = Field(min_length=1, max_length=100)
+    label: str = Field(min_length=1, max_length=200)
 
-def category_catalog():
-    return [{"id": category.value, "label": label} for category, label in CATEGORY_LABELS.items()]
+    @field_validator("id", "label")
+    @classmethod
+    def nonblank(cls, value):
+        if not value.strip() or value != value.strip():
+            raise ValueError("Wartość musi być niepusta i bez skrajnych spacji")
+        return value
+
+
+def validate_categories(categories):
+    items = TypeAdapter(Annotated[list[CategoryDefinition], Field(min_length=1, max_length=100)]).validate_python(categories)
+    if len({item.id for item in items}) != len(items):
+        raise ValueError("Identyfikatory kategorii muszą być unikalne")
+    return [item.model_dump() for item in items]

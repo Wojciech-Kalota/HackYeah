@@ -1,3 +1,4 @@
+CATEGORIES = [{"id": "integracja_spoleczna", "label": "Integracja społeczna"}]
 from pg_support import test_database, close_test_database
 from types import SimpleNamespace
 from unittest import TestCase
@@ -28,23 +29,25 @@ class PipelineTests(TestCase):
         close_test_database(self.db)
 
     def test_new_then_duplicate_and_replay(self):
-        first = self.pipeline.process("a", "Pomysł")
+        first = self.pipeline.process("a", "Pomysł", CATEGORIES)
         cid = first["decisions"][0]["concept_id"]
         self.comparator.compare.return_value = Decision(kind="duplicate", candidate_id=cid, reason="Ten sam mechanizm", questions=[])
-        second = self.pipeline.process("b", "Pomysł")
+        second = self.pipeline.process("b", "Pomysł", CATEGORIES)
         self.assertEqual(second["decisions"][0]["liczba_zgloszen"], 2)
         calls = self.extractor.extract.call_count
-        self.assertTrue(self.pipeline.process("b", "Pomysł")["replayed"])
+        self.assertTrue(self.pipeline.process("b", "Pomysł", CATEGORIES)["replayed"])
         self.assertEqual(self.extractor.extract.call_count, calls)
         self.assertEqual(len(self.db.list_concepts()), 1)
         self.assertEqual(self.db.list_concepts()[0]["liczba_zgloszen"], 2)
         with self.assertRaises(ValueError):
-            self.pipeline.process("b", "Zmieniony opis")
+            self.pipeline.process("b", "Zmieniony opis", CATEGORIES)
+        with self.assertRaises(ValueError):
+            self.pipeline.process("b", "Pomysł", [{"id": "other", "label": "Inna"}])
 
     def test_similar_creates_relation(self):
-        cid = self.pipeline.process("a", "Pomysł")["decisions"][0]["concept_id"]
+        cid = self.pipeline.process("a", "Pomysł", CATEGORIES)["decisions"][0]["concept_id"]
         self.comparator.compare.return_value = Decision(kind="similar", candidate_id=cid, reason="Inny mechanizm", questions=[])
-        self.pipeline.process("b", "Pomysł")
+        self.pipeline.process("b", "Pomysł", CATEGORIES)
         self.assertEqual(len(self.db.list_concepts()), 2)
         self.assertEqual(self.db.connection.execute("SELECT COUNT(*) FROM concept_relations").fetchone()["count"], 1)
 
@@ -53,21 +56,21 @@ class PipelineTests(TestCase):
         extraction.concepts.append(extraction.concepts[0].model_copy())
         self.comparator.compare.side_effect = [self.comparator.compare.return_value, ExtractionError("Przerwane API")]
         with self.assertRaises(ExtractionError):
-            self.pipeline.process("a", "Pomysł")
+            self.pipeline.process("a", "Pomysł", CATEGORIES)
         self.assertEqual(self.db.list_concepts(), [])
         for table in ("submissions", "concept_embeddings", "processing_results"):
             self.assertEqual(self.db.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()["count"], 0)
 
     def test_clarification_does_not_add_concept(self):
         self.comparator.compare.return_value = Decision(kind="needs_clarification", candidate_id=None, reason="Brak danych", questions=["Jak działa?"])
-        result = self.pipeline.process("a", "Pomysł")
+        result = self.pipeline.process("a", "Pomysł", CATEGORIES)
         self.assertIsNone(result["decisions"][0]["concept_id"])
         self.assertEqual(self.db.list_concepts(), [])
 
     def test_invalid_candidate_is_rejected(self):
         self.comparator.compare.return_value = Decision(kind="duplicate", candidate_id=999, reason="Błąd", questions=[])
         with self.assertRaises(ValueError):
-            self.pipeline.process("a", "Pomysł")
+            self.pipeline.process("a", "Pomysł", CATEGORIES)
         self.assertEqual(self.db.list_concepts(), [])
 
     def test_postgres_lock_prevents_concurrent_processing(self):
@@ -78,7 +81,7 @@ class PipelineTests(TestCase):
             other.connection.execute("BEGIN")
             other.connection.execute("SELECT pg_advisory_xact_lock(7248319501)")
             with self.assertRaises(BusyError):
-                self.pipeline.process("a", "Pomysł")
+                self.pipeline.process("a", "Pomysł", CATEGORIES)
             self.extractor.extract.assert_not_called()
         finally:
             other.connection.rollback()
