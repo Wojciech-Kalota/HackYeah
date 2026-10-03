@@ -10,6 +10,8 @@ namespace eInicjatywa.Services
     {
         public Task<StatusDto> AddStatus(ClaimsPrincipal? claimsPrincipal,StatusAddDto dto);
         public Task<List<StatusDto>> GetStatus(ClaimsPrincipal? claimsPrincipal);
+        public Task<StatusDto?> UpdateStatus(Guid id, StatusDto dto);
+        public Task<bool> DeleteStatus(Guid id);
     }
 
     public class StatusService : IStatusService
@@ -43,6 +45,27 @@ namespace eInicjatywa.Services
         public async Task<List<StatusDto>> GetStatus(ClaimsPrincipal? claimsPrincipal)
         {
             return await _db.Statuses.AsNoTracking().Select(s => new StatusDto(s.Id,s.Name)).ToListAsync();
+        }
+
+        public async Task<StatusDto?> UpdateStatus(Guid id, StatusDto dto)
+        {
+            var status = await _db.Statuses.FindAsync(id);
+            if (status == null) return null;
+            if (await _db.Statuses.AnyAsync(s => s.Id != id && s.Name == dto.Name))
+                throw new Exception("Status already exists");
+
+            status.Name = dto.Name;
+            await _db.SaveChangesAsync();
+            return new StatusDto(status.Id, status.Name);
+        }
+
+        public async Task<bool> DeleteStatus(Guid id)
+        {
+            var status = await _db.Statuses.FindAsync(id);
+            if (status == null) return false;
+            _db.Statuses.Remove(status);
+            await _db.SaveChangesAsync();
+            return true;
         }
     }
 }

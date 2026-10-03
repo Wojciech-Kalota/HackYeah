@@ -60,7 +60,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Idea>()
             .HasOne(i => i.Author)
             .WithMany(u => u.AuthoredIdeas)
-            .HasForeignKey(i => i.UserId)
+            .HasForeignKey(i => i.AuthorId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<User>()

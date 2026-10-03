@@ -13,5 +13,10 @@ namespace eInicjatywa.Dtos
         Guid StatusId,
         Guid AuthorId,
         List<Guid> CategoryIds
-    );
+    )
+    {
+        public Guid Id { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
+        public DateTimeOffset LastUpdatedAt { get; init; }
+    }
 }

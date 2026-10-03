@@ -32,16 +32,15 @@ import {
 } from 'react-router-dom';
 
 import { AiScoreBadge } from '../components/AiScoreBadge';
+import { api, getApiErrorMessage } from '../api/client';
+import { ideaStatus } from '../api/reports';
+import { useReportsData } from '../api/useReports';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { SkipLink } from '../components/SkipLink';
 import { uiTheme } from '../styles/theme';
-import {
-  exampleIdeaRelations,
-  reports,
-  type ReportStatus,
-} from '../utils/dummyData';
+import { exampleIdeaRelations, type ReportStatus } from '../utils/dummyData';
 
 type AdminStat = {
   label: string;
@@ -375,10 +374,7 @@ const adminProjectFilters: AdminProjectFilter[] = [
   'resolved',
   ...reportStatuses,
 ];
-const savedProjectIds = new Set([1, 2, 3, 5, 6, 7, 8]);
-const projectRegions = [
-  ...new Set(reports.map((report) => report.district)),
-].sort((a, b) => a.localeCompare(b, 'pl'));
+const savedProjectIds = new Set<string | number>([1, 2, 3, 5, 6, 7, 8]);
 const currentAdminRegion = 'Krowodrza';
 
 type ProjectSortKey =
@@ -394,6 +390,10 @@ function formatAdminDate(date: string) {
 }
 
 function AdminProjectsView() {
+  const { reports, error, loading } = useReportsData();
+  const projectRegions = [
+    ...new Set(reports.map((report) => report.district)),
+  ].sort((a, b) => a.localeCompare(b, 'pl'));
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStatus = searchParams.get('status');
   const initialStatus = adminProjectFilters.includes(
@@ -446,6 +446,8 @@ function AdminProjectsView() {
 
       switch (sortKey) {
         case 'id':
+          comparison = String(a.id).localeCompare(String(b.id), 'pl');
+          break;
         case 'support':
           comparison = a[sortKey] - b[sortKey];
           break;
@@ -467,7 +469,7 @@ function AdminProjectsView() {
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [query, region, sortDirection, sortKey, status]);
+  }, [query, region, reports, sortDirection, sortKey, status]);
 
   function handleStatusFilter(nextStatus: AdminProjectFilter) {
     setStatus(nextStatus);
@@ -494,6 +496,8 @@ function AdminProjectsView() {
           <MapPin size={15} /> Dzielnica V Krowodrza
         </div>
       </div>
+      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+      {loading && <p className="mt-4 text-sm text-slate-500">Ładowanie…</p>}
 
       <section className={`${uiTheme.surface.card} mt-7 overflow-hidden`}>
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between md:p-5">
@@ -609,8 +613,12 @@ function AdminProjectsView() {
 
 function AdminProjectDetailsView() {
   const { id } = useParams();
-  const report = reports.find((item) => item.id === Number(id));
+  const { reports, loading } = useReportsData();
+  const report = reports.find((item) => String(item.id) === id);
   const { comments } = exampleIdeaRelations;
+
+  if (loading)
+    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
 
   if (!report) {
     return (
@@ -791,11 +799,18 @@ function AdminProjectDetailsView() {
 
 function AdminProjectDecisionView() {
   const { id } = useParams();
-  const report = reports.find((item) => item.id === Number(id));
+  const { reports, ideas, catalog, loading, reload } = useReportsData();
+  const report = reports.find((item) => String(item.id) === id);
+  const idea = ideas.find((item) => item.id === id);
   const [status, setStatus] = useState<ReportStatus>(
     report?.status ?? 'submitted',
   );
   const [unit, setUnit] = useState('Zarząd Dróg Miasta Krakowa');
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
+  if (loading)
+    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
 
   if (!report) {
     return (
@@ -819,6 +834,37 @@ function AdminProjectDecisionView() {
   }
 
   const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
+
+  async function saveDecision() {
+    if (!idea) return;
+    const selectedStatus = catalog.statuses.find(
+      (item) => ideaStatus(item.name) === status,
+    );
+    if (!selectedStatus) {
+      setSaveMessage('Brak odpowiadającego statusu w API.');
+      return;
+    }
+    setSaving(true);
+    setSaveMessage('');
+    try {
+      await api.ideas.update(idea.id, {
+        title: idea.title,
+        description: idea.description,
+        imageUrl: idea.imageUrl,
+        districtId: idea.districtId,
+        categoryId: idea.categoryId,
+        categoryIds: idea.categoryIds,
+        statusId: selectedStatus.id,
+        authorId: idea.authorId,
+      });
+      await reload();
+      setSaveMessage('Decyzja została zapisana.');
+    } catch (error) {
+      setSaveMessage(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <main className={uiTheme.layout.content}>
@@ -927,11 +973,18 @@ function AdminProjectDecisionView() {
               </Link>
               <button
                 className={`${uiTheme.button.primary} sm:min-w-44`}
+                disabled={saving}
+                onClick={() => void saveDecision()}
                 type="button"
               >
-                <Save size={16} /> Zapisz decyzję
+                <Save size={16} /> {saving ? 'Zapisywanie…' : 'Zapisz decyzję'}
               </button>
             </div>
+            {saveMessage && (
+              <p className="mt-3 text-sm font-medium" role="status">
+                {saveMessage}
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -940,6 +993,7 @@ function AdminProjectDecisionView() {
 }
 
 function AdminAnalyticsView() {
+  const { reports } = useReportsData();
   const statusSummary = reportStatuses.map((status) => ({
     status,
     label: statusLabels[status],
@@ -998,6 +1052,7 @@ export function AdminPage({
 }: {
   view?: 'dashboard' | 'projects' | 'project' | 'decision' | 'analytics';
 }) {
+  const { reports } = useReportsData();
   const [menuOpen, setMenuOpen] = useState(false);
   const sidebarView =
     view === 'dashboard'

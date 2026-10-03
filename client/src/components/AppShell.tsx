@@ -88,8 +88,8 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   const initials =
     `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     setProfileOpen(false);
     onClose?.();
     navigate('/mieszkaniec');
