@@ -9,6 +9,6 @@ public class Vote
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    public Guid AuthorId { get; set; }
-    public Guid IdeaId { get; set; }
+    public User User { get; set; } = null!;
+    public Idea Idea { get; set; } = null!;
 }
