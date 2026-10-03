@@ -55,9 +55,10 @@ export function MyIdeasPage() {
               (item) => item.value === idea.status,
             );
             return (
-              <article
-                className={`${uiTheme.surface.card} overflow-hidden`}
+              <Link
+                className={`${uiTheme.surface.card} group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md`}
                 key={idea.id}
+                to={`/pomysly/${idea.id}`}
               >
                 {idea.img ? (
                   <img
@@ -94,7 +95,7 @@ export function MyIdeasPage() {
                     </time>
                   </div>
                 </div>
-              </article>
+              </Link>
             );
           })}
         </div>
