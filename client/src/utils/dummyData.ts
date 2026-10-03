@@ -174,7 +174,7 @@ export const reports: Report[] = [
   },
 ];
 
-export const mockCitizenIdeas: Report[] = [
+export const citizenIdeas: Report[] = [
   {
     id: 9,
     district: 'Czyżyny',

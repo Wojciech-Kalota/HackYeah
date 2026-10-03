@@ -1,6 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  ArrowRight,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -9,9 +8,7 @@ import {
   LayoutDashboard,
   MapPin,
   MessageSquare,
-  Plus,
   ShieldCheck,
-  Sparkles,
   ThumbsUp,
   Trophy,
   Wrench,
@@ -19,6 +16,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { PageMain } from '../components/PageMain';
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import {
@@ -83,31 +81,32 @@ function formatDate(date: string) {
 
 export function HomePage() {
   const { user } = useAuth();
-  const ideaPath = user ? '/dodaj-pomysl' : '/logowanie';
   const district = user?.district ?? 'Wszystkie dzielnice';
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+          <div className={uiTheme.text.eyebrow}>
             <LayoutDashboard size={14} /> Pulpit mieszkańca
           </div>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
             Dzień dobry{user ? `, ${user.firstName}` : ''}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
             Pomysły, projekty i najważniejsze informacje z Twojej okolicy w
             jednym miejscu.
           </p>
         </div>
 
-        <section className="flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3 pr-5 shadow-sm ring-1 ring-slate-200/70 xl:min-w-[350px]">
+        <section
+          className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 pr-5 xl:min-w-[350px]`}
+        >
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
             <MapPin size={20} />
           </span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+            <p className="text-app-text-subtle text-[10px] font-bold tracking-wider uppercase">
               Obserwowana okolica
             </p>
             <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
@@ -116,7 +115,7 @@ export function HomePage() {
           </div>
           <Link
             aria-label="Przeglądaj pomysły z okolicy"
-            className="ml-auto rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-800"
+            className={`${uiTheme.iconButton} ml-auto size-9`}
             to="/pomysly"
           >
             <ChevronRight size={18} />
@@ -144,10 +143,7 @@ export function HomePage() {
                 Pomysły najczęściej wspierane przez mieszkańców
               </p>
             </div>
-            <Link
-              className="text-xs font-bold text-blue-800 hover:text-blue-950"
-              to="/pomysly"
-            >
+            <Link className={`${uiTheme.text.link} text-xs`} to="/pomysly">
               Zobacz wszystkie
             </Link>
           </div>
@@ -159,7 +155,7 @@ export function HomePage() {
                 key={report.id}
               >
                 <img
-                  alt="Ilustracja pomysłu"
+                  alt={`Zdjęcie do pomysłu: ${report.title}`}
                   className="h-16 w-full rounded-xl object-cover sm:size-16 sm:shrink-0"
                   src={report.image}
                 />
@@ -174,12 +170,12 @@ export function HomePage() {
                     </span>
                   </div>
                   <Link
-                    className="mt-1 block truncate text-sm font-semibold text-slate-900 hover:text-blue-800"
+                    className={`${uiTheme.text.link} mt-1 block truncate text-sm`}
                     to={`/pomysly/${report.id}`}
                   >
                     {report.title}
                   </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+                  <div className="text-app-text-subtle mt-1 flex flex-wrap items-center gap-3 text-[11px]">
                     <span className="flex items-center gap-1">
                       <MapPin size={12} /> {report.district}
                     </span>
@@ -195,7 +191,7 @@ export function HomePage() {
                     >
                       {statusLabels[report.status]}
                     </span>
-                    <p className="mt-1.5 flex items-center justify-end gap-1 text-[10px] text-slate-400">
+                    <p className="text-app-text-subtle mt-1.5 flex items-center justify-end gap-1 text-[10px]">
                       <ThumbsUp size={11} /> {report.support}
                       <MessageSquare className="ml-1" size={11} />{' '}
                       {report.comments}
@@ -203,7 +199,7 @@ export function HomePage() {
                   </div>
                   <Link
                     aria-label={`Otwórz pomysł ${report.title}`}
-                    className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-800 hover:shadow-sm"
+                    className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
                     to={`/pomysly/${report.id}`}
                   >
                     <ChevronRight size={18} />
@@ -230,7 +226,7 @@ export function HomePage() {
               </span>
             </div>
             <img
-              alt="Zrealizowany projekt miejski"
+              alt={`Zdjęcie projektu: ${completedProject.title}`}
               className="mt-4 h-32 w-full rounded-xl object-cover"
               src={completedProject.image}
             />
@@ -266,6 +262,6 @@ export function HomePage() {
           </section>
         </aside>
       </div>
-    </main>
+    </PageMain>
   );
 }

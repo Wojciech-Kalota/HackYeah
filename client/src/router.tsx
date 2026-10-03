@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AccessibilityPage } from './pages/AccessibilityPage';
 import { AddIdeaPage } from './pages/AddIdeaPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminPage } from './pages/AdminPage';
@@ -49,6 +50,8 @@ export const router = createBrowserRouter([
       { path: 'mieszkaniec', element: <HomePage /> },
       { path: 'pomysly', element: <ReportsPage /> },
       { path: 'pomysly/:id', element: <IdeaDetailsPage /> },
+      { path: 'logowanie', element: <LoginPage /> },
+      { path: 'dostepnosc', element: <AccessibilityPage /> },
       {
         path: 'dodaj-pomysl',
         element: (

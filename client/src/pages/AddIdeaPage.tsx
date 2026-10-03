@@ -9,6 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { PageMain } from '../components/PageMain';
 import { IDEA_CATEGORIES, KRAKOW_DISTRICTS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Idea } from '../types/domain';
@@ -72,23 +73,21 @@ export function AddIdeaPage() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
-    // Po podłączeniu API imageFile trafi do multipart/form-data, a backend zwróci wartość pola img.
     saveLocalIdea({ ...idea, img: undefined }, user.id);
     navigate('/moje-pomysly?dodano=true');
   }
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="max-w-4xl">
-        <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+        <div className={uiTheme.text.eyebrow}>
           <Lightbulb size={14} /> Nowa inicjatywa
         </div>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+        <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
           Dodaj pomysł dla Krakowa
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Opisz problem lub propozycję zmiany. Formularz zapisuje teraz dane
-          lokalnie w strukturze gotowej do wysłania do backendu.
+        <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
+          Opisz problem, proponowane rozwiązanie i korzyści dla mieszkańców.
         </p>
       </div>
 
@@ -109,7 +108,7 @@ export function AddIdeaPage() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <label className="text-sm font-medium text-slate-700">
+          <label className={uiTheme.text.label}>
             Dzielnica *
             <select
               className={`${uiTheme.field} mt-2`}
@@ -126,7 +125,7 @@ export function AddIdeaPage() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-medium text-slate-700">
+          <label className={uiTheme.text.label}>
             Kategoria *
             <select
               className={`${uiTheme.field} mt-2`}
@@ -145,7 +144,7 @@ export function AddIdeaPage() {
           </label>
         </div>
 
-        <label className="mt-5 block text-sm font-medium text-slate-700">
+        <label className={`${uiTheme.text.label} mt-5 block`}>
           Tytuł *
           <input
             className={`${uiTheme.field} mt-2`}
@@ -157,12 +156,12 @@ export function AddIdeaPage() {
             required
             value={idea.title}
           />
-          <span className="mt-1 block text-right text-[11px] text-slate-400">
+          <span className="text-app-text-subtle mt-1 block text-right text-[11px]">
             {idea.title.length}/140
           </span>
         </label>
 
-        <label className="mt-5 block text-sm font-medium text-slate-700">
+        <label className={`${uiTheme.text.label} mt-5 block`}>
           Opis problemu *
           <textarea
             className={`${uiTheme.field} mt-2 min-h-40 resize-y py-3`}
@@ -172,7 +171,7 @@ export function AddIdeaPage() {
             required
             value={idea.desc}
           />
-          <span className="mt-1 block text-right text-[11px] text-slate-400">
+          <span className="text-app-text-subtle mt-1 block text-right text-[11px]">
             {idea.desc.length}/3000
           </span>
         </label>
@@ -180,7 +179,9 @@ export function AddIdeaPage() {
         <div className="mt-5">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
             <ImagePlus size={17} /> Zdjęcie problemu
-            <span className="font-normal text-slate-400">(opcjonalnie)</span>
+            <span className="text-app-text-subtle font-normal">
+              (opcjonalnie)
+            </span>
           </div>
           <input
             accept="image/jpeg,image/png,image/webp"
@@ -213,7 +214,7 @@ export function AddIdeaPage() {
                 </div>
                 <button
                   aria-label="Usuń zdjęcie"
-                  className="rounded-xl p-2 text-slate-500 hover:bg-red-50 hover:text-red-700"
+                  className={`${uiTheme.iconButton} text-red-700 hover:bg-red-50`}
                   onClick={() => setImageFile(null)}
                   type="button"
                 >
@@ -255,7 +256,7 @@ export function AddIdeaPage() {
             </div>
           )}
           {imageError && (
-            <p className="mt-2 text-xs font-medium text-red-600">
+            <p className="mt-2 text-xs font-medium text-red-700" role="alert">
               {imageError}
             </p>
           )}
@@ -263,7 +264,7 @@ export function AddIdeaPage() {
 
         <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
           <button
-            className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100"
+            className={uiTheme.button.ghost}
             onClick={() => navigate(-1)}
             type="button"
           >
@@ -274,6 +275,6 @@ export function AddIdeaPage() {
           </button>
         </div>
       </form>
-    </main>
+    </PageMain>
   );
 }

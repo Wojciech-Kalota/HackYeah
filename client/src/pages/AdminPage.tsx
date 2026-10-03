@@ -27,7 +27,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   Link,
   useLocation,
@@ -36,6 +36,9 @@ import {
 } from 'react-router-dom';
 
 import { statusLabels } from '../components/ReportCard';
+import { PageMain } from '../components/PageMain';
+import { RouteAccessibility } from '../components/RouteAccessibility';
+import { SkipLink } from '../components/SkipLink';
 import { uiTheme } from '../styles/theme';
 import {
   exampleIdeaRelations,
@@ -193,7 +196,7 @@ const navigationSections: Array<{
 function AdminLogo() {
   return (
     <Link className="flex items-center gap-3" to="/administrator/panel">
-      <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
+      <span className="bg-app-primary grid size-10 place-items-center rounded-xl text-white shadow-sm shadow-blue-800/20">
         <img
           alt=""
           className="h-7 w-9 object-contain"
@@ -213,9 +216,11 @@ function AdminLogo() {
 function AdminSidebar({
   currentView,
   onClose,
+  closeButtonRef,
 }: {
   currentView: 'dashboard' | 'projects' | 'analytics';
   onClose?: () => void;
+  closeButtonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
@@ -240,8 +245,9 @@ function AdminSidebar({
         {onClose && (
           <button
             aria-label="Zamknij menu"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            className={`${uiTheme.iconButton} size-9 lg:hidden`}
             onClick={onClose}
+            ref={closeButtonRef}
             type="button"
           >
             <X size={20} />
@@ -262,10 +268,11 @@ function AdminSidebar({
 
                 return (
                   <Link
-                    className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${uiTheme.focusRing} ${
                       active
-                        ? 'bg-blue-800 font-semibold text-white shadow-sm shadow-blue-800/15'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                        ? 'bg-app-primary font-semibold text-white shadow-sm shadow-blue-800/15'
+                        : 'text-app-text-muted hover:bg-app-muted hover:text-app-text'
                     }`}
                     key={item.label}
                     onClick={onClose}
@@ -296,7 +303,10 @@ function AdminSidebar({
 
       <div className="relative mt-auto border-t border-slate-100 pt-4">
         {profileOpen && (
-          <div className="absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+          <div
+            className={`${uiTheme.surface.card} absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden p-1.5 shadow-xl shadow-slate-900/10`}
+            id="admin-profile-menu"
+          >
             <div className="border-b border-slate-100 px-3 py-2.5">
               <p className="text-xs font-bold text-slate-900">Anna Nowak</p>
               <p className="mt-0.5 text-[10px] text-slate-500">
@@ -304,14 +314,14 @@ function AdminSidebar({
               </p>
             </div>
             <a
-              className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className={`${uiTheme.button.ghost} mt-1 w-full justify-start px-3 text-xs`}
               href="#ustawienia"
               onClick={() => setProfileOpen(false)}
             >
               <Settings size={16} /> Ustawienia konta
             </a>
             <Link
-              className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+              className={`${uiTheme.button.danger} w-full justify-start px-3 text-xs`}
               onClick={onClose}
               to="/administrator"
             >
@@ -321,12 +331,13 @@ function AdminSidebar({
         )}
 
         <button
+          aria-controls="admin-profile-menu"
           aria-expanded={profileOpen}
-          className="flex w-full items-center gap-3 rounded-2xl bg-blue-50 p-2.5 text-left ring-1 ring-blue-100 transition hover:bg-blue-100"
+          className={`${uiTheme.surface.muted} ${uiTheme.focusRing} flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-blue-100`}
           onClick={() => setProfileOpen((current) => !current)}
           type="button"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-800 text-xs font-bold text-white shadow-sm shadow-blue-800/20">
+          <span className="bg-app-primary grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white shadow-sm shadow-blue-800/20">
             AN
           </span>
           <span className="min-w-0 flex-1 leading-tight">
@@ -431,9 +442,10 @@ function SortableHeader({
         active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'
       }
       className="px-4 py-3.5"
+      scope="col"
     >
       <button
-        className={`flex w-full items-center gap-1.5 transition hover:text-blue-800 ${
+        className={`flex w-full items-center gap-1.5 rounded-md transition hover:text-blue-800 ${uiTheme.focusRing} ${
           active ? 'text-blue-800' : ''
         } ${align === 'right' ? 'justify-end' : ''}`}
         onClick={() => onSort(sortKey)}
@@ -539,16 +551,16 @@ function AdminProjectsView() {
   }
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+          <div className={uiTheme.text.eyebrow}>
             <FileText size={14} /> Panel urzędnika
           </div>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
             Projekty
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
             Pełna lista projektów mieszkańców przekazanych do obsługi urzędu.
           </p>
         </div>
@@ -569,7 +581,7 @@ function AdminProjectsView() {
             <label className="relative min-w-0 sm:w-72">
               <span className="sr-only">Szukaj projektu</span>
               <Search
-                className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                className="text-app-text-subtle absolute top-1/2 left-3 -translate-y-1/2"
                 size={16}
               />
               <input
@@ -621,6 +633,10 @@ function AdminProjectsView() {
 
         <div className="hidden md:block">
           <table className="w-full table-fixed border-collapse text-left">
+            <caption className="sr-only">
+              Lista projektów mieszkańców z możliwością sortowania według każdej
+              kolumny
+            </caption>
             <colgroup>
               <col />
               <col className="w-[120px]" />
@@ -667,7 +683,7 @@ function AdminProjectsView() {
                   onSort={handleSort}
                   sortKey="updatedAt"
                 />
-                <th className="w-14 px-4 py-3.5">
+                <th className="w-14 px-4 py-3.5" scope="col">
                   <span className="sr-only">Akcje</span>
                 </th>
               </tr>
@@ -711,7 +727,7 @@ function AdminProjectsView() {
                   <td className="px-4 py-4">
                     <Link
                       aria-label={`Otwórz projekt BO-${String(report.id).padStart(3, '0')}`}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-blue-800 hover:shadow-sm"
+                      className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
                       to={`/administrator/projekty/${report.id}`}
                     >
                       <ChevronRight size={18} />
@@ -770,7 +786,7 @@ function AdminProjectsView() {
           </div>
         )}
       </section>
-    </main>
+    </PageMain>
   );
 }
 
@@ -1167,35 +1183,63 @@ export function AdminPage({
       : view === 'analytics'
         ? 'analytics'
         : 'projects';
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeMenu() {
+    setMenuOpen(false);
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    closeButtonRef.current?.focus();
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeMenu();
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [menuOpen]);
 
   return (
     <div className={uiTheme.layout.page}>
-      <div className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 lg:block">
+      <RouteAccessibility />
+      <SkipLink />
+      <div className="border-app-border fixed inset-y-0 left-0 z-40 hidden w-64 border-r lg:block">
         <AdminSidebar currentView={sidebarView} />
       </div>
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          aria-label="Menu panelu urzędnika"
+          aria-modal="true"
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+        >
           <button
             aria-label="Zamknij menu"
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             type="button"
           />
           <div className="relative h-full w-72 shadow-2xl">
             <AdminSidebar
+              closeButtonRef={closeButtonRef}
               currentView={sidebarView}
-              onClose={() => setMenuOpen(false)}
+              onClose={closeMenu}
             />
           </div>
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-64" inert={menuOpen}>
         <div className="px-4 pt-4 lg:hidden">
           <button
             aria-label="Otwórz menu"
-            className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-slate-200"
+            className={`${uiTheme.iconButton} bg-app-surface ring-app-border shadow-sm ring-1`}
             onClick={() => setMenuOpen(true)}
+            ref={menuButtonRef}
             type="button"
           >
             <Menu size={20} />
@@ -1211,27 +1255,31 @@ export function AdminPage({
         ) : view === 'analytics' ? (
           <AdminAnalyticsView />
         ) : (
-          <main className={uiTheme.layout.content} id="pulpit">
+          <PageMain className={uiTheme.layout.content}>
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+                <div className={uiTheme.text.eyebrow}>
                   <LayoutDashboard size={14} /> Pulpit urzędnika
                 </div>
-                <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+                <h1
+                  className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}
+                >
                   Dzień dobry, Anno
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
                   Najważniejsze sprawy i projekty z Twojego rejonu w jednym
                   miejscu.
                 </p>
               </div>
 
-              <section className="flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3 pr-5 shadow-sm ring-1 ring-slate-200/70 xl:min-w-[350px]">
+              <section
+                className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 pr-5 xl:min-w-[350px]`}
+              >
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
                   <MapPin size={20} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                  <p className="text-app-text-subtle text-[10px] font-bold tracking-wider uppercase">
                     Twój rejon odpowiedzialności
                   </p>
                   <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
@@ -1240,7 +1288,7 @@ export function AdminPage({
                 </div>
                 <button
                   aria-label="Zmień rejon"
-                  className="ml-auto rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-800"
+                  className={`${uiTheme.iconButton} ml-auto size-9`}
                   type="button"
                 >
                   <ChevronRight size={18} />
@@ -1301,7 +1349,7 @@ export function AdminPage({
                         <h3 className="mt-1 truncate text-sm font-semibold text-slate-900">
                           {project.title}
                         </h3>
-                        <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                        <p className="text-app-text-subtle mt-1 flex items-center gap-1 text-[11px]">
                           <Clock3 size={12} /> {project.submitted}
                         </p>
                       </div>
@@ -1313,7 +1361,7 @@ export function AdminPage({
                         </span>
                         <Link
                           aria-label={`Otwórz projekt ${project.id}`}
-                          className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-800 hover:shadow-sm"
+                          className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
                           to={`/administrator/projekty/${project.reportId}`}
                         >
                           <ChevronRight size={18} />
@@ -1324,7 +1372,7 @@ export function AdminPage({
                 </div>
               </section>
             </div>
-          </main>
+          </PageMain>
         )}
       </div>
     </div>
