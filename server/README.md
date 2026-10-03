@@ -15,7 +15,19 @@ docker build -f postgres_einicjatywa.Dockerfile -t postgres_einicjatywa_image .
 docker run -d --name postgres_einicjatywa_container --network network_einicjatywa --env-file .env -v einicjatywa_volume:/var/lib/postgresql/data -p 5432:5432 postgres_einicjatywa_image
 ```
 
-# Backend Setup
+# Redis Setup
+
+## Build Redis Image
+```dockerfile
+docker build -f redis_einicjatywa.Dockerfile -t redis_einicjatywa_image .
+```
+
+## Launch Redis Container (Memory restricted to 150MB)
+```dockerfile
+docker run -d --name redis_einicjatywa_container --network network_einicjatywa --restart always --env-file .env -p 6379:6379 redis_einicjatywa_image
+```
+
+# Backend Setups
 
 ## Build Backend Image
 ```dockerfile

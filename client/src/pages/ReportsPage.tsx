@@ -1,23 +1,15 @@
-import {
-  Lightbulb,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-} from 'lucide-react';
-import { useMemo } from 'react';
+import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { getApiErrorMessage } from '../api/client';
+import { loadReports } from '../api/reports';
 import { PageMain } from '../components/PageMain';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
-import { reports, type ReportStatus } from '../utils/dummyData';
+import type { Report, ReportStatus } from '../utils/dummyData';
 
-const districts = [...new Set(reports.map((report) => report.district))].sort();
-const categories = [
-  ...new Set(reports.map((report) => report.category)),
-].sort();
 const statuses = Object.keys(statusLabels) as ReportStatus[];
 
 function isReportStatus(value: string | null): value is ReportStatus {
@@ -26,10 +18,25 @@ function isReportStatus(value: string | null): value is ReportStatus {
 
 export function ReportsPage() {
   const { user } = useAuth();
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
+  const districts = [
+    ...new Set(reports.map((report) => report.district)),
+  ].sort();
+  const categories = [
+    ...new Set(reports.map((report) => report.category)),
+  ].sort();
+
+  useEffect(() => {
+    void loadReports()
+      .then((result) => setReports(result.reports))
+      .catch((loadError) => setError(getApiErrorMessage(loadError)))
+      .finally(() => setLoading(false));
+  }, []);
   const query = searchParams.get('q') ?? '';
-  const residentDistrict =
-    user?.district.replace(/^[IVXLCDM]+\s+/, '') ?? 'all';
+  const residentDistrict = user?.district ?? 'all';
   const defaultDistrict = districts.includes(residentDistrict)
     ? residentDistrict
     : 'all';
@@ -85,10 +92,7 @@ export function ReportsPage() {
     <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className={uiTheme.text.eyebrow}>
-            <Lightbulb size={14} /> Baza pomysłów
-          </div>
-          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+          <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
             Pomysły mieszkańców
           </h1>
           <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
@@ -203,6 +207,12 @@ export function ReportsPage() {
       </section>
 
       <section className="mt-6">
+        {error && (
+          <p className="mb-4 text-sm font-medium text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        {loading && <p className="mb-4 text-sm text-slate-500">Ładowanie…</p>}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600">
             Znaleziono{' '}

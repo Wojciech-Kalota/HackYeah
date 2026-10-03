@@ -1,9 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   BarChart3,
   Bookmark,
   Building2,
@@ -11,7 +8,6 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleAlert,
-  Clock3,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -35,21 +31,23 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 
-import { statusLabels } from '../components/ReportCard';
+import { AiScoreBadge } from '../components/AiScoreBadge';
+import { api, getApiErrorMessage } from '../api/client';
+import { ideaStatus } from '../api/reports';
+import { useReportsData } from '../api/useReports';
+import { useAuth } from '../auth/AuthContext';
+import { ReportCard, statusLabels } from '../components/ReportCard';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { SkipLink } from '../components/SkipLink';
 import { uiTheme } from '../styles/theme';
-import {
-  exampleIdeaRelations,
-  reports,
-  type ReportStatus,
-} from '../utils/dummyData';
+import { exampleIdeaRelations, type ReportStatus } from '../utils/dummyData';
 
 type AdminStat = {
   label: string;
   value: number;
   description: string;
+  badge: string;
   icon: LucideIcon;
   iconClass: string;
   href: string;
@@ -60,6 +58,7 @@ const adminStats: AdminStat[] = [
     label: 'Nowe pomysły',
     value: 12,
     description: 'Od ostatniego logowania',
+    badge: 'Nowe',
     icon: FileText,
     iconClass: 'bg-blue-100 text-blue-800',
     href: '/administrator/projekty?status=submitted',
@@ -68,6 +67,7 @@ const adminStats: AdminStat[] = [
     label: 'Zapisane do przejrzenia',
     value: 7,
     description: 'Twoja lista',
+    badge: 'Zapisane',
     icon: Bookmark,
     iconClass: 'bg-violet-100 text-violet-700',
     href: '/administrator/projekty?status=saved',
@@ -76,6 +76,7 @@ const adminStats: AdminStat[] = [
     label: 'Nierozstrzygnięte',
     value: 23,
     description: 'Wymagają decyzji',
+    badge: 'Do decyzji',
     icon: CircleAlert,
     iconClass: 'bg-orange-100 text-orange-700',
     href: '/administrator/projekty?status=unresolved',
@@ -84,41 +85,12 @@ const adminStats: AdminStat[] = [
     label: 'Rozstrzygnięte',
     value: 84,
     description: 'W tym miesiącu',
+    badge: 'Zakończone',
     icon: CheckCircle2,
     iconClass: 'bg-emerald-100 text-emerald-800',
     href: '/administrator/projekty?status=resolved',
   },
 ];
-
-const recentProjects = [
-  {
-    reportId: 1,
-    id: 'BO-KRK-2026-184',
-    title: 'Bezpieczne przejście przy ul. Wrocławskiej',
-    category: 'Bezpieczeństwo',
-    submitted: 'Dzisiaj, 09:42',
-    status: 'Nowy',
-    statusClass: 'bg-blue-50 text-blue-800 ring-blue-100',
-  },
-  {
-    reportId: 2,
-    id: 'BO-KRK-2026-183',
-    title: 'Zielony skwer na rogu Mazowieckiej i Kmiecej',
-    category: 'Zieleń miejska',
-    submitted: 'Dzisiaj, 08:17',
-    status: 'Nowy',
-    statusClass: 'bg-blue-50 text-blue-800 ring-blue-100',
-  },
-  {
-    reportId: 3,
-    id: 'BO-KRK-2026-179',
-    title: 'Stojaki rowerowe przy Parku Krakowskim',
-    category: 'Mobilność',
-    submitted: 'Wczoraj, 16:35',
-    status: 'Do uzupełnienia',
-    statusClass: 'bg-amber-50 text-amber-800 ring-amber-100',
-  },
-] as const;
 
 type AdminNavigationItem = {
   label: string;
@@ -239,7 +211,7 @@ function AdminSidebar({
   }
 
   return (
-    <aside className="flex h-full flex-col bg-white px-4 py-5">
+    <aside className="app-sidebar-panel flex h-full flex-col px-4 py-5">
       <div className="flex items-center justify-between px-1">
         <AdminLogo />
         {onClose && (
@@ -364,21 +336,28 @@ function StatCard({ stat }: { stat: AdminStat }) {
   return (
     <Link
       aria-label={`${stat.label}: ${stat.value}. ${stat.description}`}
-      className={`${uiTheme.surface.card} group block p-4 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-blue-950/[0.05] focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:outline-none`}
+      className={`${uiTheme.surface.card} group block p-5 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-blue-950/[0.05] focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:outline-none`}
       to={stat.href}
     >
-      <span
-        className={`grid size-9 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${stat.iconClass}`}
-      >
-        <Icon size={18} strokeWidth={2} />
-      </span>
-      <strong className="mt-3 block text-[34px] leading-none font-bold tracking-[-0.03em] text-slate-950">
-        {stat.value}
-      </strong>
-      <span className="mt-2 block text-sm leading-5 font-bold text-slate-800">
-        {stat.label}
-      </span>
-      <span className="mt-1 block text-xs leading-4 text-slate-500">
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={`grid size-10 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${stat.iconClass}`}
+        >
+          <Icon size={19} strokeWidth={2} />
+        </span>
+        <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">
+          {stat.badge}
+        </span>
+      </div>
+      <div className="mt-5 flex items-end gap-2">
+        <strong className="text-3xl leading-none text-slate-950">
+          {stat.value}
+        </strong>
+        <span className="pb-0.5 text-sm font-semibold text-slate-700">
+          {stat.label}
+        </span>
+      </div>
+      <span className="mt-2 block text-xs text-slate-500">
         {stat.description}
       </span>
     </Link>
@@ -396,12 +375,7 @@ const adminProjectFilters: AdminProjectFilter[] = [
   'resolved',
   ...reportStatuses,
 ];
-const savedProjectIds = new Set([1, 2, 3, 5, 6, 7, 8]);
-const projectRegions = [
-  ...new Set(reports.map((report) => report.district)),
-].sort((a, b) => a.localeCompare(b, 'pl'));
-const currentAdminRegion = 'Krowodrza';
-
+const savedProjectIds = new Set<string | number>([1, 2, 3, 5, 6, 7, 8]);
 type ProjectSortKey =
   'id' | 'title' | 'district' | 'category' | 'status' | 'support' | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
@@ -414,51 +388,13 @@ function formatAdminDate(date: string) {
   }).format(new Date(date));
 }
 
-function SortableHeader({
-  activeKey,
-  align = 'left',
-  direction,
-  label,
-  onSort,
-  sortKey,
-}: {
-  activeKey: ProjectSortKey;
-  align?: 'left' | 'right';
-  direction: SortDirection;
-  label: string;
-  onSort: (key: ProjectSortKey) => void;
-  sortKey: ProjectSortKey;
-}) {
-  const active = activeKey === sortKey;
-  const SortIcon = !active
-    ? ArrowUpDown
-    : direction === 'asc'
-      ? ArrowUp
-      : ArrowDown;
-
-  return (
-    <th
-      aria-sort={
-        active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'
-      }
-      className="px-4 py-3.5"
-      scope="col"
-    >
-      <button
-        className={`flex w-full items-center gap-1.5 rounded-md transition hover:text-blue-800 ${uiTheme.focusRing} ${
-          active ? 'text-blue-800' : ''
-        } ${align === 'right' ? 'justify-end' : ''}`}
-        onClick={() => onSort(sortKey)}
-        type="button"
-      >
-        {label}
-        <SortIcon size={12} strokeWidth={2.2} />
-      </button>
-    </th>
-  );
-}
-
 function AdminProjectsView() {
+  const { user } = useAuth();
+  const { reports, catalog, error, loading } = useReportsData();
+  const currentAdminRegion = user?.district;
+  const projectRegions = catalog.districts
+    .map((district) => district.name)
+    .sort((a, b) => a.localeCompare(b, 'pl'));
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStatus = searchParams.get('status');
   const initialStatus = adminProjectFilters.includes(
@@ -471,6 +407,10 @@ function AdminProjectsView() {
   const [status, setStatus] = useState<AdminProjectFilter>(initialStatus);
   const [sortKey, setSortKey] = useState<ProjectSortKey>('title');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
 
   const filteredReports = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pl');
@@ -486,7 +426,8 @@ function AdminProjectsView() {
         matchesQuery &&
         (region === 'all' ||
           (region === 'mine'
-            ? report.district === currentAdminRegion
+            ? Boolean(currentAdminRegion) &&
+              report.district === currentAdminRegion
             : report.district === region)) &&
         (status === 'all' ||
           (status === 'saved'
@@ -507,6 +448,8 @@ function AdminProjectsView() {
 
       switch (sortKey) {
         case 'id':
+          comparison = String(a.id).localeCompare(String(b.id), 'pl');
+          break;
         case 'support':
           comparison = a[sortKey] - b[sortKey];
           break;
@@ -528,17 +471,15 @@ function AdminProjectsView() {
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [query, region, sortDirection, sortKey, status]);
-
-  function handleSort(nextSortKey: ProjectSortKey) {
-    if (nextSortKey === sortKey) {
-      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortKey(nextSortKey);
-    setSortDirection('asc');
-  }
+  }, [
+    currentAdminRegion,
+    query,
+    region,
+    reports,
+    sortDirection,
+    sortKey,
+    status,
+  ]);
 
   function handleStatusFilter(nextStatus: AdminProjectFilter) {
     setStatus(nextStatus);
@@ -554,10 +495,7 @@ function AdminProjectsView() {
     <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className={uiTheme.text.eyebrow}>
-            <FileText size={14} /> Panel urzędnika
-          </div>
-          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+          <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
             Projekty
           </h1>
           <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
@@ -565,9 +503,11 @@ function AdminProjectsView() {
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 ring-1 ring-emerald-100">
-          <MapPin size={15} /> Dzielnica V Krowodrza
+          <MapPin size={15} /> {currentAdminRegion ?? 'Wszystkie rejony'}
         </div>
       </div>
+      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+      {loading && <p className="mt-4 text-sm text-slate-500">Ładowanie…</p>}
 
       <section className={`${uiTheme.surface.card} mt-7 overflow-hidden`}>
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between md:p-5">
@@ -600,7 +540,9 @@ function AdminProjectsView() {
                 value={region}
               >
                 <option value="all">Wszystkie rejony</option>
-                <option value="mine">Mój rejon — {currentAdminRegion}</option>
+                {currentAdminRegion && (
+                  <option value="mine">Mój rejon — {currentAdminRegion}</option>
+                )}
                 {projectRegions.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -628,147 +570,38 @@ function AdminProjectsView() {
                 ))}
               </select>
             </label>
+            <label>
+              <span className="sr-only">Sortuj projekty</span>
+              <select
+                className={uiTheme.field}
+                onChange={(event) => {
+                  const [nextKey, nextDirection] = event.target.value.split(
+                    ':',
+                  ) as [ProjectSortKey, SortDirection];
+                  setSortKey(nextKey);
+                  setSortDirection(nextDirection);
+                }}
+                value={`${sortKey}:${sortDirection}`}
+              >
+                <option value="updatedAt:desc">Najnowsze</option>
+                <option value="support:desc">Najpopularniejsze</option>
+                <option value="title:asc">Nazwa A–Z</option>
+                <option value="title:desc">Nazwa Z–A</option>
+              </select>
+            </label>
           </div>
         </div>
 
-        <div className="hidden md:block">
-          <table className="w-full table-fixed border-collapse text-left">
-            <caption className="sr-only">
-              Lista projektów mieszkańców z możliwością sortowania według każdej
-              kolumny
-            </caption>
-            <colgroup>
-              <col />
-              <col className="w-[120px]" />
-              <col className="w-[130px]" />
-              <col className="w-[80px]" />
-              <col className="w-[105px]" />
-              <col className="w-14" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                <SortableHeader
-                  activeKey={sortKey}
-                  direction={sortDirection}
-                  label="Projekt"
-                  onSort={handleSort}
-                  sortKey="title"
-                />
-                <SortableHeader
-                  activeKey={sortKey}
-                  direction={sortDirection}
-                  label="Dzielnica"
-                  onSort={handleSort}
-                  sortKey="district"
-                />
-                <SortableHeader
-                  activeKey={sortKey}
-                  direction={sortDirection}
-                  label="Status"
-                  onSort={handleSort}
-                  sortKey="status"
-                />
-                <SortableHeader
-                  activeKey={sortKey}
-                  align="right"
-                  direction={sortDirection}
-                  label="Poparcie"
-                  onSort={handleSort}
-                  sortKey="support"
-                />
-                <SortableHeader
-                  activeKey={sortKey}
-                  direction={sortDirection}
-                  label="Aktualizacja"
-                  onSort={handleSort}
-                  sortKey="updatedAt"
-                />
-                <th className="w-14 px-4 py-3.5" scope="col">
-                  <span className="sr-only">Akcje</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredReports.map((report) => (
-                <tr
-                  className="group transition hover:bg-blue-50/40"
-                  key={report.id}
-                >
-                  <td className="min-w-0 px-5 py-4">
-                    <div className="flex min-w-0 items-center gap-2 text-[10px]">
-                      <span className="shrink-0 font-bold text-blue-700">
-                        BO-{String(report.id).padStart(3, '0')}
-                      </span>
-                      <span className="text-slate-300">•</span>
-                      <span className="truncate font-medium text-slate-400">
-                        {report.category}
-                      </span>
-                    </div>
-                    <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                      {report.title}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4 text-xs font-medium whitespace-nowrap text-slate-600">
-                    {report.district}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
-                    >
-                      {statusLabels[report.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-bold text-slate-800">
-                    {report.support}
-                  </td>
-                  <td className="truncate px-4 py-4 text-xs whitespace-nowrap text-slate-500">
-                    {formatAdminDate(report.updatedAt)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <Link
-                      aria-label={`Otwórz projekt BO-${String(report.id).padStart(3, '0')}`}
-                      className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
-                      to={`/administrator/projekty/${report.id}`}
-                    >
-                      <ChevronRight size={18} />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="divide-y divide-slate-100 md:hidden">
+        <div className="space-y-4 p-4 md:p-5">
           {filteredReports.map((report) => (
-            <Link
-              className="group block p-4 transition hover:bg-blue-50/40"
+            <ReportCard
+              detailsHref={`/administrator/projekty/${report.id}`}
               key={report.id}
-              to={`/administrator/projekty/${report.id}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[10px] font-bold text-blue-700">
-                  BO-{String(report.id).padStart(3, '0')}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
-                >
-                  {statusLabels[report.status]}
-                </span>
-              </div>
-              <h3 className="mt-2 text-sm leading-5 font-bold text-slate-900">
-                {report.title}
-              </h3>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={13} /> {report.district}
-                </span>
-                <span>{report.category}</span>
-                <span className="ml-auto font-bold text-slate-700">
-                  {report.support} głosów
-                </span>
-              </div>
-            </Link>
+              nested
+              report={report}
+              showProjectId
+              supportIsAction={false}
+            />
           ))}
         </div>
 
@@ -792,8 +625,12 @@ function AdminProjectsView() {
 
 function AdminProjectDetailsView() {
   const { id } = useParams();
-  const report = reports.find((item) => item.id === Number(id));
+  const { reports, loading } = useReportsData();
+  const report = reports.find((item) => String(item.id) === id);
   const { comments } = exampleIdeaRelations;
+
+  if (loading)
+    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
 
   if (!report) {
     return (
@@ -838,6 +675,7 @@ function AdminProjectDetailsView() {
             >
               {statusLabels[report.status]}
             </span>
+            <AiScoreBadge title={report.title} />
           </div>
           <h1 className="mt-3 max-w-4xl text-2xl leading-tight font-bold tracking-tight text-slate-950 md:text-3xl">
             {report.title}
@@ -863,6 +701,7 @@ function AdminProjectDetailsView() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={uiTheme.badge.info}>{report.district}</span>
                 <span className={uiTheme.badge.neutral}>{report.category}</span>
+                <AiScoreBadge title={report.title} />
               </div>
               <h2 className="mt-5 text-lg font-bold text-slate-950">
                 Opis pomysłu
@@ -950,13 +789,13 @@ function AdminProjectDetailsView() {
           <section className={`${uiTheme.surface.card} p-5`}>
             <h2 className="font-bold text-slate-950">Aktywność pomysłu</h2>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-blue-50 p-3">
+              <div className="rounded-xl bg-blue-50/70 p-3 backdrop-blur-sm">
                 <p className="text-2xl font-bold text-blue-950">
                   {report.support}
                 </p>
                 <p className="mt-1 text-[11px] text-blue-700">Głosów</p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3">
+              <div className="rounded-xl bg-slate-50/60 p-3 backdrop-blur-sm">
                 <p className="text-2xl font-bold text-slate-950">
                   {report.comments}
                 </p>
@@ -972,11 +811,18 @@ function AdminProjectDetailsView() {
 
 function AdminProjectDecisionView() {
   const { id } = useParams();
-  const report = reports.find((item) => item.id === Number(id));
+  const { reports, ideas, catalog, loading, reload } = useReportsData();
+  const report = reports.find((item) => String(item.id) === id);
+  const idea = ideas.find((item) => item.id === id);
   const [status, setStatus] = useState<ReportStatus>(
     report?.status ?? 'submitted',
   );
   const [unit, setUnit] = useState('Zarząd Dróg Miasta Krakowa');
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
+  if (loading)
+    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
 
   if (!report) {
     return (
@@ -1001,6 +847,37 @@ function AdminProjectDecisionView() {
 
   const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
 
+  async function saveDecision() {
+    if (!idea) return;
+    const selectedStatus = catalog.statuses.find(
+      (item) => ideaStatus(item.name) === status,
+    );
+    if (!selectedStatus) {
+      setSaveMessage('Brak odpowiadającego statusu w API.');
+      return;
+    }
+    setSaving(true);
+    setSaveMessage('');
+    try {
+      await api.ideas.update(idea.id, {
+        title: idea.title,
+        description: idea.description,
+        imageUrl: idea.imageUrl,
+        districtId: idea.districtId,
+        categoryId: idea.categoryId,
+        categoryIds: idea.categoryIds,
+        statusId: selectedStatus.id,
+        authorId: idea.authorId,
+      });
+      await reload();
+      setSaveMessage('Decyzja została zapisana.');
+    } catch (error) {
+      setSaveMessage(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className={uiTheme.layout.content}>
       <div className="mx-auto max-w-3xl">
@@ -1012,9 +889,12 @@ function AdminProjectDecisionView() {
         </Link>
 
         <div className="mt-5">
-          <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
-            Projekt {projectNumber}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
+              Projekt {projectNumber}
+            </p>
+            <AiScoreBadge title={report.title} />
+          </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
             Podejmij decyzję
           </h1>
@@ -1025,7 +905,7 @@ function AdminProjectDecisionView() {
         </div>
 
         <section className={`${uiTheme.surface.card} mt-6 overflow-hidden`}>
-          <div className="flex items-start gap-4 border-b border-slate-100 bg-slate-50/70 p-5 md:p-6">
+          <div className="flex items-start gap-4 border-b border-slate-100 bg-slate-50/50 p-5 backdrop-blur-sm md:p-6">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800">
               <ShieldCheck size={21} />
             </span>
@@ -1105,11 +985,18 @@ function AdminProjectDecisionView() {
               </Link>
               <button
                 className={`${uiTheme.button.primary} sm:min-w-44`}
+                disabled={saving}
+                onClick={() => void saveDecision()}
                 type="button"
               >
-                <Save size={16} /> Zapisz decyzję
+                <Save size={16} /> {saving ? 'Zapisywanie…' : 'Zapisz decyzję'}
               </button>
             </div>
+            {saveMessage && (
+              <p className="mt-3 text-sm font-medium" role="status">
+                {saveMessage}
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -1118,6 +1005,7 @@ function AdminProjectDecisionView() {
 }
 
 function AdminAnalyticsView() {
+  const { reports } = useReportsData();
   const statusSummary = reportStatuses.map((status) => ({
     status,
     label: statusLabels[status],
@@ -1176,6 +1064,9 @@ export function AdminPage({
 }: {
   view?: 'dashboard' | 'projects' | 'project' | 'decision' | 'analytics';
 }) {
+  const { user } = useAuth();
+  const { reports } = useReportsData();
+  const adminRegion = user?.district;
   const [menuOpen, setMenuOpen] = useState(false);
   const sidebarView =
     view === 'dashboard'
@@ -1233,11 +1124,11 @@ export function AdminPage({
         </div>
       )}
 
-      <div className="lg:pl-64" inert={menuOpen}>
-        <div className="px-4 pt-4 lg:hidden">
+      <div className="dashboard-section min-h-screen lg:pl-64" inert={menuOpen}>
+        <div className="relative z-10 px-4 pt-4 lg:hidden">
           <button
             aria-label="Otwórz menu"
-            className={`${uiTheme.iconButton} bg-app-surface ring-app-border shadow-sm ring-1`}
+            className={`${uiTheme.iconButton} ring-app-border bg-white/80 shadow-sm ring-1`}
             onClick={() => setMenuOpen(true)}
             ref={menuButtonRef}
             type="button"
@@ -1246,134 +1137,110 @@ export function AdminPage({
           </button>
         </div>
 
-        {view === 'projects' ? (
-          <AdminProjectsView />
-        ) : view === 'project' ? (
-          <AdminProjectDetailsView />
-        ) : view === 'decision' ? (
-          <AdminProjectDecisionView />
-        ) : view === 'analytics' ? (
-          <AdminAnalyticsView />
-        ) : (
-          <PageMain className={uiTheme.layout.content}>
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <div className={uiTheme.text.eyebrow}>
-                  <LayoutDashboard size={14} /> Pulpit urzędnika
+        <div className="relative z-10">
+          {view === 'projects' ? (
+            <AdminProjectsView />
+          ) : view === 'project' ? (
+            <AdminProjectDetailsView />
+          ) : view === 'decision' ? (
+            <AdminProjectDecisionView />
+          ) : view === 'analytics' ? (
+            <AdminAnalyticsView />
+          ) : (
+            <PageMain className={uiTheme.layout.content}>
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <h1
+                    className={`${uiTheme.text.heading} text-3xl md:text-4xl`}
+                  >
+                    Dzień dobry{user ? `, ${user.firstName}` : ''}
+                  </h1>
+                  <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
+                    Najważniejsze sprawy i projekty z Twojego rejonu w jednym
+                    miejscu.
+                  </p>
                 </div>
-                <h1
-                  className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}
+
+                <section
+                  className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 pr-5 xl:min-w-[350px]`}
                 >
-                  Dzień dobry, Anno
-                </h1>
-                <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
-                  Najważniejsze sprawy i projekty z Twojego rejonu w jednym
-                  miejscu.
-                </p>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
+                    <MapPin size={20} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-app-text-subtle text-[10px] font-bold tracking-wider uppercase">
+                      Twój rejon odpowiedzialności
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
+                      {adminRegion ?? 'Wszystkie rejony'}
+                    </p>
+                  </div>
+                  <button
+                    aria-label="Zmień rejon"
+                    className={`${uiTheme.iconButton} ml-auto size-9`}
+                    type="button"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </section>
               </div>
 
               <section
-                className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 pr-5 xl:min-w-[350px]`}
+                className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                aria-label="Podsumowanie"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
-                  <MapPin size={20} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-app-text-subtle text-[10px] font-bold tracking-wider uppercase">
-                    Twój rejon odpowiedzialności
-                  </p>
-                  <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
-                    Dzielnica V Krowodrza
-                  </p>
-                </div>
-                <button
-                  aria-label="Zmień rejon"
-                  className={`${uiTheme.iconButton} ml-auto size-9`}
-                  type="button"
+                {adminStats.map((stat) => (
+                  <StatCard key={stat.label} stat={stat} />
+                ))}
+              </section>
+
+              <div className="mt-7">
+                <section
+                  className={`${uiTheme.surface.card} overflow-hidden`}
+                  id="nowe"
                 >
-                  <ChevronRight size={18} />
-                </button>
-              </section>
-            </div>
-
-            <section
-              className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-              aria-label="Podsumowanie"
-            >
-              {adminStats.map((stat) => (
-                <StatCard key={stat.label} stat={stat} />
-              ))}
-            </section>
-
-            <div className="mt-7">
-              <section
-                className={`${uiTheme.surface.card} overflow-hidden`}
-                id="nowe"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-                  <div>
-                    <h2 className="font-bold text-slate-950">
-                      Najnowsze projekty
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Ostatnie zgłoszenia z Dzielnicy V Krowodrza
-                    </p>
-                  </div>
-                  <Link
-                    className="text-xs font-bold text-blue-800 hover:text-blue-950"
-                    to="/administrator/projekty"
-                  >
-                    Zobacz wszystkie
-                  </Link>
-                </div>
-
-                <div className="divide-y divide-slate-100">
-                  {recentProjects.map((project) => (
-                    <article
-                      className="group flex flex-col gap-4 px-5 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center"
-                      key={project.id}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                    <div>
+                      <h2 className="font-bold text-slate-950">
+                        Najnowsze projekty
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminRegion
+                          ? `Ostatnie zgłoszenia z rejonu ${adminRegion}`
+                          : 'Ostatnie zgłoszenia ze wszystkich rejonów'}
+                      </p>
+                    </div>
+                    <Link
+                      className="text-xs font-bold text-blue-800 hover:text-blue-950"
+                      to="/administrator/projekty"
                     >
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-800">
-                        <FileText size={18} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-bold text-blue-700">
-                            {project.id}
-                          </span>
-                          <span className="text-[10px] text-slate-300">•</span>
-                          <span className="text-[10px] font-medium text-slate-500">
-                            {project.category}
-                          </span>
-                        </div>
-                        <h3 className="mt-1 truncate text-sm font-semibold text-slate-900">
-                          {project.title}
-                        </h3>
-                        <p className="text-app-text-subtle mt-1 flex items-center gap-1 text-[11px]">
-                          <Clock3 size={12} /> {project.submitted}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 sm:justify-end">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${project.statusClass}`}
-                        >
-                          {project.status}
-                        </span>
-                        <Link
-                          aria-label={`Otwórz projekt ${project.id}`}
-                          className={`${uiTheme.iconButton} size-9 hover:bg-white hover:shadow-sm`}
-                          to={`/administrator/projekty/${project.reportId}`}
-                        >
-                          <ChevronRight size={18} />
-                        </Link>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </PageMain>
-        )}
+                      Zobacz wszystkie
+                    </Link>
+                  </div>
+
+                  <div className="space-y-4 p-4 md:p-5">
+                    {reports
+                      .filter(
+                        (report) =>
+                          !adminRegion || report.district === adminRegion,
+                      )
+                      .slice(0, 3)
+                      .map((report) => (
+                        <ReportCard
+                          detailsHref={`/administrator/projekty/${report.id}`}
+                          key={report.id}
+                          nested
+                          report={report}
+                          showProjectId
+                          supportIsAction={false}
+                        />
+                      ))}
+                  </div>
+                </section>
+              </div>
+            </PageMain>
+          )}
+        </div>
       </div>
     </div>
   );

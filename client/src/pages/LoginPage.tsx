@@ -10,23 +10,19 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
-import { useAuth, type LoginData } from '../auth/AuthContext';
+import { getApiErrorMessage } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { uiTheme } from '../styles/theme';
 
-const residentAccount: LoginData = {
-  firstName: 'Igor',
-  lastName: 'Nowak',
-  district: 'V Krowodrza',
-  password: 'mieszkaniec2026',
-};
-
 export function LoginPage() {
   const { user, login } = useAuth();
   const [email, setEmail] = useState('mieszkaniec@krakow.pl');
-  const [password, setPassword] = useState(residentAccount.password);
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const destination =
@@ -34,10 +30,18 @@ export function LoginPage() {
 
   if (user) return <Navigate replace to="/mieszkaniec" />;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    login({ ...residentAccount, password });
-    navigate(destination, { replace: true });
+    setSubmitting(true);
+    setError('');
+    try {
+      await login(email, password);
+      navigate(destination, { replace: true });
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -50,7 +54,7 @@ export function LoginPage() {
         <div className="pointer-events-none absolute -right-24 -bottom-40 size-[28rem] rounded-full bg-emerald-200/30 blur-3xl" />
 
         <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl items-center px-3 py-3 sm:px-4 md:px-6 md:py-4">
-          <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_20px_60px_rgba(30,50,100,0.08)] sm:rounded-3xl lg:h-[calc(100dvh-2rem)] lg:max-h-[760px] lg:min-h-[560px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="app-card-surface grid w-full overflow-hidden rounded-2xl border sm:rounded-3xl lg:h-[calc(100dvh-2rem)] lg:max-h-[760px] lg:min-h-[560px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <section className="relative hidden overflow-hidden bg-[linear-gradient(145deg,#172d68_0%,#234497_65%,#3746b0_100%)] p-8 text-white lg:block xl:p-10">
               <div className="relative z-10 h-full">
                 <div className="flex items-center gap-3">
@@ -129,7 +133,7 @@ export function LoginPage() {
                       />
                       <input
                         autoComplete="email"
-                        className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] pl-11 focus:bg-white`}
+                        className={`${uiTheme.field} login-field h-12 bg-white/80 pl-11 focus:bg-white/90`}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="twoj@email.pl"
                         required
@@ -150,8 +154,7 @@ export function LoginPage() {
                       />
                       <input
                         autoComplete="current-password"
-                        className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] px-11 focus:bg-white`}
-                        minLength={6}
+                        className={`${uiTheme.field} login-field h-12 bg-white/80 px-11 focus:bg-white/90`}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="Wpisz hasło"
                         required
@@ -193,10 +196,20 @@ export function LoginPage() {
 
                   <button
                     className={`${uiTheme.button.primary} h-12 w-full`}
+                    disabled={submitting}
                     type="submit"
                   >
-                    Zaloguj się <ArrowRight size={17} />
+                    {submitting ? 'Logowanie…' : 'Zaloguj się'}{' '}
+                    <ArrowRight size={17} />
                   </button>
+                  {error && (
+                    <p
+                      className="text-sm font-medium text-red-700"
+                      role="alert"
+                    >
+                      {error}
+                    </p>
+                  )}
                 </form>
               </div>
             </section>

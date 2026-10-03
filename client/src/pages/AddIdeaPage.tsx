@@ -1,4 +1,15 @@
-import { FileImage, ImagePlus, Lightbulb, Send, Upload, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  FileImage,
+  ImagePlus,
+  MapPin,
+  Send,
+  Sparkles,
+  Upload,
+  X,
+} from 'lucide-react';
 import {
   useEffect,
   useRef,
@@ -8,43 +19,121 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { api, getApiErrorMessage } from '../api/client';
+import { loadCatalog, type ApiCatalog } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
+import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
-import { IDEA_CATEGORIES, KRAKOW_DISTRICTS } from '../constants/ideaOptions';
+import { IDEA_CATEGORIES } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Idea } from '../types/domain';
-import { saveLocalIdea } from '../utils/localIdeas';
-
-const emptyIdea: Idea = {
-  district: 'V Krowodrza',
-  category: IDEA_CATEGORIES[0],
-  title: '',
-  desc: '',
-  status: 'submitted',
-};
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const descriptionSuggestions = [
+  'Brakuje bezpiecznego przejścia dla pieszych',
+  'W okolicy jest za mało zieleni',
+  'To skrzyżowanie jest niebezpieczne',
+];
+
+const categoryKeywords: Array<{
+  category: (typeof IDEA_CATEGORIES)[number];
+  keywords: string[];
+}> = [
+  {
+    category: 'Bezpieczeństwo',
+    keywords: ['bezpiecz', 'niebezpiecz', 'monitoring', 'oświetl'],
+  },
+  {
+    category: 'Czystość i odpady',
+    keywords: ['śmie', 'odpad', 'kosz', 'segregac', 'czysto'],
+  },
+  {
+    category: 'Infrastruktura drogowa',
+    keywords: ['ulic', 'droga', 'chodnik', 'przejści', 'skrzyżowan'],
+  },
+  {
+    category: 'Infrastruktura rowerowa',
+    keywords: ['rower', 'ścieżk', 'droga rowerowa'],
+  },
+  {
+    category: 'Tereny zielone',
+    keywords: ['ziele', 'park', 'drzew', 'trawnik'],
+  },
+  {
+    category: 'Transport publiczny',
+    keywords: ['autobus', 'tramwaj', 'przystanek', 'komunikac'],
+  },
+  {
+    category: 'Sport i rekreacja',
+    keywords: ['sport', 'boisko', 'plac zabaw', 'rekreac'],
+  },
+];
+
+function createTitle(description: string) {
+  const normalizedDescription = description.trim().replace(/\s+/g, ' ');
+  const firstSentence = normalizedDescription.split(/[.!?]/)[0]?.trim();
+  const title = firstSentence || normalizedDescription;
+  return title.length > 100 ? `${title.slice(0, 97).trimEnd()}...` : title;
+}
+
+function inferCategory(description: string) {
+  const normalizedDescription = description.toLocaleLowerCase('pl-PL');
+  return (
+    categoryKeywords.find(({ keywords }) =>
+      keywords.some((keyword) => normalizedDescription.includes(keyword)),
+    )?.category ?? 'Infrastruktura drogowa'
+  );
+}
 
 export function AddIdeaPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [idea, setIdea] = useState<Idea>(() => ({
-    ...emptyIdea,
-    district: user?.district ?? emptyIdea.district,
+    district: '',
+    category: 'Infrastruktura drogowa',
+    title: '',
+    desc: '',
+    status: 'submitted',
   }));
+  const [street, setStreet] = useState('');
+  const [impact, setImpact] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [catalog, setCatalog] = useState<ApiCatalog | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const generatedTitle = createTitle(idea.desc);
+  const generatedCategory = inferCategory(idea.desc);
+
+  useEffect(() => {
+    void loadCatalog()
+      .then((loadedCatalog) => {
+        setCatalog(loadedCatalog);
+        setIdea((current) => ({
+          ...current,
+          district:
+            current.district ||
+            loadedCatalog.districts.find(
+              (district) => district.name === user?.district,
+            )?.name ||
+            loadedCatalog.districts[0]?.name ||
+            '',
+        }));
+      })
+      .catch((error) => setSubmitError(getApiErrorMessage(error)));
+  }, [user?.district]);
 
   useEffect(() => {
     if (!imageFile) {
       setImagePreview(null);
       return;
     }
-
     const previewUrl = URL.createObjectURL(imageFile);
     setImagePreview(previewUrl);
     return () => URL.revokeObjectURL(previewUrl);
@@ -70,210 +159,432 @@ export function AddIdeaPage() {
     selectImage(event.dataTransfer.files[0]);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user) return;
-    saveLocalIdea({ ...idea, img: undefined }, user.id);
-    navigate('/moje-pomysly?dodano=true');
+    if (!user || step !== 3) return;
+    const context = [
+      idea.desc.trim(),
+      street.trim() ? `Dokładna lokalizacja: ${street.trim()}.` : '',
+      impact.trim() ? `Dlaczego to ważne: ${impact.trim()}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const district = catalog?.districts.find(
+      (item) => item.name === idea.district,
+    );
+    const category = catalog?.categories.find(
+      (item) => item.name === generatedCategory,
+    );
+    const status =
+      catalog?.statuses.find((item) => {
+        const name = item.name.toLowerCase();
+        return (
+          name.includes('submit') ||
+          name.includes('now') ||
+          name.includes('zgłos')
+        );
+      }) ?? catalog?.statuses[0];
+
+    if (!district || !category || !status) {
+      setSubmitError(
+        'Brakuje skonfigurowanej dzielnicy, kategorii lub statusu. Administrator musi najpierw uzupełnić słowniki.',
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      await api.ideas.create({
+        title: generatedTitle,
+        description: context,
+        imageUrl: null,
+        districtId: district.id,
+        categoryId: category.id,
+        categoryIds: [category.id],
+        statusId: status.id,
+        authorId: user.id,
+      });
+      navigate('/moje-pomysly?dodano=true');
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <PageMain className={uiTheme.layout.content}>
-      <div className="max-w-4xl">
-        <div className={uiTheme.text.eyebrow}>
-          <Lightbulb size={14} /> Nowa inicjatywa
-        </div>
-        <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+      <div className="mx-auto w-full max-w-4xl">
+        <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
           Dodaj pomysł dla Krakowa
         </h1>
         <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
-          Opisz problem, proponowane rozwiązanie i korzyści dla mieszkańców.
+          Opisz problem własnymi słowami. System uporządkuje zgłoszenie za
+          Ciebie.
         </p>
       </div>
 
+      <ol
+        aria-label="Postęp dodawania pomysłu"
+        className="mx-auto mt-7 flex w-full max-w-4xl items-center gap-2"
+      >
+        {['Pomysł', 'Lokalizacja', 'Podsumowanie'].map((label, index) => {
+          const number = (index + 1) as 1 | 2 | 3;
+          const isActive = step === number;
+          const isComplete = step > number;
+          return (
+            <li
+              className={`flex min-w-0 items-center gap-2 ${number < 3 ? 'flex-1' : ''}`}
+              key={label}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm leading-none font-bold shadow-sm ${
+                  isActive
+                    ? 'border-blue-700 bg-blue-700 text-white'
+                    : isComplete
+                      ? 'border-emerald-300 bg-emerald-100 text-emerald-800'
+                      : 'border-slate-300 bg-white text-slate-500'
+                }`}
+              >
+                {isComplete ? <Check size={15} /> : number}
+              </span>
+              <span
+                className={`hidden truncate text-xs font-semibold sm:block ${isActive ? 'text-blue-800' : 'text-slate-500'}`}
+              >
+                {label}
+              </span>
+              {number < 3 && <span className="h-px flex-1 bg-slate-200" />}
+            </li>
+          );
+        })}
+      </ol>
+
       <form
-        className={`${uiTheme.surface.card} mt-7 max-w-4xl p-5 md:p-7`}
+        className={`${uiTheme.surface.card} mx-auto mt-5 w-full max-w-4xl p-5 md:p-7`}
         onSubmit={handleSubmit}
       >
-        <div className="mb-7 flex items-center gap-3 border-b border-slate-100 pb-5">
-          <span className="grid size-11 place-items-center rounded-xl bg-blue-100 text-blue-800">
-            <Lightbulb size={21} />
-          </span>
-          <div>
-            <h2 className="font-semibold">Informacje o pomyśle</h2>
-            <p className="text-xs text-slate-500">
-              Pola oznaczone gwiazdką są wymagane.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <label className={uiTheme.text.label}>
-            Dzielnica *
-            <select
-              className={`${uiTheme.field} mt-2`}
-              onChange={(event) =>
-                setIdea({ ...idea, district: event.target.value })
-              }
-              required
-              value={idea.district}
-            >
-              {KRAKOW_DISTRICTS.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={uiTheme.text.label}>
-            Kategoria *
-            <select
-              className={`${uiTheme.field} mt-2`}
-              onChange={(event) =>
-                setIdea({ ...idea, category: event.target.value })
-              }
-              required
-              value={idea.category}
-            >
-              {IDEA_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <label className={`${uiTheme.text.label} mt-5 block`}>
-          Tytuł *
-          <input
-            className={`${uiTheme.field} mt-2`}
-            maxLength={140}
-            onChange={(event) =>
-              setIdea({ ...idea, title: event.target.value })
-            }
-            placeholder="Np. Bezpieczne przejście przy szkole"
-            required
-            value={idea.title}
-          />
-          <span className="text-app-text-subtle mt-1 block text-right text-[11px]">
-            {idea.title.length}/140
-          </span>
-        </label>
-
-        <label className={`${uiTheme.text.label} mt-5 block`}>
-          Opis problemu *
-          <textarea
-            className={`${uiTheme.field} mt-2 min-h-40 resize-y py-3`}
-            maxLength={3000}
-            onChange={(event) => setIdea({ ...idea, desc: event.target.value })}
-            placeholder="Opisz obecny problem, proponowane rozwiązanie i korzyści dla mieszkańców..."
-            required
-            value={idea.desc}
-          />
-          <span className="text-app-text-subtle mt-1 block text-right text-[11px]">
-            {idea.desc.length}/3000
-          </span>
-        </label>
-
-        <div className="mt-5">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-            <ImagePlus size={17} /> Zdjęcie problemu
-            <span className="text-app-text-subtle font-normal">
-              (opcjonalnie)
-            </span>
-          </div>
-          <input
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            onChange={(event) => selectImage(event.target.files?.[0])}
-            ref={fileInputRef}
-            type="file"
-          />
-
-          {imagePreview && imageFile ? (
-            <div className="relative mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-              <div className="flex h-64 w-full items-center justify-center bg-slate-100 p-3">
-                <img
-                  alt="Podgląd wybranego zdjęcia"
-                  className="max-h-full max-w-full object-contain"
-                  src={imagePreview}
-                />
+        {step === 1 && (
+          <section aria-labelledby="idea-step-heading">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800">
+                <Sparkles size={21} />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold" id="idea-step-heading">
+                  Co chciałbyś zmienić?
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Nie musisz znać urzędowych nazw ani kategorii.
+                </p>
               </div>
-              <div className="flex items-center gap-3 border-t border-slate-200 bg-white p-4">
-                <span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-800">
-                  <FileImage size={19} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">
-                    {imageFile.name}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {(imageFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
+            </div>
+
+            <label className={`${uiTheme.text.label} mt-6 block`}>
+              Opisz problem lub pomysł
+              <textarea
+                autoFocus
+                className={`${uiTheme.field} mt-2 min-h-36 resize-y py-3 text-base`}
+                maxLength={3000}
+                onChange={(event) =>
+                  setIdea({ ...idea, desc: event.target.value })
+                }
+                placeholder="Np. Przy szkole na naszej ulicy brakuje bezpiecznego przejścia dla pieszych..."
+                required
+                value={idea.desc}
+              />
+              <span className="text-app-text-subtle mt-1 block text-right text-[11px]">
+                {idea.desc.length}/3000
+              </span>
+            </label>
+
+            <div className="mt-3 flex flex-wrap gap-2" aria-label="Przykłady">
+              {descriptionSuggestions.map((suggestion) => (
                 <button
-                  aria-label="Usuń zdjęcie"
-                  className={`${uiTheme.iconButton} text-red-700 hover:bg-red-50`}
-                  onClick={() => setImageFile(null)}
+                  className="rounded-full border border-slate-200 px-3 py-2 text-left text-xs text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-800"
+                  key={suggestion}
+                  onClick={() => setIdea({ ...idea, desc: suggestion })}
                   type="button"
                 >
-                  <X size={19} />
+                  {suggestion}
                 </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-xs leading-5 text-blue-950">
+              <Sparkles className="mt-0.5 shrink-0 text-blue-700" size={16} />
+              Na podstawie opisu utworzymy tytuł, dobierzemy kategorię i
+              przypiszemy pomysł do odpowiedniego obszaru.
+            </div>
+
+            <div className="mt-7 flex justify-end border-t border-slate-100 pt-5">
+              <button
+                className={uiTheme.button.primary}
+                disabled={idea.desc.trim().length < 15}
+                onClick={() => setStep(2)}
+                type="button"
+              >
+                Dalej <ArrowRight size={17} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section aria-labelledby="location-step-heading">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
+                <MapPin size={21} />
+              </span>
+              <div>
+                <h2
+                  className="text-lg font-semibold"
+                  id="location-step-heading"
+                >
+                  Gdzie to jest?
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Dzielnicę ustawiliśmy z Twojego profilu. Możesz ją zmienić.
+                </p>
               </div>
             </div>
-          ) : (
-            <div
-              className={`mt-2 flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
-                isDragging
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-slate-300 bg-slate-50/70 hover:border-blue-400 hover:bg-blue-50/50'
-              }`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={handleDrop}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ')
-                  fileInputRef.current?.click();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <span className="grid size-14 place-items-center rounded-2xl bg-blue-100 text-blue-800">
-                <Upload size={25} />
-              </span>
-              <p className="mt-4 text-sm font-semibold text-slate-800">
-                Przeciągnij zdjęcie tutaj lub kliknij, aby wybrać
-              </p>
-              <p className="mt-2 text-xs text-slate-500">
-                JPG, PNG lub WEBP · maksymalnie 10 MB
-              </p>
-            </div>
-          )}
-          {imageError && (
-            <p className="mt-2 text-xs font-medium text-red-700" role="alert">
-              {imageError}
-            </p>
-          )}
-        </div>
 
-        <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-          <button
-            className={uiTheme.button.ghost}
-            onClick={() => navigate(-1)}
-            type="button"
-          >
-            Anuluj
-          </button>
-          <button className={uiTheme.button.primary} type="submit">
-            <Send size={17} /> Zapisz pomysł
-          </button>
-        </div>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <label className={uiTheme.text.label}>
+                Dzielnica *
+                <select
+                  className={`${uiTheme.field} mt-2`}
+                  onChange={(event) =>
+                    setIdea({ ...idea, district: event.target.value })
+                  }
+                  required
+                  value={idea.district}
+                >
+                  {catalog?.districts.map((district) => (
+                    <option key={district.id} value={district.name}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={uiTheme.text.label}>
+                Ulica lub charakterystyczne miejsce
+                <input
+                  className={`${uiTheme.field} mt-2`}
+                  onChange={(event) => setStreet(event.target.value)}
+                  placeholder="Opcjonalnie"
+                  value={street}
+                />
+              </label>
+            </div>
+
+            <label className={`${uiTheme.text.label} mt-5 block`}>
+              Dlaczego to ważne? Kto na tym skorzysta?
+              <textarea
+                className={`${uiTheme.field} mt-2 min-h-24 resize-y py-3`}
+                maxLength={1000}
+                onChange={(event) => setImpact(event.target.value)}
+                placeholder="Opcjonalny kontekst, np. dzieci idące do szkoły, seniorzy, rowerzyści..."
+                value={impact}
+              />
+            </label>
+
+            <div className="mt-5">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <ImagePlus size={17} /> Zdjęcie
+                <span className="text-app-text-subtle font-normal">
+                  (opcjonalnie)
+                </span>
+              </div>
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(event) => selectImage(event.target.files?.[0])}
+                ref={fileInputRef}
+                type="file"
+              />
+
+              <div
+                className={`mt-2 flex min-h-20 items-center gap-3 rounded-xl border border-dashed p-3 transition-colors ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-300 hover:border-blue-300'
+                }`}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDrop}
+              >
+                {imagePreview && imageFile ? (
+                  <>
+                    <img
+                      alt="Podgląd wybranego zdjęcia"
+                      className="size-14 rounded-lg object-cover"
+                      src={imagePreview}
+                    />
+                    <FileImage className="shrink-0 text-blue-700" size={20} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {imageFile.name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {(imageFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      aria-label="Usuń zdjęcie"
+                      className={`${uiTheme.iconButton} text-red-700 hover:bg-red-50`}
+                      onClick={() => setImageFile(null)}
+                      type="button"
+                    >
+                      <X size={18} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800">
+                      <Upload size={20} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-700">
+                        Przeciągnij zdjęcie lub dodaj je z urządzenia
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        JPG, PNG lub WEBP · maks. 10 MB
+                      </p>
+                    </div>
+                    <button
+                      className={uiTheme.button.secondary}
+                      onClick={() => fileInputRef.current?.click()}
+                      type="button"
+                    >
+                      Dodaj zdjęcie
+                    </button>
+                  </>
+                )}
+              </div>
+              {imageError && (
+                <p
+                  className="mt-2 text-xs font-medium text-red-700"
+                  role="alert"
+                >
+                  {imageError}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-7 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
+              <button
+                className={uiTheme.button.ghost}
+                onClick={() => setStep(1)}
+                type="button"
+              >
+                <ArrowLeft size={17} /> Wstecz
+              </button>
+              <button
+                className={uiTheme.button.primary}
+                onClick={() => setStep(3)}
+                type="button"
+              >
+                Dalej <ArrowRight size={17} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {step === 3 && (
+          <section aria-labelledby="summary-step-heading">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-800">
+                <Sparkles size={21} />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold" id="summary-step-heading">
+                  Podsumowanie
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Sprawdź dane przed wysłaniem.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-blue-100 bg-white/45 p-5 md:p-6">
+              <h3 className="text-xl leading-snug font-bold text-slate-950">
+                {generatedTitle}
+              </h3>
+              <div className="mt-3">
+                <AiScoreBadge title={generatedTitle} />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {idea.desc}
+              </p>
+              <dl className="mt-5 grid gap-3 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs text-slate-500">Kategoria</dt>
+                  <dd className="mt-1 font-semibold text-slate-800">
+                    {generatedCategory}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">Obszar</dt>
+                  <dd className="mt-1 font-semibold text-slate-800">
+                    {idea.district}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">Zasięg</dt>
+                  <dd className="mt-1 font-semibold text-slate-800">Lokalny</dd>
+                </div>
+              </dl>
+              {(street || impact || imageFile) && (
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5 text-xs text-slate-600">
+                  {street && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1.5">
+                      <MapPin className="mr-1 inline" size={12} /> {street}
+                    </span>
+                  )}
+                  {impact && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1.5">
+                      Dodano uzasadnienie
+                    </span>
+                  )}
+                  {imageFile && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1.5">
+                      <ImagePlus className="mr-1 inline" size={12} /> Dodano
+                      zdjęcie
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-between">
+              <button
+                className={uiTheme.button.ghost}
+                onClick={() => setStep(2)}
+                type="button"
+              >
+                <ArrowLeft size={17} /> Edytuj
+              </button>
+              <button
+                className={uiTheme.button.primary}
+                disabled={submitting}
+                type="submit"
+              >
+                <Send size={17} />
+                {submitting ? 'Wysyłanie…' : 'Wyślij pomysł'}
+              </button>
+            </div>
+            {submitError && (
+              <p className="mt-4 text-sm font-medium text-red-700" role="alert">
+                {submitError}
+              </p>
+            )}
+          </section>
+        )}
       </form>
     </PageMain>
   );

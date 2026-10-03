@@ -4,13 +4,13 @@ const buttonBase = `inline-flex items-center justify-center gap-2 rounded-xl tex
 
 export const uiTheme = Object.freeze({
   layout: {
-    page: 'min-h-screen bg-app-canvas text-app-text',
+    page: 'min-h-screen text-app-text',
     content: 'mx-auto max-w-[1440px] px-4 py-5 md:px-7 md:py-7',
   },
   surface: {
-    card: 'rounded-2xl border border-app-border bg-app-surface shadow-sm shadow-slate-200/40',
-    muted: 'rounded-2xl bg-app-primary-soft ring-1 ring-app-primary-border',
-    inset: 'rounded-xl bg-app-muted',
+    card: 'app-card-surface rounded-2xl border',
+    muted: 'rounded-2xl bg-blue-50/70 ring-1 ring-app-primary-border',
+    inset: 'rounded-xl bg-slate-100/60',
   },
   text: {
     heading: 'font-bold tracking-tight text-app-text',
@@ -30,7 +30,7 @@ export const uiTheme = Object.freeze({
     ghost: `${buttonBase} px-4 py-2.5 text-app-text-muted hover:bg-app-muted hover:text-app-text`,
     danger: `${buttonBase} px-4 py-2.5 text-red-700 hover:bg-red-50`,
   },
-  field: `h-11 w-full rounded-xl border border-app-border bg-app-surface px-3 text-sm text-app-text outline-none transition-colors placeholder:text-app-text-subtle hover:border-slate-300 focus:border-app-primary focus:ring-2 focus:ring-app-focus/20 ${focusRing}`,
+  field: `h-11 w-full rounded-xl border border-app-border bg-white/80 px-3 text-sm text-app-text outline-none transition-colors placeholder:text-app-text-subtle hover:border-slate-300 focus:border-app-primary focus:ring-2 focus:ring-app-focus/20 ${focusRing}`,
   iconButton: `inline-flex size-10 items-center justify-center rounded-xl text-app-text-muted transition-colors hover:bg-app-muted hover:text-app-primary-strong ${focusRing}`,
   focusRing,
   badge: {

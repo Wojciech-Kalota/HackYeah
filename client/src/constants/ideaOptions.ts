@@ -1,26 +1,5 @@
 import type { IdeaStatus } from '../types/domain';
 
-export const KRAKOW_DISTRICTS = [
-  'I Stare Miasto',
-  'II Grzegórzki',
-  'III Prądnik Czerwony',
-  'IV Prądnik Biały',
-  'V Krowodrza',
-  'VI Bronowice',
-  'VII Zwierzyniec',
-  'VIII Dębniki',
-  'IX Łagiewniki-Borek Fałęcki',
-  'X Swoszowice',
-  'XI Podgórze Duchackie',
-  'XII Bieżanów-Prokocim',
-  'XIII Podgórze',
-  'XIV Czyżyny',
-  'XV Mistrzejowice',
-  'XVI Bieńczyce',
-  'XVII Wzgórza Krzesławickie',
-  'XVIII Nowa Huta',
-] as const;
-
 export const IDEA_CATEGORIES = [
   'Bezpieczeństwo',
   'Czystość i odpady',

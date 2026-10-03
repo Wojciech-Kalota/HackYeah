@@ -1,7 +1,10 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { App } from './App';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import {
+  AdminProtectedRoute,
+  ProtectedRoute,
+} from './components/ProtectedRoute';
 import { AccessibilityPage } from './pages/AccessibilityPage';
 import { AddIdeaPage } from './pages/AddIdeaPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
@@ -17,23 +20,46 @@ import { StartPage } from './pages/StartPage';
 export const router = createBrowserRouter([
   { path: '/', element: <StartPage /> },
   { path: '/administrator', element: <AdminLoginPage /> },
-  { path: '/administrator/panel', element: <AdminPage /> },
+  {
+    path: '/administrator/panel',
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage />
+      </AdminProtectedRoute>
+    ),
+  },
   { path: '/logowanie', element: <LoginPage /> },
   {
     path: '/administrator/projekty',
-    element: <AdminPage view="projects" />,
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage view="projects" />
+      </AdminProtectedRoute>
+    ),
   },
   {
     path: '/administrator/projekty/:id',
-    element: <AdminPage view="project" />,
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage view="project" />
+      </AdminProtectedRoute>
+    ),
   },
   {
     path: '/administrator/projekty/:id/decyzja',
-    element: <AdminPage view="decision" />,
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage view="decision" />
+      </AdminProtectedRoute>
+    ),
   },
   {
     path: '/administrator/statystyki',
-    element: <AdminPage view="analytics" />,
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage view="analytics" />
+      </AdminProtectedRoute>
+    ),
   },
   { path: '/admin', element: <Navigate replace to="/administrator" /> },
   {

@@ -46,7 +46,7 @@ export type ReportStatus =
   'submitted' | 'under_review' | 'accepted' | 'in_progress' | 'completed';
 
 export type Report = {
-  id: number;
+  id: number | string;
   district: string;
   category: string;
   title: string;

@@ -8,21 +8,22 @@ import {
   ThumbsUp,
   UserRound,
 } from 'lucide-react';
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useEffect,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { api, getApiErrorMessage } from '../api/client';
+import { loadCatalog, mapIdeaToReport } from '../api/reports';
+import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Comment, Duplicate, IdeaStatus } from '../types/domain';
-import {
-  exampleIdeaRelations,
-  citizenIdeas,
-  reports,
-  type Report,
-} from '../utils/dummyData';
-import { getLocalIdeas } from '../utils/localIdeas';
+import type { Report } from '../utils/dummyData';
 
 type IdeaDetails = Omit<Report, 'id' | 'status'> & {
   id: number | string;
@@ -49,7 +50,7 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
       }`}
     >
       {report.image && (
-        <div className="flex min-h-64 items-center justify-center bg-slate-50 sm:p-6 lg:min-h-[480px] lg:border-r lg:border-slate-100">
+        <div className="flex min-h-64 items-center justify-center bg-slate-50/60 backdrop-blur-sm sm:p-6 lg:min-h-[480px] lg:border-r lg:border-slate-100">
           <img
             alt={`Zdjęcie do pomysłu: ${report.title}`}
             className="h-auto max-h-[520px] w-full rounded-xl object-contain"
@@ -68,6 +69,7 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
               (status) => status.value === report.status,
             )?.label ?? report.status}
           </span>
+          <AiScoreBadge title={report.title} />
         </div>
         <h1
           className={`${uiTheme.text.heading} mt-5 text-2xl leading-tight md:text-4xl`}
@@ -132,9 +134,6 @@ function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
                   <Copy size={12} /> Potencjalny duplikat
                 </span>
-                <span className="text-app-text-subtle text-[10px]">
-                  ID: {duplicate.idea_id}
-                </span>
               </div>
               <h3 className="mt-3 text-sm font-semibold text-slate-800">
                 {duplicate.title}
@@ -153,15 +152,34 @@ function CommentsSection({
   duplicates,
   isLoggedIn,
   reportId,
+  onAddComment,
 }: {
   comments: Comment[];
   duplicates: Duplicate[];
   isLoggedIn: boolean;
   reportId: number | string;
+  onAddComment: (text: string) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<'comments' | 'duplicates'>(
     'comments',
   );
+  const [draft, setDraft] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submitComment() {
+    if (!draft.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await onAddComment(draft.trim());
+      setDraft('');
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function handleTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -232,23 +250,33 @@ function CommentsSection({
           tabIndex={0}
         >
           {isLoggedIn ? (
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+            <div className="mt-5 rounded-2xl bg-slate-50/60 p-4 backdrop-blur-sm">
               <label className="sr-only" htmlFor="new-comment">
                 Treść komentarza
               </label>
               <textarea
                 className={`${uiTheme.field} min-h-24 resize-y py-3`}
                 id="new-comment"
+                onChange={(event) => setDraft(event.target.value)}
                 placeholder="Napisz komentarz..."
+                value={draft}
               />
               <div className="mt-3 flex justify-end">
                 <button
                   className={`${uiTheme.button.primary} px-4 py-2.5 text-xs`}
+                  disabled={submitting || !draft.trim()}
+                  onClick={() => void submitComment()}
                   type="button"
                 >
-                  <Send size={15} /> Dodaj komentarz
+                  <Send size={15} />
+                  {submitting ? 'Dodawanie…' : 'Dodaj komentarz'}
                 </button>
               </div>
+              {error && (
+                <p className="mt-2 text-sm text-red-700" role="alert">
+                  {error}
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-950">
@@ -304,25 +332,48 @@ function CommentsSection({
 export function IdeaDetailsPage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const accountIdeaId = Number(id?.replace(/^account-/, ''));
-  const knownReport = [...reports, ...citizenIdeas].find(
-    (item) => item.id === accountIdeaId,
-  );
-  const localIdea = getLocalIdeas(user?.id).find((item) => item.id === id);
-  const report: IdeaDetails | undefined =
-    knownReport ??
-    (localIdea && {
-      id: localIdea.id,
-      district: localIdea.district,
-      category: localIdea.category,
-      title: localIdea.title,
-      description: localIdea.desc,
-      status: localIdea.status,
-      comments: 0,
-      support: 0,
-      updatedAt: localIdea.created_at,
-      image: localIdea.img ?? '',
-    });
+  const [report, setReport] = useState<IdeaDetails>();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!id) return;
+    void Promise.all([
+      api.ideas.get(id),
+      loadCatalog(),
+      api.ideas.comments.list(id),
+    ])
+      .then(([idea, catalog, apiComments]) => {
+        setReport(mapIdeaToReport(idea, catalog, apiComments.length));
+        setComments(
+          apiComments.map((comment) => ({
+            user_id: comment.userId,
+            date: new Date().toISOString(),
+            text: comment.text,
+          })),
+        );
+      })
+      .catch((loadError) => setError(getApiErrorMessage(loadError)))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  async function addComment(text: string) {
+    if (!id) return;
+    const comment = await api.ideas.comments.create(id, text);
+    setComments((current) => [
+      ...current,
+      {
+        user_id: comment.userId,
+        date: new Date().toISOString(),
+        text: comment.text,
+      },
+    ]);
+  }
+
+  if (loading) {
+    return <PageMain className={uiTheme.layout.content}>Ładowanie…</PageMain>;
+  }
 
   if (!report) {
     return (
@@ -332,7 +383,7 @@ export function IdeaDetailsPage() {
         <div className="text-center">
           <p className="text-sm font-semibold text-blue-800">404</p>
           <h1 className={`${uiTheme.text.heading} mt-2 text-2xl`}>
-            Nie znaleziono pomysłu
+            {error || 'Nie znaleziono pomysłu'}
           </h1>
           <Link className={`${uiTheme.button.secondary} mt-5`} to="/pomysly">
             <ArrowLeft size={16} /> Wróć do listy
@@ -342,7 +393,7 @@ export function IdeaDetailsPage() {
     );
   }
 
-  const { comments, duplicates } = exampleIdeaRelations;
+  const duplicates: Duplicate[] = [];
 
   return (
     <PageMain className={uiTheme.layout.content}>
@@ -361,6 +412,7 @@ export function IdeaDetailsPage() {
         comments={comments}
         duplicates={duplicates}
         isLoggedIn={Boolean(user)}
+        onAddComment={addComment}
         reportId={report.id}
       />
     </PageMain>
