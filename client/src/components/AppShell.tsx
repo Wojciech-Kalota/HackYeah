@@ -1,69 +1,160 @@
+import type { LucideIcon } from 'lucide-react';
 import {
   Accessibility,
   BadgeCheck,
   Bell,
   ChevronDown,
+  Building2,
+  ChevronRight,
   CircleHelp,
   FileText,
   LayoutDashboard,
   Lightbulb,
   LogIn,
   LogOut,
-  MapPin,
   Menu,
   Plus,
-  Search,
+  Settings,
   ShieldCheck,
   Trophy,
+  UserRound,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
 import { uiTheme } from '../styles/theme';
 
-const navigationCitizen = [
-  { label: 'Strona główna', icon: LayoutDashboard, to: '/mieszkaniec' },
+type NavigationItem = {
+  label: string;
+  icon: LucideIcon;
+  to: string;
+  badge?: string;
+};
+
+const navigationCitizen: NavigationItem[] = [
+  { label: 'Pulpit', icon: LayoutDashboard, to: '/mieszkaniec' },
   { label: 'Pomysły mieszkańców', icon: Lightbulb, to: '/pomysly' },
-  {
-    label: 'Ranking inicjatyw',
-    icon: Trophy,
-    to: '/pomysly?sort=popularne',
-  },
-  {
-    label: 'Zrealizowane',
-    icon: BadgeCheck,
-    to: '/pomysly?status=completed',
-  },
-] as const;
+  { label: 'Ranking inicjatyw', icon: Trophy, to: '/pomysly?sort=popularne' },
+  { label: 'Zrealizowane', icon: BadgeCheck, to: '/pomysly?status=completed' },
+];
 
-const navigationLoggedIn = [
-  { label: 'Moje pomysły', icon: FileText, to: '/moje-pomysly' },
-] as const;
+const navigationLoggedIn: NavigationItem[] = [
+  { label: 'Moje pomysły', icon: FileText, to: '/moje-pomysly', badge: '5' },
+];
 
-function Logo() {
+function CitizenLogo() {
   return (
-    <NavLink className="flex items-center gap-3" to="/mieszkaniec">
-      <div className="grid size-9 place-items-center rounded-xl bg-blue-700 text-white shadow-sm">
-        <img
-          alt=""
-          className="h-7 w-6 object-contain mix-blend-screen"
-          src="/st-marys-logo.png"
-        />
-      </div>
-      <div className="leading-tight">
-        <p className="font-bold text-blue-950">Głos Miasta</p>
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
+    <Link className="flex items-center gap-3" to="/mieszkaniec">
+      <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
+        <Building2 size={20} />
+      </span>
+      <span className="leading-tight">
+        <span className="block font-bold text-blue-950">Głos Miasta</span>
+        <span className="block text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
           Kraków
-        </p>
-      </div>
-    </NavLink>
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function CitizenProfile({ onClose }: { onClose?: () => void }) {
+  const { user, logout } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  if (!user) {
+    return (
+      <Link
+        className="flex items-center gap-3 rounded-2xl bg-blue-50 p-2.5 text-left ring-1 ring-blue-100 transition hover:bg-blue-100"
+        onClick={onClose}
+        to="/logowanie"
+      >
+        <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white">
+          <LogIn size={18} />
+        </span>
+        <span>
+          <span className="block text-sm font-bold text-blue-950">
+            Zaloguj się
+          </span>
+          <span className="mt-0.5 block text-[10px] text-blue-700">
+            Konto mieszkańca
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  const initials =
+    `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
+
+  function handleLogout() {
+    logout();
+    setProfileOpen(false);
+    onClose?.();
+    navigate('/mieszkaniec');
+  }
+
+  return (
+    <div className="relative">
+      {profileOpen && (
+        <div className="absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+          <div className="border-b border-slate-100 px-3 py-2.5">
+            <p className="text-xs font-bold text-slate-900">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-500">
+              {user.district}
+            </p>
+          </div>
+          <button
+            className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            onClick={() => setProfileOpen(false)}
+            type="button"
+          >
+            <Settings size={16} /> Ustawienia konta
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50"
+            onClick={handleLogout}
+            type="button"
+          >
+            <LogOut size={16} /> Wyloguj się
+          </button>
+        </div>
+      )}
+
+      <button
+        aria-expanded={profileOpen}
+        className="flex w-full items-center gap-3 rounded-2xl bg-blue-50 p-2.5 text-left ring-1 ring-blue-100 transition hover:bg-blue-100"
+        onClick={() => setProfileOpen((current) => !current)}
+        type="button"
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-800 text-xs font-bold text-white shadow-sm shadow-blue-800/20">
+          {initials}
+        </span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-sm font-bold text-blue-950">
+            {user.firstName} {user.lastName}
+          </span>
+          <span className="mt-1 flex items-center gap-1 text-[10px] font-bold text-blue-700">
+            <UserRound size={12} /> Mieszkaniec
+          </span>
+        </span>
+        <ChevronRight
+          className={`shrink-0 text-blue-500 transition-transform ${profileOpen ? '-rotate-90' : 'rotate-90'}`}
+          size={17}
+        />
+      </button>
+    </div>
   );
 }
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
+  const location = useLocation();
   const navigation = user
     ? [
         ...navigationCitizen.slice(0, 2),
@@ -72,10 +163,24 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       ]
     : navigationCitizen;
 
+  function isActive(to: string) {
+    const [pathname, query] = to.split('?');
+    if (query)
+      return location.pathname === pathname && location.search === `?${query}`;
+    if (to === '/pomysly') {
+      return (
+        location.pathname.startsWith('/pomysly') &&
+        location.search !== '?sort=popularne' &&
+        location.search !== '?status=completed'
+      );
+    }
+    return location.pathname === to;
+  }
+
   return (
-    <aside className="flex h-full flex-col bg-white px-5 py-5">
-      <div className="flex items-center justify-between">
-        <Logo />
+    <aside className="flex h-full flex-col bg-white px-4 py-5">
+      <div className="flex items-center justify-between px-1">
+        <CitizenLogo />
         {onClose && (
           <button
             aria-label="Zamknij menu"
@@ -88,174 +193,71 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      <NavLink
+      <Link
         className={`${uiTheme.button.primary} mt-7 h-11 px-4 py-0`}
         onClick={onClose}
         to={user ? '/dodaj-pomysl' : '/logowanie'}
       >
         {user ? <Plus size={17} /> : <LogIn size={17} />}
         {user ? 'Dodaj pomysł' : 'Zaloguj się'}
-      </NavLink>
+      </Link>
 
-      <nav className="mt-6 space-y-1" aria-label="Główna nawigacja">
-        {navigation.map(({ label, icon: Icon, to }) => (
-          <NavLink
-            className={({ isActive }) =>
-              `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-                isActive &&
-                (to === '/mieszkaniec' ||
-                  to === '/pomysly' ||
-                  to === '/moje-pomysly')
-                  ? 'bg-blue-50 font-semibold text-blue-900'
-                  : 'text-slate-700 hover:bg-slate-50'
-              }`
-            }
-            end={to === '/mieszkaniec'}
-            key={label}
-            onClick={onClose}
-            to={to}
-          >
-            <Icon size={18} strokeWidth={1.8} />
-            {label}
-          </NavLink>
-        ))}
+      <nav className="mt-5 space-y-1" aria-label="Nawigacja mieszkańca">
+        {navigation.map(({ label, icon: Icon, to, badge }) => {
+          const active = isActive(to);
+          return (
+            <Link
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                active
+                  ? 'bg-blue-800 font-semibold text-white shadow-sm shadow-blue-800/15'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+              }`}
+              key={label}
+              onClick={onClose}
+              to={to}
+            >
+              <Icon size={18} strokeWidth={1.9} />
+              <span>{label}</span>
+              {badge && (
+                <span
+                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    active
+                      ? 'bg-white/15 text-white'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="mt-auto space-y-2 border-t border-slate-100 pt-5 text-xs text-slate-600">
-        <a
-          className="flex items-center gap-2 hover:text-blue-800"
-          href="#pomoc"
-        >
-          <CircleHelp size={15} /> Pomoc / Jak to działa
-        </a>
-        <a
-          className="flex items-center gap-2 hover:text-blue-800"
-          href="#standardy"
-        >
-          <ShieldCheck size={15} /> Karta Dialogu
-        </a>
-        <a
-          className="flex items-center gap-2 hover:text-blue-800"
-          href="#dostepnosc"
-        >
-          <Accessibility size={15} /> Tryb dostępności
-        </a>
+      <div className="mt-auto">
+        <div className="mb-4 space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
+          <a
+            className="flex items-center gap-2 px-1 hover:text-blue-800"
+            href="#pomoc"
+          >
+            <CircleHelp size={15} /> Pomoc / Jak to działa
+          </a>
+          <a
+            className="flex items-center gap-2 px-1 hover:text-blue-800"
+            href="#standardy"
+          >
+            <ShieldCheck size={15} /> Karta Dialogu
+          </a>
+          <a
+            className="flex items-center gap-2 px-1 hover:text-blue-800"
+            href="#dostepnosc"
+          >
+            <Accessibility size={15} /> Tryb dostępności
+          </a>
+        </div>
+        <CitizenProfile onClose={onClose} />
       </div>
     </aside>
-  );
-}
-
-function ProfileMenu() {
-  const { user, logout } = useAuth();
-  const [open, setOpen] = useState(false);
-  const navigate = useNavigate();
-
-  if (!user) {
-    return (
-      <Link
-        className={`${uiTheme.button.secondary} shrink-0 px-3 py-2 text-xs`}
-        to="/logowanie"
-      >
-        <LogIn size={15} />{' '}
-        <span className="hidden sm:inline">Zaloguj się</span>
-      </Link>
-    );
-  }
-
-  const initials =
-    `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
-
-  function handleLogout() {
-    logout();
-    setOpen(false);
-    navigate('/mieszkaniec');
-  }
-
-  return (
-    <div className="relative border-l border-slate-200 pl-3">
-      <button
-        aria-expanded={open}
-        className="flex items-center gap-2 rounded-xl p-1.5 text-left hover:bg-slate-50"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        <span className="grid size-9 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white">
-          {initials}
-        </span>
-        <span className="hidden leading-tight md:block">
-          <span className="block text-sm font-semibold">
-            {user.firstName} {user.lastName}
-          </span>
-          <span className="block max-w-40 truncate text-[11px] text-slate-500">
-            Mieszkaniec · {user.district}
-          </span>
-        </span>
-        <ChevronDown className="hidden text-slate-400 md:block" size={15} />
-      </button>
-
-      {open && (
-        <div className="absolute top-13 right-0 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-          <div className="border-b border-slate-100 px-3 py-2 md:hidden">
-            <p className="text-sm font-semibold">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="mt-0.5 truncate text-[11px] text-slate-500">
-              {user.district}
-            </p>
-          </div>
-          <button
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-700 hover:bg-red-50"
-            onClick={handleLogout}
-            type="button"
-          >
-            <LogOut size={16} /> Wyloguj się
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
-  return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur md:gap-4 md:px-7">
-      <button
-        aria-label="Otwórz menu"
-        className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
-        onClick={onOpenMenu}
-        type="button"
-      >
-        <Menu size={21} />
-      </button>
-      <div className="relative max-w-xl flex-1">
-        <Search
-          className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-          size={17}
-        />
-        <input
-          aria-label="Szukaj w serwisie"
-          className="h-10 w-full rounded-xl bg-slate-100 pr-4 pl-10 text-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-700/20"
-          placeholder="Szukaj inicjatyw..."
-          type="search"
-        />
-      </div>
-      <button
-        className="hidden items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-xs font-medium text-blue-950 xl:flex"
-        type="button"
-      >
-        <MapPin className="text-emerald-600" size={15} /> Kraków · Wszystkie
-        dzielnice
-      </button>
-      <button
-        aria-label="Powiadomienia"
-        className="relative hidden rounded-lg p-2 text-slate-700 hover:bg-slate-100 sm:block"
-        type="button"
-      >
-        <Bell size={19} />
-        <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-red-500 ring-2 ring-white" />
-      </button>
-      <ProfileMenu />
-    </header>
   );
 }
 
@@ -280,8 +282,18 @@ export function AppShell() {
           </div>
         </div>
       )}
+
       <div className="lg:pl-64">
-        <Topbar onOpenMenu={() => setMenuOpen(true)} />
+        <div className="px-4 pt-4 lg:hidden">
+          <button
+            aria-label="Otwórz menu"
+            className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-slate-200"
+            onClick={() => setMenuOpen(true)}
+            type="button"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
         <Outlet />
       </div>
     </div>

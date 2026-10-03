@@ -1,3 +1,5 @@
+import type { Comment, Duplicate, Upvote } from '../types/domain';
+
 export type DashboardStatId =
   'submitted' | 'under_review' | 'in_progress' | 'completed';
 
@@ -172,6 +174,79 @@ export const reports: Report[] = [
   },
 ];
 
+export const mockCitizenIdeas: Report[] = [
+  {
+    id: 9,
+    district: 'Czyżyny',
+    category: 'Sport i rekreacja',
+    title: 'Rodzinny plac zabaw w Parku Lotników',
+    description:
+      'Rozbudowa istniejącej strefy o urządzenia integracyjne, zacienione miejsca odpoczynku i bezpieczną nawierzchnię.',
+    status: 'under_review',
+    comments: 37,
+    support: 264,
+    updatedAt: '2026-10-03T08:20:00Z',
+    image:
+      'https://images.unsplash.com/photo-1596997000103-e597b3ca50df?auto=format&fit=crop&w=640&q=80',
+  },
+  {
+    id: 10,
+    district: 'Bieżanów-Prokocim',
+    category: 'Transport publiczny',
+    title: 'Częstsze kursy autobusów w godzinach porannych',
+    description:
+      'Zwiększenie częstotliwości kursów na najbardziej obciążonych liniach między osiedlami a centrum miasta.',
+    status: 'submitted',
+    comments: 52,
+    support: 438,
+    updatedAt: '2026-10-02T14:05:00Z',
+    image:
+      'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=640&q=80',
+  },
+  {
+    id: 11,
+    district: 'Zwierzyniec',
+    category: 'Infrastruktura rowerowa',
+    title: 'Bezpieczne połączenie rowerowe z Błoniami',
+    description:
+      'Wydzielenie brakującego odcinka drogi rowerowej oraz uporządkowanie przejazdu przez ruchliwe skrzyżowanie.',
+    status: 'accepted',
+    comments: 31,
+    support: 356,
+    updatedAt: '2026-09-30T10:40:00Z',
+    image:
+      'https://images.unsplash.com/photo-1571068316344-75bc76f77890?auto=format&fit=crop&w=640&q=80',
+  },
+  {
+    id: 12,
+    district: 'Mistrzejowice',
+    category: 'Zdrowie i dostępność',
+    title: 'Ławki z podłokietnikami przy przychodni',
+    description:
+      'Montaż wygodnych ławek dostosowanych do potrzeb seniorów na trasie między przystankiem a przychodnią.',
+    status: 'in_progress',
+    comments: 14,
+    support: 129,
+    updatedAt: '2026-09-27T12:15:00Z',
+    image:
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=640&q=80',
+  },
+  {
+    id: 13,
+    district: 'Podgórze Duchackie',
+    category: 'Czystość i odpady',
+    title: 'Osiedlowy punkt wymiany rzeczy używanych',
+    description:
+      'Uruchomienie zadaszonego punktu, w którym mieszkańcy mogą zostawiać sprawne książki, zabawki i drobne wyposażenie.',
+    status: 'completed',
+    comments: 26,
+    support: 211,
+    updatedAt: '2026-09-24T15:30:00Z',
+    image:
+      'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=640&q=80',
+  },
+];
+
 export const completedProject = {
   title: 'Nowe ławki i alejki w Parku Jordana',
   description:
@@ -225,4 +300,3 @@ export const exampleIdeaRelations: IdeaRelations = {
     },
   ],
 };
-import type { Comment, Duplicate, Upvote } from '../types/domain';

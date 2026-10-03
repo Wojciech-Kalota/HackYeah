@@ -1,4 +1,10 @@
-import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  Lightbulb,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -21,7 +27,12 @@ export function ReportsPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
-  const district = searchParams.get('district') ?? 'all';
+  const residentDistrict =
+    user?.district.replace(/^[IVXLCDM]+\s+/, '') ?? 'all';
+  const defaultDistrict = districts.includes(residentDistrict)
+    ? residentDistrict
+    : 'all';
+  const district = searchParams.get('district') ?? defaultDistrict;
   const category = searchParams.get('category') ?? 'all';
   const statusParam = searchParams.get('status');
   const status = isReportStatus(statusParam) ? statusParam : 'all';
@@ -30,7 +41,8 @@ export function ReportsPage() {
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
-    if (!value || value === 'all') next.delete(key);
+    if (key === 'district' && value === 'all') next.set(key, value);
+    else if (!value || value === 'all') next.delete(key);
     else next.set(key, value);
     setSearchParams(next, { replace: true });
   }
@@ -72,9 +84,9 @@ export function ReportsPage() {
     <main className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-wide text-blue-800 uppercase">
-            Baza zgłoszeń
-          </p>
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+            <Lightbulb size={14} /> Baza pomysłów
+          </div>
           <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
             Pomysły mieszkańców
           </h1>
@@ -178,7 +190,11 @@ export function ReportsPage() {
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!hasFilters}
-            onClick={() => setSearchParams({}, { replace: true })}
+            onClick={() =>
+              setSearchParams(user ? { district: 'all' } : {}, {
+                replace: true,
+              })
+            }
             type="button"
           >
             <RotateCcw size={15} /> Wyczyść
