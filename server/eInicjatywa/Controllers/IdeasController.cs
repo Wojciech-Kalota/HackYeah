@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.Contracts;
 
 namespace eInicjatywa.Controllers
 {
@@ -7,5 +8,58 @@ namespace eInicjatywa.Controllers
     [ApiController]
     public class IdeasController : ControllerBase
     {
+        [HttpPost]
+        public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
+        {
+            return Ok();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetIdeas()
+        {
+            return Ok();
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetIdea(Guid id)
+        {
+            return Ok();
+        }
+
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> UpdateIdea(Guid id, [FromBody] IdeaDto ideaDto)
+        {
+            return Ok();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteIdea(Guid id)
+        {
+            return Ok();
+        }
+
+        [HttpPost("{id}/comments")]
+        public async Task<IActionResult> AddComment(Guid id, [FromBody] CommentDto commentDto)
+        {
+            return Ok();
+        }
+
+        [HttpGet("{id}/comments")]
+        public async Task<IActionResult> GetComments(Guid id)
+        {
+            return Ok();
+        }
+
+        [HttpPut("{id}/comments")]
+        public async Task<IActionResult> UpdateComment(Guid id, [FromBody] CommentDto commentDto)
+        {
+            return Ok();
+        }
+
+        [HttpDelete("{id}/comments")]
+        public async Task<IActionResult> DeleteComment(Guid id)
+        {
+            return Ok();
+        }
     }
 }
