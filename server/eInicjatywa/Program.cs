@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using StackExchange.Redis;
 using eInicjatywa.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,8 +27,10 @@ builder.Services.AddRouting(options =>
 
 string redisConnStr = builder.Configuration.GetConnectionString("Local_Cache_Redis")!;
 var redis = ConnectionMultiplexer.Connect(redisConnStr);
+Console.WriteLine(redisConnStr);
 builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
 
+// ADDING SERVICES
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<UtilsService, UtilsService>();
@@ -112,9 +115,16 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.EnsureCreatedAsync();
+}
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+app.UseAuthentication();
 
 app.MapControllers();
 

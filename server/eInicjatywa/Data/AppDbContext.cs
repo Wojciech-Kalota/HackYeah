@@ -56,5 +56,16 @@ public class AppDbContext : DbContext
             .HasOne(ic => ic.Idea)
             .WithMany(i => i.IdeaCategorys)
             .HasForeignKey(ic=> ic.IdeaId);
+
+        modelBuilder.Entity<Idea>()
+            .HasOne(i => i.Author)
+            .WithMany(u => u.AuthoredIdeas)
+            .HasForeignKey(i => i.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.District)
+            .WithMany(d => d.Users)
+            .HasForeignKey(u => u.DistrictId).IsRequired(false);
     }
 }
