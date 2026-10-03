@@ -61,13 +61,15 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> AddComment(Guid id, [FromBody] CommentDto commentDto)
         {
-            return Ok();
+            var results = await _ideasService.AddCommentAsync(User, id, commentDto);
+            return Ok(results);
         }
 
         [HttpGet("{id}/comments")]
         public async Task<IActionResult> GetComments(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.GetCommentsByIdeaIdAsync(id);
+            return Ok(results);
         }
 
         [HttpPut("{id}/comments")]
@@ -81,7 +83,8 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteComment(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.DeleteCommentAsync(User, id);
+            return results ? NoContent() : BadRequest();
         }
     }
 }

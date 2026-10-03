@@ -11,13 +11,13 @@ namespace eInicjatywa.Services
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
         Task<IEnumerable<Idea>> GetIdeasAsync();
         Task<Idea> GetIdeaByIdAsync(Guid id);
-        Task<IdeaDto?> UpdateIdeaAsync(Guid id, IdeaDto ideaDto);
+        Task<IdeaDto?> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
         Task<bool> DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
-        Task<CommentDto> AddCommentAsync(Guid ideaId, CommentDto commentDto);
-        Task<IEnumerable<CommentDto>> GetCommentsByIdeaIdAsync(Guid ideaId);
-        Task<CommentDto?> UpdateCommentAsync(Guid commentId, CommentDto commentDto);
-        Task<bool> DeleteCommentAsync(Guid commentId);
+        Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto);
+        Task<IEnumerable<Comment>> GetCommentsByIdeaIdAsync(Guid ideaId);
+        Task<CommentDto?> UpdateCommentAsync(ClaimsPrincipal? user, Guid commentId, CommentDto commentDto);
+        Task<bool> DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
     }
 
     public class IdeasService : IIdeasService
@@ -66,7 +66,7 @@ namespace eInicjatywa.Services
             return idea;
         }
 
-        public async Task<IdeaDto?> UpdateIdeaAsync(Guid id, IdeaDto ideaDto)
+        public async Task<IdeaDto?> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
         {
             throw new NotImplementedException();
         }
@@ -86,24 +86,46 @@ namespace eInicjatywa.Services
             return false;
         }
 
-        public async Task<CommentDto> AddCommentAsync(Guid ideaId, CommentDto commentDto)
+        public async Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var comment = new Comment
+            {
+                Text = commentDto.Text,
+                IdeaId = ideaId,
+                UserId = userId
+            };
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
+            return commentDto;
+        }
+
+        public async Task<IEnumerable<Comment>> GetCommentsByIdeaIdAsync(Guid ideaId)
+        {
+            return _context.Comments
+                .Where(c => c.IdeaId == ideaId)
+                .ToList();
+        }
+
+        public async Task<CommentDto?> UpdateCommentAsync(ClaimsPrincipal? user, Guid commentId, CommentDto commentDto)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IEnumerable<CommentDto>> GetCommentsByIdeaIdAsync(Guid ideaId)
+        public async Task<bool> DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId)
         {
-            throw new NotImplementedException();
-        }
+            Guid userId = await _utilsService.GetUserId(user);
+            var comment = await _context.Comments.FindAsync(commentId);
 
-        public async Task<CommentDto?> UpdateCommentAsync(Guid commentId, CommentDto commentDto)
-        {
-            throw new NotImplementedException();
-        }
+            if (comment.UserId == userId || await _utilsService.HasAdminRole(user))
+            {
+                _context.Comments.Remove(comment);
+                await _context.SaveChangesAsync();
+                return true;
+            }
 
-        public async Task<bool> DeleteCommentAsync(Guid commentId)
-        {
-            throw new NotImplementedException();
+            return false;
         }
     }
 }
