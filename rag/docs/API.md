@@ -122,3 +122,7 @@ Kody: busy, configuration, openai_error, model_output, submission_conflict,
 index_error, database_unavailable. Respektuj Retry-After, jeśli występuje.
 Konfiguracja i nieaktualny indeks wymagają poprawienia przyczyny.
 Usługa działa na localhost, bez uwierzytelniania i CORS, jedna analiza naraz.
+
+Oceny korzystają z progów i przykładów kalibracyjnych: ważność wynika z konkretnej szkody, a zasięg z opisanego wdrożenia. Brak zasięgu oznacza poziom 2; brak opisanej szkody poziom 2 ważności. Nie zakładamy automatycznie regionalnego wdrożenia. Przy pustym rozwiązaniu koszt i czas pozostają na poziomie 3. Wynik jest orientacyjnym rankingiem, a nie wyceną.
+
+Powtórzenie tego samego `submission_id` zwraca zapisaną odpowiedź. Do sprawdzenia nowych ocen użyj nowego `submission_id`; restart serwera nie przelicza zapisanych wyników.

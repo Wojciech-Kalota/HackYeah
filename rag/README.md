@@ -112,3 +112,7 @@ Wagi i wzór: [kontrakt API](docs/API.md).
 
 Testy bazy wymagają TEST_DATABASE_URL. [Instrukcja](tests/README.md).
 Testy używają atrap OpenAI; trafność modeli oceniaj również ręcznie.
+
+Oceny korzystają z progów i przykładów kalibracyjnych: ważność wynika z konkretnej szkody, a zasięg z opisanego wdrożenia. Brak zasięgu oznacza poziom 2; brak opisanej szkody poziom 2 ważności. Nie zakładamy automatycznie regionalnego wdrożenia. Przy pustym rozwiązaniu koszt i czas pozostają na poziomie 3. Wynik jest orientacyjnym rankingiem, a nie wyceną.
+
+Powtórzenie tego samego `submission_id` zwraca zapisaną odpowiedź. Do sprawdzenia nowych ocen użyj nowego `submission_id`; restart serwera nie przelicza zapisanych wyników.

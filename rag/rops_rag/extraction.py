@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, create_model, field_validator, model
 
 from .models import Concept
 from .categories import validate_categories
-from .scoring import Assessment
+from .scoring import Assessment, SCORING_PROMPT
 
 
 class ExtractedConcept(BaseModel):
@@ -89,24 +89,8 @@ Nie wymyślaj ID. Nie oceniaj nowości; nie masz dostępu do bazy.
 Jeśli tekst opisuje pomysł lub potrzebę społeczną, status=ok i niepusta lista
 concepts. W pozostałych przypadkach status=no_concepts i concepts=[].
 """
-SYSTEM_PROMPT += """
-Dla każdej koncepcji oceń assessment w czterech wymiarach, każda ocena jako
-liczba całkowita 1..5. Jest to orientacyjna ocena na podstawie opisu, nie wycena.
-cost: 1 minimalne zasoby/istniejące narzędzia, 2 mały lokalny nakład,
-3 umiarkowane zasoby lub mały zespół, 4 duże zasoby/specjaliści,
-5 znaczne inwestycje, infrastruktura lub utrzymanie wielu zespołów.
-duration: czas do uruchomienia użytecznego pilotażu, nie czas utrzymania:
-1 do tygodnia, 2 do miesiąca, 3 do kwartału, 4 do roku, 5 ponad rok.
-importance: 1 niewielka wygoda, 2 ograniczona poprawa, 3 istotna potrzeba,
-4 poważne wykluczenie/zdrowie/bezpieczeństwo, 5 krytyczne zagrożenie lub
-niezaspokojona podstawowa potrzeba. Nie uznawaj samego użycia AI za wartość.
-reach: 1 pojedyncze osoby, 2 mała lokalna grupa, 3 jedna społeczność/instytucja,
-4 wiele społeczności lub instytucji, 5 szeroki zasięg regionalny.
-Oceniaj uzasadniony potencjał, nie obietnice i nie liczbę słów w opisie.
-Przy braku informacji stosuj 3 dla nieznanego wymiaru zamiast optymistycznych
-założeń; przy pustym solution cost i duration muszą wynosić 3.
-Nie dodawaj uzasadnień, kwot ani dat do assessment. Score obliczy kod.
-"""
+SYSTEM_PROMPT += SCORING_PROMPT
+
 
 
 class ExtractionError(RuntimeError):

@@ -46,3 +46,21 @@ class ScoringTests(TestCase):
         self.assertEqual(result.public_dump()["concepts"][0]["score"],50)
         self.assertEqual(result.concepts[0].assessment.cost,3)
         self.assertEqual(result.concepts[0].assessment.duration,3)
+
+    def test_calibration_examples_match_formula(self):
+        # Check numbers embedded in the rubric; this does not evaluate a live LLM.
+        import re
+        from rops_rag.scoring import SCORING_PROMPT
+        examples = re.findall(
+            r"cost=(\d), duration=(\d), importance=(\d), reach=(\d); score=([\d.]+)\.",
+            SCORING_PROMPT,
+        )
+        self.assertEqual(len(examples), 5)
+        scores = []
+        for cost, duration, importance, reach, expected in examples:
+            actual = Assessment(cost=int(cost), duration=int(duration),
+                                importance=int(importance), reach=int(reach)).score()
+            self.assertEqual(actual, float(expected))
+            scores.append(actual)
+        self.assertEqual(min(scores), 0)
+        self.assertEqual(max(scores), 100)
