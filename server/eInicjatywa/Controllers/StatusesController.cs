@@ -1,4 +1,5 @@
 ﻿using eInicjatywa.Dtos;
+using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,17 +10,39 @@ namespace eInicjatywa.Controllers
     [ApiController]
     public class StatusesController : ControllerBase
     {
+        private readonly IStatusService _statusService;
+        public StatusesController(IStatusService statusService)
+        {
+            _statusService = statusService;
+        }
+        
         [Authorize(Roles = "ADMIN_USER")]
         [HttpPost]
-        public async Task<IActionResult> CreateStatus([FromBody] StatusDto statusDto)
+        public async Task<IActionResult> CreateStatus([FromBody] StatusAddDto statusDto)
         {
-            return Ok();
+            try
+            {
+                var response = await _statusService.AddStatus(User, statusDto);
+                return Ok(response);       
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetStatuses()
         {
-            return Ok();
+            try
+            {
+                var response = await _statusService.GetStatus(User);
+                return Ok(response);       
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [Authorize(Roles = "ADMIN_USER")]

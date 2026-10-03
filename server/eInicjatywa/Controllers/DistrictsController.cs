@@ -1,4 +1,5 @@
 ﻿using eInicjatywa.Dtos;
+using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,17 +11,39 @@ namespace eInicjatywa.Controllers
     [Authorize(Roles = "ADMIN_USER")]
     public class DistrictsController : ControllerBase
     {
+        private readonly IDistrictService _districtService;
+
+        public DistrictsController(IDistrictService districtService)
+        {
+            _districtService = districtService;
+        }
         [HttpPost]
         [Authorize(Roles = "ADMIN_USER")]
-        public async Task<IActionResult> CreateDistrict([FromBody] DistrictDto districtDto)
+        public async Task<IActionResult> CreateDistrict([FromBody] DistrictAddDto districtDto)
         {
-            return Ok();
+            try
+            {
+                var response = await _districtService.AddDistrict(User, districtDto);
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetDistricts()
         {
-            return Ok();
+            try
+            {
+                var response = await _districtService.GetDistrict(User);
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPatch("{id}")]

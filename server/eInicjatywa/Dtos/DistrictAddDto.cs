@@ -1,9 +1,7 @@
-﻿
 namespace eInicjatywa.Dtos
 {
-    public record  DistrictDto
+    public record DistrictAddDto
     (
-        Guid Id,
         string Name
     );
 }

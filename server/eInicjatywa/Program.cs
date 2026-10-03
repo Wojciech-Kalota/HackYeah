@@ -14,6 +14,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<UtilsService, UtilsService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IIdeasService, IdeasService>();
+builder.Services.AddScoped<IStatusService, StatusService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IDistrictService, DistrictService>();
 
 string postgresConnStr = builder.Configuration.GetConnectionString("Local_Database_Postgres")!;
 builder.Services.AddDbContext<AppDbContext>(options =>
