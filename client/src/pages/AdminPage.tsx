@@ -104,13 +104,13 @@ const navigation: Array<{
   {
     label: 'Pulpit',
     icon: LayoutDashboard,
-    href: '/admin/panel',
+    href: '/administrator/panel',
     activeOn: 'dashboard',
   },
   {
     label: 'Projekty',
     icon: Sparkles,
-    href: '/admin/panel/projekty',
+    href: '/administrator/projekty',
     activeOn: 'projects',
     badge: '8',
   },
@@ -118,7 +118,7 @@ const navigation: Array<{
 
 function AdminLogo() {
   return (
-    <Link className="flex items-center gap-3" to="/admin/panel">
+    <Link className="flex items-center gap-3" to="/administrator/panel">
       <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
         <Building2 size={20} />
       </span>
@@ -209,7 +209,7 @@ function AdminSidebar({
             <Link
               className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50"
               onClick={onClose}
-              to="/admin"
+              to="/administrator"
             >
               <LogOut size={16} /> Wyloguj się
             </Link>
@@ -577,7 +577,7 @@ export function AdminPage({
                   </div>
                   <Link
                     className="text-xs font-bold text-blue-800 hover:text-blue-950"
-                    to="/admin/panel/projekty"
+                    to="/administrator/projekty"
                   >
                     Zobacz wszystkie
                   </Link>

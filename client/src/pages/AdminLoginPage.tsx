@@ -37,14 +37,14 @@ export function AdminLoginPage() {
       return;
     }
 
-    navigate('/admin/panel');
+    navigate('/administrator/panel');
   }
 
   function handleDemoLogin() {
     setEmail(demoCredentials.email);
     setPassword(demoCredentials.password);
     setError('');
-    navigate('/admin/panel');
+    navigate('/administrator/panel');
   }
 
   return (
