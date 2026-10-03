@@ -9,6 +9,7 @@ namespace eInicjatywa.Services
     public interface IUserService
     {
         public Task<UserDto> RegisterAsync(ClaimsPrincipal? claimsPrincipal, RegisterDto request);
+        public Task<UserDto> MeAsync(ClaimsPrincipal? claimsPrincipal);
     }
 
     public class UserService : IUserService
@@ -69,6 +70,30 @@ namespace eInicjatywa.Services
             await _db.SaveChangesAsync();
 
             return new UserDto(user.Id,user.Email,user.Name,user.Surname,request.Roles);
+        }
+
+        public async Task<UserDto> MeAsync(ClaimsPrincipal? claimsPrincipal)
+        {
+            if(!await _utilsService.IsAuthenticated(claimsPrincipal))
+            {
+                throw new Exception("Not authenticated");
+            }
+            if(await _utilsService.GetUserId(claimsPrincipal) == Guid.Empty)
+            {
+                throw new Exception("No user id in cookie");
+            }
+
+            var userId = await _utilsService.GetUserId(claimsPrincipal);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+            if(user == null)
+            {
+                throw new Exception("User Does not exist");
+            }
+
+            var roles = await _db.UserRoles.Where(ur => ur.UserId == user.Id).Select(ur=> ur.Role.Name).ToListAsync();
+
+            return new UserDto(user.Id, user.Email, user.Name, user.Surname, roles);
         }
     }
 }

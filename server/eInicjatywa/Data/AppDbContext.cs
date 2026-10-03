@@ -16,12 +16,33 @@ public class AppDbContext : DbContext
     public DbSet<District> Districts => Set<District>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Status> Statuses => Set<Status>();
-    public DbSet<Vote> Votes => Set<Vote>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // USER_ROLES CONFIG
+        modelBuilder.Entity<UserRole>()
+            .HasKey(ur => new { ur.UserId, ur.RoleId });
+        modelBuilder.Entity<UserRole>()
+            .HasOne(ur => ur.User)
+            .WithMany(u => u.UserRoles)
+            .HasForeignKey(ur => ur.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserRole>()
+            .HasOne(ur => ur.Role)
+            .WithMany(r => r.UserRoles)
+            .HasForeignKey(ur => ur.RoleId);
+        const string ADMIN_USER_ID = "01a102e0-2f5c-70af-97a4-d6080a3ac21c";
+        const string NORMAL_USER_ID =  "01a102e0-2f5c-7f30-b99c-88b488f589c0";
+
+        modelBuilder.Entity<Role>()
+            .HasData
+            (
+                new Role {Id = Guid.Parse(ADMIN_USER_ID) , Name = "ADMIN_USER"},
+                new Role {Id = Guid.Parse(NORMAL_USER_ID) , Name = "NORMAL_USER"}
+            );
     }
 }

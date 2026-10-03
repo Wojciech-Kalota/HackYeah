@@ -1,9 +1,10 @@
-using System.Security.Claims;
 using eInicjatywa.Dtos;
 using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace eInicjatywa.Controllers
 {
@@ -16,12 +17,26 @@ namespace eInicjatywa.Controllers
         {
             _userService = userService;
         }
-        [HttpPost]
+        [HttpPost("register")]
         public async Task<IActionResult> RegisterUser(RegisterDto request)
         {
             try
             {
                 var response = await _userService.RegisterAsync(User, request);
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("me")]
+        public async Task<IActionResult> GetUser()
+        {
+            try
+            {
+                var response = await _userService.MeAsync(User);
                 return Ok(response);
             }
             catch(Exception ex)
