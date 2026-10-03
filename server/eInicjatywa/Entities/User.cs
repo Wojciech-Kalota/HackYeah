@@ -11,6 +11,7 @@ public class User
     public string Email { get; set; }
 
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
-    public District District { get; set; } = null!;
+    public Guid? DistrictId { get; set; } = null;
+    public District? District { get; set; } = null;
     public ICollection<Idea> AuthoredIdeas { get; set; } = new List<Idea>();
 }

@@ -7,22 +7,13 @@ using Scalar.AspNetCore;
 using StackExchange.Redis;
 using eInicjatywa.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ADDING SERVICES
-builder.Services.AddScoped<ISessionService, SessionService>();
-builder.Services.AddScoped<ICacheService, CacheService>();
-builder.Services.AddScoped<UtilsService, UtilsService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IIdeasService, IdeasService>();
-builder.Services.AddScoped<IStatusService, StatusService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<IDistrictService, DistrictService>();
-
 string postgresConnStr = builder.Configuration.GetConnectionString("Local_Database_Postgres")!;
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString(postgresConnStr)));
+    options.UseNpgsql(postgresConnStr));
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -36,7 +27,18 @@ builder.Services.AddRouting(options =>
 
 string redisConnStr = builder.Configuration.GetConnectionString("Local_Cache_Redis")!;
 var redis = ConnectionMultiplexer.Connect(redisConnStr);
+Console.WriteLine(redisConnStr);
 builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+
+// ADDING SERVICES
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<UtilsService, UtilsService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IIdeasService, IdeasService>();
+builder.Services.AddScoped<IStatusService, StatusService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IDistrictService, DistrictService>();
 
 builder.Services.AddAuthentication("SessionCookie")
 .AddCookie("SessionCookie", options =>
@@ -113,9 +115,16 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.EnsureCreatedAsync();
+}
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+app.UseAuthentication();
 
 app.MapControllers();
 

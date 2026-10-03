@@ -37,7 +37,8 @@ namespace eInicjatywa.Services
                 Email = request.Email,
                 Password = request.Password,
                 Name = request.NameFirst,
-                Surname = request.NameLast
+                Surname = request.NameLast,
+                DistrictId = null
             };
             
             var roles = await _db.Roles.ToListAsync();
