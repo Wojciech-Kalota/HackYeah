@@ -23,9 +23,9 @@ namespace eInicjatywa.Services
     public class IdeasService : IIdeasService
     {
         private readonly AppDbContext _context;
-        private readonly IUtilsService _utilsService;
+        private readonly UtilsService _utilsService;
 
-        public IdeasService(AppDbContext context, IUtilsService utilsService)
+        public IdeasService(AppDbContext context, UtilsService utilsService)
         {
             _context = context;
             _utilsService = utilsService;

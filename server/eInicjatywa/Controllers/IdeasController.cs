@@ -83,8 +83,14 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteComment(Guid id)
         {
-            var results = await _ideasService.DeleteCommentAsync(User, id);
-            return results ? NoContent() : BadRequest();
+            try{
+                var results = await _ideasService.DeleteCommentAsync(User, id);
+                return results ? NoContent() : BadRequest();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
