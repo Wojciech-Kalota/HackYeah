@@ -9,7 +9,6 @@ namespace eInicjatywa.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "ADMIN_USER")]
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryService _categoryService;
@@ -50,14 +49,22 @@ namespace eInicjatywa.Controllers
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryDto categoryDto)
         {
-            return Ok();
+            try
+            {
+                var result = await _categoryService.UpdateCategory(id, categoryDto);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
-            return Ok();
+            return await _categoryService.DeleteCategory(id) ? NoContent() : NotFound();
         }
     }
 }

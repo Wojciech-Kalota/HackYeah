@@ -10,12 +10,16 @@ class Concept:
     context: str = ""
 
     def __post_init__(self):
-        for field in ("problem", "audience", "solution", "category"):
+        for field in ("problem", "audience", "category"):
             value = getattr(self, field)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"Pole {field} musi być niepustym tekstem")
         if not isinstance(self.context, str):
             raise ValueError("Pole context musi być tekstem")
+        if not isinstance(self.solution, str):
+            raise ValueError("Pole solution musi być tekstem")
+        if not self.solution.strip():
+            object.__setattr__(self, "solution", "")
 
     def retrieval_text(self) -> str:
         return "\n".join((

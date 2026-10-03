@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using eInicjatywa.Data;
+using eInicjatywa.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Configuration;
 
@@ -33,12 +35,14 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
 // ADDING SERVICES
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
-builder.Services.AddScoped<UtilsService, UtilsService>();
+builder.Services.AddScoped<UtilsService>();
+builder.Services.AddScoped<IUtilsService>(provider => provider.GetRequiredService<UtilsService>());
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IIdeasService, IdeasService>();
 builder.Services.AddScoped<IStatusService, StatusService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IDistrictService, DistrictService>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 builder.Services.AddAuthentication("SessionCookie")
 .AddCookie("SessionCookie", options =>
@@ -83,11 +87,18 @@ builder.Services.AddAuthentication("SessionCookie")
                 }
 
                 //REBUILD CLAIM PRINCIPLE
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var roles = await db.UserRoles
+                    .Where(userRole => userRole.UserId == cachedSession.UserId)
+                    .Select(userRole => userRole.Role.Name)
+                    .ToListAsync();
+
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, cachedSession.UserId.ToString()),
                     new Claim("SessionToken", cachedSession.Token.ToString())
                 };
+                claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
                 var identity = new ClaimsIdentity(claims, "SessionCookie");
                 context.ReplacePrincipal(new ClaimsPrincipal(identity));
@@ -106,7 +117,8 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod()
-    .WithOrigins("http://localhost:5173/", "http://localhost:5174/"));
+    .AllowCredentials()
+    .WithOrigins("http://localhost:5173", "http://localhost:5174"));
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -119,12 +131,51 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
+
+    string[] districtNames =
+    [
+        "I Stare Miasto", "II Grzegórzki", "III Prądnik Czerwony",
+        "IV Prądnik Biały", "V Krowodrza", "VI Bronowice",
+        "VII Zwierzyniec", "VIII Dębniki", "IX Łagiewniki-Borek Fałęcki",
+        "X Swoszowice", "XI Podgórze Duchackie", "XII Bieżanów-Prokocim",
+        "XIII Podgórze", "XIV Czyżyny", "XV Mistrzejowice", "XVI Bieńczyce",
+        "XVII Wzgórza Krzesławickie", "XVIII Nowa Huta"
+    ];
+    string[] categoryNames =
+    [
+        "Bezpieczeństwo", "Czystość i odpady", "Edukacja",
+        "Infrastruktura drogowa", "Infrastruktura rowerowa", "Kultura",
+        "Sport i rekreacja", "Tereny zielone", "Transport publiczny",
+        "Zdrowie i dostępność"
+    ];
+    string[] statusNames =
+    [
+        "submitted", "under_review", "accepted", "in_progress", "completed", "rejected"
+    ];
+
+    var existingDistricts = await db.Districts.Select(item => item.Name).ToListAsync();
+    var existingCategories = await db.Categories.Select(item => item.Name).ToListAsync();
+    var existingStatuses = await db.Statuses.Select(item => item.Name).ToListAsync();
+
+    db.Districts.AddRange(districtNames
+        .Except(existingDistricts)
+        .Select(name => new District { Name = name }));
+    db.Categories.AddRange(categoryNames
+        .Except(existingCategories)
+        .Select(name => new Category { Name = name }));
+    db.Statuses.AddRange(statusNames
+        .Except(existingStatuses)
+        .Select(name => new Status { Name = name }));
+    await db.SaveChangesAsync();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseAuthorization();
 app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

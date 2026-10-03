@@ -19,13 +19,14 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { api, getApiErrorMessage } from '../api/client';
+import { loadCatalog, type ApiCatalog } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
-import { IDEA_CATEGORIES, KRAKOW_DISTRICTS } from '../constants/ideaOptions';
+import { IDEA_CATEGORIES, LOCATIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Idea } from '../types/domain';
-import { saveLocalIdea } from '../utils/localIdeas';
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -102,10 +103,19 @@ export function AddIdeaPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [catalog, setCatalog] = useState<ApiCatalog | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generatedTitle = createTitle(idea.desc);
   const generatedCategory = inferCategory(idea.desc);
+
+  useEffect(() => {
+    void loadCatalog()
+      .then(setCatalog)
+      .catch((error) => setSubmitError(getApiErrorMessage(error)));
+  }, []);
 
   useEffect(() => {
     if (!imageFile) {
@@ -137,7 +147,7 @@ export function AddIdeaPage() {
     selectImage(event.dataTransfer.files[0]);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || step !== 3) return;
     const context = [
@@ -147,17 +157,48 @@ export function AddIdeaPage() {
     ]
       .filter(Boolean)
       .join('\n\n');
-    saveLocalIdea(
-      {
-        ...idea,
-        title: generatedTitle,
-        category: generatedCategory,
-        desc: context,
-        img: undefined,
-      },
-      user.id,
+    const district = catalog?.districts.find(
+      (item) => item.name === idea.district,
     );
-    navigate('/moje-pomysly?dodano=true');
+    const category = catalog?.categories.find(
+      (item) => item.name === generatedCategory,
+    );
+    const status =
+      catalog?.statuses.find((item) => {
+        const name = item.name.toLowerCase();
+        return (
+          name.includes('submit') ||
+          name.includes('now') ||
+          name.includes('zgłos')
+        );
+      }) ?? catalog?.statuses[0];
+
+    if (!district || !category || !status) {
+      setSubmitError(
+        'Brakuje skonfigurowanej dzielnicy, kategorii lub statusu. Administrator musi najpierw uzupełnić słowniki.',
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      await api.ideas.create({
+        title: generatedTitle,
+        description: context,
+        imageUrl: null,
+        districtId: district.id,
+        categoryId: category.id,
+        categoryIds: [category.id],
+        statusId: status.id,
+        authorId: user.id,
+      });
+      navigate('/moje-pomysly?dodano=true');
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -307,7 +348,7 @@ export function AddIdeaPage() {
                   required
                   value={idea.district}
                 >
-                  {KRAKOW_DISTRICTS.map((district) => (
+                  {LOCATIONS.map((district) => (
                     <option key={district} value={district}>
                       {district}
                     </option>
@@ -516,10 +557,20 @@ export function AddIdeaPage() {
               >
                 <ArrowLeft size={17} /> Edytuj
               </button>
-              <button className={uiTheme.button.primary} type="submit">
-                <Send size={17} /> Wyślij pomysł
+              <button
+                className={uiTheme.button.primary}
+                disabled={submitting}
+                type="submit"
+              >
+                <Send size={17} />
+                {submitting ? 'Wysyłanie…' : 'Wyślij pomysł'}
               </button>
             </div>
+            {submitError && (
+              <p className="mt-4 text-sm font-medium text-red-700" role="alert">
+                {submitError}
+              </p>
+            )}
           </section>
         )}
       </form>

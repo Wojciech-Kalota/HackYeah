@@ -1,61 +1,83 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
 
+import { api, type ApiUser, type Role } from '../api/client';
+
 export type CitizenUser = {
   id: string;
+  email: string;
   firstName: string;
   lastName: string;
   district: string;
+  roles: Role[];
 };
-
-export type LoginData = Omit<CitizenUser, 'id'> & { password: string };
 
 type AuthContextValue = {
   user: CitizenUser | null;
-  login: (data: LoginData) => void;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<CitizenUser>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<CitizenUser | null>;
 };
 
-const AUTH_STORAGE_KEY = 'glos-miasta:citizen';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readStoredUser(): CitizenUser | null {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as CitizenUser) : null;
-  } catch {
-    return null;
-  }
+function mapUser(user: ApiUser): CitizenUser {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.nameFirst,
+    lastName: user.nameLast,
+    district: 'Wszystkie dzielnice',
+    roles: user.roles,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<CitizenUser | null>(readStoredUser);
+  const [user, setUser] = useState<CitizenUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function refresh() {
+    try {
+      const currentUser = mapUser(await api.me());
+      setUser(currentUser);
+      return currentUser;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    void refresh().finally(() => setLoading(false));
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      login: ({ password: _password, ...data }) => {
-        const accountKey = `${data.firstName}-${data.lastName}-${data.district}`
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
-        const citizen = { ...data, id: `citizen-${accountKey}` };
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(citizen));
-        setUser(citizen);
+      loading,
+      login: async (email, password) => {
+        await api.login(email, password);
+        const currentUser = mapUser(await api.me());
+        setUser(currentUser);
+        return currentUser;
       },
-      logout: () => {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        setUser(null);
+      logout: async () => {
+        try {
+          await api.logout();
+        } finally {
+          setUser(null);
+        }
       },
+      refresh,
     }),
-    [user],
+    [loading, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -39,14 +39,15 @@ namespace eInicjatywa.Controllers
         public async Task<IActionResult> GetIdea(Guid id)
         {
             var results = await _ideasService.GetIdeaByIdAsync(id);
-            return Ok(results);
+            return results == null ? NotFound() : Ok(results);
         }
 
         [HttpPatch("{id}")]
         [Authorize]
         public async Task<IActionResult> UpdateIdea(Guid id, [FromBody] IdeaDto ideaDto)
         {
-            return Ok();
+            var result = await _ideasService.UpdateIdeaAsync(User, id, ideaDto);
+            return result == null ? NotFound() : Ok(result);
         }
 
         [HttpDelete("{id}")]
@@ -76,7 +77,8 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateComment(Guid id, [FromBody] CommentDto commentDto)
         {
-            return Ok();
+            var result = await _ideasService.UpdateCommentAsync(User, id, commentDto);
+            return result == null ? NotFound() : Ok(result);
         }
 
         [HttpDelete("{id}/comments")]

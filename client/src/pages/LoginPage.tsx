@@ -10,23 +10,19 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
-import { useAuth, type LoginData } from '../auth/AuthContext';
+import { getApiErrorMessage } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { uiTheme } from '../styles/theme';
 
-const residentAccount: LoginData = {
-  firstName: 'Igor',
-  lastName: 'Nowak',
-  district: 'V Krowodrza',
-  password: 'mieszkaniec2026',
-};
-
 export function LoginPage() {
   const { user, login } = useAuth();
   const [email, setEmail] = useState('mieszkaniec@krakow.pl');
-  const [password, setPassword] = useState(residentAccount.password);
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const destination =
@@ -34,10 +30,18 @@ export function LoginPage() {
 
   if (user) return <Navigate replace to="/mieszkaniec" />;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    login({ ...residentAccount, password });
-    navigate(destination, { replace: true });
+    setSubmitting(true);
+    setError('');
+    try {
+      await login(email, password);
+      navigate(destination, { replace: true });
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -151,7 +155,6 @@ export function LoginPage() {
                       <input
                         autoComplete="current-password"
                         className={`${uiTheme.field} login-field h-12 bg-white/80 px-11 focus:bg-white/90`}
-                        minLength={6}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="Wpisz hasło"
                         required
@@ -193,10 +196,20 @@ export function LoginPage() {
 
                   <button
                     className={`${uiTheme.button.primary} h-12 w-full`}
+                    disabled={submitting}
                     type="submit"
                   >
-                    Zaloguj się <ArrowRight size={17} />
+                    {submitting ? 'Logowanie…' : 'Zaloguj się'}{' '}
+                    <ArrowRight size={17} />
                   </button>
+                  {error && (
+                    <p
+                      className="text-sm font-medium text-red-700"
+                      role="alert"
+                    >
+                      {error}
+                    </p>
+                  )}
                 </form>
               </div>
             </section>

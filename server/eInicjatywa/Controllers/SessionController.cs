@@ -54,6 +54,7 @@ namespace eInicjatywa.Controllers
             try
             {
                 await _sessionService.LogoutAsync(User);
+                await HttpContext.SignOutAsync("SessionCookie");
                 return Ok();
             }
             catch(Exception ex)

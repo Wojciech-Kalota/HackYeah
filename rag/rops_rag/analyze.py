@@ -24,7 +24,7 @@ def main() -> int:
         text = args.file.read_text(encoding="utf-8-sig")
         with OpenAI(timeout=60.0, max_retries=1) as client:
             result = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text, json.loads(args.categories.read_text(encoding="utf-8-sig")))
-        print(result.model_dump_json(indent=2))
+        print(json.dumps({"score":result.score(),**result.public_dump()},ensure_ascii=False,indent=2))
         return 0
     except ExtractionError as error:
         print(f"ExtractionError: {error}", file=sys.stderr)

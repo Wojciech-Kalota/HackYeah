@@ -10,6 +10,8 @@ namespace eInicjatywa.Services
     {
         public Task<CategoryDto> AddCategory(ClaimsPrincipal? claimsPrincipal,CategoryAddDto categoryAddDto);
         public Task<List<CategoryDto>> GetCategorys(ClaimsPrincipal? claimsPrincipal);
+        public Task<CategoryDto?> UpdateCategory(Guid id, CategoryDto dto);
+        public Task<bool> DeleteCategory(Guid id);
     }
 
     public class CategoryService : ICategoryService
@@ -43,6 +45,27 @@ namespace eInicjatywa.Services
         public async Task<List<CategoryDto>> GetCategorys(ClaimsPrincipal? claimsPrincipal)
         {
             return await _db.Categories.AsNoTracking().Select(c => new CategoryDto(c.Id,c.Name)).ToListAsync();
+        }
+
+        public async Task<CategoryDto?> UpdateCategory(Guid id, CategoryDto dto)
+        {
+            var category = await _db.Categories.FindAsync(id);
+            if (category == null) return null;
+            if (await _db.Categories.AnyAsync(c => c.Id != id && c.Name == dto.Name))
+                throw new Exception("Category already exists");
+
+            category.Name = dto.Name;
+            await _db.SaveChangesAsync();
+            return new CategoryDto(category.Id, category.Name);
+        }
+
+        public async Task<bool> DeleteCategory(Guid id)
+        {
+            var category = await _db.Categories.FindAsync(id);
+            if (category == null) return false;
+            _db.Categories.Remove(category);
+            await _db.SaveChangesAsync();
+            return true;
         }
     }
 }

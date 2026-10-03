@@ -1,169 +1,128 @@
 # Kontrakt API — ROPS RAG
 
-Adres lokalny: `http://127.0.0.1:8000`. Format: JSON, UTF-8.
-Swagger: `/docs`. Specyfikacja OpenAPI: `/openapi.json`.
-API wywołuje backend .NET; klucze OpenAI i dane PostgreSQL pozostają w Pythonie.
+Adres: http://127.0.0.1:8000. JSON UTF-8. Swagger: /docs.
+Python wykonuje analizę i zapis w PostgreSQL. .NET wywołuje API.
 
 ## POST /api/ideas/analyze
 
-Analizuje pomysł, porównuje koncepcje z bazą i zapisuje wynik.
-
 ```json
 {
-  "submission_id": "6f1c2b75-ff09-4e67-a57e-0123456789ab",
-  "text": "Wolontariusze będą co tydzień dzwonić do samotnych seniorów.",
-  "categories": [{"id":"integracja_spoleczna","label":"Integracja społeczna"}]
+  "submission_id":"test-001",
+  "text":"Wolontariusze będą co tydzień dzwonić do samotnych seniorów.",
+  "categories":[{"id":"1","label":"Integracja społeczna"}]
 }
 ```
 
-| Pole | Typ | Wymagania |
-| --- | --- | --- |
-| submission_id | string | 1–200 znaków, nie same spacje; ID generuje .NET |
-| text | string | 1–30 000 znaków, nie same spacje |
-| categories | array | Lista kategorii pobrana przez .NET ze swojego backendu |
+Wszystkie pola wymagane. submission_id: string 1–200 znaków, text: string
+1–30 000. categories: 1–100 elementów; unikalne tekstowe id 1–100 znaków,
+label 1–200 znaków, bez pustych/skrajnych spacji. Dodatkowe pola odrzucamy.
+Kategorie pobiera .NET ze swojego backendu i przesyła w POST.
 
-Wszystkie trzy pola są wymagane. `categories` zawiera 1–100 elementów `{id,label}`; ID są unikalnymi tekstami 1–100 znaków, etykiety tekstami 1–200 znaków. Skrajne spacje są odrzucane. Dodatkowe pola są odrzucane.
-
-### Odpowiedź 200
+## Odpowiedź 200
 
 ```json
 {
-  "submission_id": "6f1c2b75-ff09-4e67-a57e-0123456789ab",
-  "replayed": false,
-  "categories": [{"id":"integracja_spoleczna","label":"Integracja społeczna"}],
-  "extraction": {
-    "status": "ok",
-    "concepts": [{
-      "problem": "Samotność",
-      "audience": "Seniorzy",
-      "solution": "Wolontariusze dzwonią do seniorów raz w tygodniu.",
-      "category": "integracja_spoleczna",
-      "context": "",
-      "source_quote": "Wolontariusze będą co tydzień dzwonić do samotnych seniorów."
-    }],
-    "questions": []
+  "contract_version":3,
+  "score":65.0,
+  "submission_id":"test-001",
+  "replayed":false,
+  "categories":[{"id":"1","label":"Integracja społeczna"}],
+  "extraction":{
+    "status":"ok",
+    "concepts":[{
+      "problem":"Samotność","audience":"Seniorzy",
+      "solution":"Cotygodniowe rozmowy z wolontariuszem.",
+      "category":"1","context":"","score":65.0,
+      "source_quote":"Wolontariusze będą co tydzień dzwonić do samotnych seniorów."
+    }]
   },
-  "decisions": [{
-    "input_concept": {
-      "problem": "Samotność",
-      "audience": "Seniorzy",
-      "solution": "Wolontariusze dzwonią do seniorów raz w tygodniu.",
-      "category": "integracja_spoleczna",
-      "context": "",
-      "source_quote": "Wolontariusze będą co tydzień dzwonić do samotnych seniorów."
+  "decisions":[{
+    "input_concept":{
+      "problem":"Samotność","audience":"Seniorzy",
+      "solution":"Cotygodniowe rozmowy z wolontariuszem.",
+      "category":"1","context":"","score":65.0,
+      "source_quote":"Wolontariusze będą co tydzień dzwonić do samotnych seniorów."
     },
-    "decision": {
-      "kind": "new",
-      "candidate_id": null,
-      "reason": "Brak odpowiednika w bazie.",
-      "questions": []
-    },
-    "concept_id": 42,
-    "candidates": [],
-    "liczba_zgloszen": 1
+    "decision":{"kind":"new","candidate_id":null,"reason":"Brak odpowiednika."},
+    "score":65.0,
+    "concept_id":42,
+    "candidates":[],
+    "liczba_zgloszen":1
   }]
 }
 ```
 
-`extraction.status`:
+extraction.status: ok / no_concepts. Przy no_concepts lista concepts oraz
+decisions są puste; nie powstaje koncepcja. Nie ma pytań doprecyzowujących.
 
-| Wartość | Znaczenie |
+| decision.kind | Wynik zapisu |
 | --- | --- |
-| ok | Koncepcje przekazane do porównania |
-| needs_clarification | Wyświetl extraction.questions; decisions jest puste |
-| no_concepts | Nie wykryto koncepcji; decisions jest puste |
+| duplicate | Powiązanie z identyczną lub podobną koncepcją; licznik +1 |
+| new | Nowy rekord, licznik 1 |
 
-`decision.kind`:
+solution jest tekstem i może być dokładnie "", jeśli rozwiązanie jest niejasne
+albo nie zostało podane. Taka koncepcja jest wyszukiwana i porównywana na bazie
+problemu, odbiorców i kontekstu, a następnie zapisywana lub powiązana.
+Przy duplicate zachowujemy dane istniejącej koncepcji; input_concept pokazuje
+opis zgłoszenia i może mieć puste solution.
+candidate_id jest ID kandydata dla duplicate, dla new null.
+concept_id to ID przypisanej koncepcji; liczba_zgloszen to licznik po przetworzeniu.
+ID koncepcji i liczniki mapuj na C# long; ID kategorii są string.
+contract_version=3 oznacza ten format odpowiedzi.
 
-| Wartość | Zapis | candidate_id |
-| --- | --- | --- |
-| duplicate | Powiązanie z istniejącą koncepcją | ID dopasowanego rekordu |
-| similar | Nowa koncepcja z relacją do podobnej | ID podobnego rekordu |
-| new | Nowa koncepcja | null |
-| needs_clarification | Pytania bez zapisu koncepcji | null |
+### Score
 
-`concept_id` to ID koncepcji przypisanej zgłoszeniu. `liczba_zgloszen` to jej
-licznik po przetworzeniu. Oba są `null` dla decyzji `needs_clarification`.
-Przy tej decyzji wyświetl `decision.questions`. Odpowiedź 200 nie zawsze oznacza
-zapis koncepcji. Jeden tekst może zawierać wiele koncepcji.
-ID koncepcji mapuj na C# `long`; licznik również może być `long`.
+`score` jest liczbą 0–100, z jednym miejscem po przecinku. Występuje dla
+każdej koncepcji i decyzji oraz na poziomie całego zgłoszenia (średnia ocen
+koncepcji). Przy no_concepts score zgłoszenia jest null. .NET może użyć
+typu nullable double/decimal. Oceny składowe nie są zwracane.
 
-`candidates` zawiera do pięciu elementów:
+LLM wewnętrznie ocenia cztery wymiary w skali 1–5: koszt (K), czas do
+pilotażu (T), znaczenie społeczne (W), zasięg korzyści (Z).
+Wzór w Pythonie:
 
-```json
-{
-  "concept": {
-    "id": 12,
-    "problem": "Samotność",
-    "audience": "Seniorzy",
-    "solution": "Cotygodniowe rozmowy telefoniczne z wolontariuszem.",
-    "category": "integracja_spoleczna",
-    "context": "Małopolska",
-    "created_at": "2026-10-03T12:00:00+00:00",
-    "liczba_zgloszen": 3
-  },
-  "similarity": 0.87
-}
+```text
+score = round(25 × [0.4 × (W−1) + 0.3 × (Z−1) + 0.2 × (5−K) + 0.1 × (5−T)], 1)
 ```
 
-`similarity` jest liczbą -1..1, nie procentem pewności. `created_at` to ISO 8601
-ze strefą czasu; w .NET użyj `DateTimeOffset`. `solution` opisuje rozwiązanie
-i sposób działania. `context` może być pustym tekstem.
+Niższy koszt i krótszy czas podnoszą wynik. Znaczenie społeczne ma wagę 40%,
+zasięg 30%, koszt 20%, czas 10%. Są to założenia MVP, wymagające kalibracji
+na ocenionych przykładach. Score jest orientacyjnym priorytetem, nie wyceną,
+prognozą czasu ani oceną skuteczności. Nie zależy od licznika zgłoszeń.
+Nieznane parametry przyjmują 3; przy pustym solution koszt i czas wynoszą 3.
+Ocena dotyczy bieżącego zgłoszenia, także gdy zostanie dopasowane jako duplikat.
 
-### Ponawianie
+candidates zawiera do pięciu {concept,similarity}. concept zawiera id,
+problem, audience, solution, category, context, created_at i liczba_zgloszen.
+created_at to ISO 8601 ze strefą (DateTimeOffset). similarity to double -1..1,
+nie procent pewności. Kategorie kandydatów mogą być historyczne.
+solution opisuje rozwiązanie wraz ze sposobem działania.
 
-Ten sam ID, tekst i lista kategorii zwracają zapisany wynik z `replayed: true`,
-bez API i zmian licznika. Wynik jest historyczny, a liczniki nie są odświeżane.
-Zmieniony tekst lub lista kategorii wymaga nowego ID.
-Po timeout analiza może nadal trwać: ponów z tym samym ID i tekstem.
-Przykład HttpClient ustawia timeout 15 minut; czas wykonania nie jest gwarantowany.
+## Ponawianie i .NET
 
-## Kategorie
-
-.NET przesyła słownik w `categories` każdego POST. Python nie pobiera kategorii
-samodzielnie i nie udostępnia katalogu kategorii. LLM zwraca jedno ID z listy.
-ID są tekstowe; numeryczne ID backendu .NET zamień na string przy wysyłaniu.
-Gdy żadna kategoria nie pasuje, wynik wymaga doprecyzowania zamiast wymyślania ID.
-Odpowiedź zawiera także przesłaną listę `categories`, uporządkowaną według ID.
-Zmiana ID lub etykiety kategorii przy tym samym submission_id to konflikt 409.
-Zmiana kolejności kategorii nie jest zmianą zgłoszenia.
-Kandydaci z bazy mogą mieć kategorię spoza bieżącej listy: to zapis historyczny.
-Duplikat zachowuje kategorię istniejącego rekordu; input_concept zawiera bieżącą
-klasyfikację zgłoszenia. Kategorie nie ograniczają wyszukiwania.
+Ten sam submission_id, dokładnie ten sam tekst i kategorie zwracają zachowany
+wynik z replayed=true, bez API i zmian licznika. Kolejność kategorii nie ma
+znaczenia; zmiana ID/etykiety lub tekstu to konflikt 409.
+.NET nie wykonuje dodatkowego zapisu koncepcji ani zwiększania liczników.
+Po timeout analiza może nadal trwać: ponów z tym samym ID i danymi.
+Liczniki w odpowiedzi replay są historyczne, nie są odświeżane.
+Przykład HttpClient: [RagClient.cs](../examples/RagClient.cs), timeout 15 minut.
 
 ## GET /health
 
-```json
-{"status": "ok"}
-```
-
-Sprawdza proces, nie gotowość PostgreSQL, indeksu ani OpenAI.
+200: {"status":"ok"}. Sprawdza proces, nie PostgreSQL ani OpenAI.
 
 ## Błędy
 
-| HTTP | Znaczenie |
-| --- | --- |
-| 409 | Konflikt ID zgłoszenia |
-| 422 | Nieprawidłowe pola lub format żądania |
-| 502 | Błąd OpenAI albo niespójna odpowiedź modelu |
-| 503 | Zajętość, konfiguracja, indeks lub baza niedostępna |
+409 konflikt ID; 422 nieprawidłowe dane; 502 OpenAI/odpowiedź modelu;
+503 zajętość, konfiguracja, indeks lub baza.
+Poza 422: {"detail":{"code":"busy","message":"Analiza trwa."}}.
+422 zwraca standardową listę błędów FastAPI.
+Kody: busy, configuration, openai_error, model_output, submission_conflict,
+index_error, database_unavailable. Respektuj Retry-After, jeśli występuje.
+Konfiguracja i nieaktualny indeks wymagają poprawienia przyczyny.
+Usługa działa na localhost, bez uwierzytelniania i CORS, jedna analiza naraz.
 
-Poza 422 format błędu:
+Oceny korzystają z progów i przykładów kalibracyjnych: ważność wynika z konkretnej szkody, a zasięg z opisanego wdrożenia. Brak zasięgu oznacza poziom 2; brak opisanej szkody poziom 2 ważności. Nie zakładamy automatycznie regionalnego wdrożenia. Przy pustym rozwiązaniu koszt i czas pozostają na poziomie 3. Wynik jest orientacyjnym rankingiem, a nie wyceną.
 
-```json
-{"detail":{"code":"busy","message":"Analiza trwa. Ponów z tym samym ID."}}
-```
-
-Kody: `busy`, `configuration`, `openai_error`, `model_output`,
-`submission_conflict`, `index_error`, `database_unavailable`.
-422 zawiera standardową listę błędów FastAPI w `detail`.
-Przy ponawianiu respektuj `Retry-After`, jeśli występuje.
-Błędy konfiguracji/indeksu i konflikt ID wymagają poprawienia przyczyny.
-
-## Integracja .NET
-
-Przykład: [RagClient.cs](../examples/RagClient.cs), .NET 8 i HttpClient.
-Wywołanie odbywa się z backendu, a nie bezpośrednio z przeglądarki.
-Usługa lokalna nie wymaga uwierzytelniania i nie ma CORS.
-Przy oddzielnych hostach skonfiguruj prywatne połączenie i kontrolę dostępu.
-MVP przyjmuje jedną analizę naraz; konkurencyjne żądania otrzymują zajętość.
+Powtórzenie tego samego `submission_id` zwraca zapisaną odpowiedź. Do sprawdzenia nowych ocen użyj nowego `submission_id`; restart serwera nie przelicza zapisanych wyników.
