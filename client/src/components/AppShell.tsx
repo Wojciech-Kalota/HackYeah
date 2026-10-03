@@ -2,6 +2,8 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Accessibility,
   BadgeCheck,
+  Bell,
+  ChevronDown,
   Building2,
   ChevronRight,
   CircleHelp,

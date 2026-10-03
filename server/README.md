@@ -22,7 +22,6 @@ docker run -d --name postgres_einicjatywa_container --network network_einicjatyw
 docker build -f backend_einicjatywa.Dockerfile -t backend_einicjatywa_image .
 ```
 
-TODO: change the volume to somwhere meaningful XDD
 ## Launch Backend Container
 ```dockerfile
 docker run -d --name backend_einicjatywa_container --network network_einicjatywa --env-file .env -p 8080:8080 backend_einicjatywa_image

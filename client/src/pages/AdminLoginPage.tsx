@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Building2,
   Eye,
   EyeOff,
   LockKeyhole,
@@ -56,19 +55,7 @@ export function AdminLoginPage() {
         <div className="grid w-full overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-2xl shadow-blue-950/10 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="relative hidden overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-800 p-10 text-white lg:flex lg:flex-col lg:justify-between">
             <div className="relative z-10">
-              <Link className="inline-flex items-center gap-3" to="/">
-                <span className="grid size-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                  <Building2 size={22} />
-                </span>
-                <span>
-                  <span className="block font-bold">Głos Miasta</span>
-                  <span className="block text-[10px] font-semibold tracking-[0.2em] text-blue-200 uppercase">
-                    Kraków
-                  </span>
-                </span>
-              </Link>
-
-              <div className="mt-20">
+              <div className="mt-28">
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/15">
                   <ShieldCheck size={14} /> Bezpieczny dostęp urzędnika
                 </span>
@@ -89,6 +76,12 @@ export function AdminLoginPage() {
               <span>Dostęp wyłącznie dla upoważnionych pracowników</span>
             </div>
 
+            <img
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute right-[-12%] bottom-0 h-[82%] w-[92%] object-contain object-right-bottom opacity-20 mix-blend-screen"
+              src="/krakow-cathedral.png"
+            />
             <div className="absolute -right-24 -bottom-28 size-80 rounded-full bg-white/10" />
             <div className="absolute top-28 -right-16 size-48 rounded-full bg-cyan-300/10 blur-sm" />
           </section>
