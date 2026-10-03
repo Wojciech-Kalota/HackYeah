@@ -1,4 +1,4 @@
-import { Accessibility, CheckCircle2, Contrast, Keyboard } from 'lucide-react';
+import { CheckCircle2, Contrast, Keyboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { PageMain } from '../components/PageMain';
@@ -32,10 +32,7 @@ export function AccessibilityPage() {
 
   return (
     <PageMain className={`${uiTheme.layout.content} max-w-5xl`}>
-      <div className={uiTheme.text.eyebrow}>
-        <Accessibility size={15} /> Dostępność
-      </div>
-      <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
+      <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
         Informacje o dostępności
       </h1>
       <p className={`${uiTheme.text.body} mt-3 max-w-3xl`}>

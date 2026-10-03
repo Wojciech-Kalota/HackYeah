@@ -50,7 +50,7 @@ export function LoginPage() {
         <div className="pointer-events-none absolute -right-24 -bottom-40 size-[28rem] rounded-full bg-emerald-200/30 blur-3xl" />
 
         <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl items-center px-3 py-3 sm:px-4 md:px-6 md:py-4">
-          <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_20px_60px_rgba(30,50,100,0.08)] sm:rounded-3xl lg:h-[calc(100dvh-2rem)] lg:max-h-[760px] lg:min-h-[560px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="app-card-surface grid w-full overflow-hidden rounded-2xl border sm:rounded-3xl lg:h-[calc(100dvh-2rem)] lg:max-h-[760px] lg:min-h-[560px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <section className="relative hidden overflow-hidden bg-[linear-gradient(145deg,#172d68_0%,#234497_65%,#3746b0_100%)] p-8 text-white lg:block xl:p-10">
               <div className="relative z-10 h-full">
                 <div className="flex items-center gap-3">
@@ -129,7 +129,7 @@ export function LoginPage() {
                       />
                       <input
                         autoComplete="email"
-                        className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] pl-11 focus:bg-white`}
+                        className={`${uiTheme.field} login-field h-12 bg-white/80 pl-11 focus:bg-white/90`}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="twoj@email.pl"
                         required
@@ -150,7 +150,7 @@ export function LoginPage() {
                       />
                       <input
                         autoComplete="current-password"
-                        className={`${uiTheme.field} login-field h-12 bg-[#f5f7fb] px-11 focus:bg-white`}
+                        className={`${uiTheme.field} login-field h-12 bg-white/80 px-11 focus:bg-white/90`}
                         minLength={6}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="Wpisz hasło"

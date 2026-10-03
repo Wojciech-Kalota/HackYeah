@@ -3,7 +3,6 @@ import {
   Accessibility,
   BadgeCheck,
   ChevronRight,
-  CircleHelp,
   FileText,
   LayoutDashboard,
   Lightbulb,
@@ -12,7 +11,6 @@ import {
   Menu,
   Plus,
   Settings,
-  ShieldCheck,
   Trophy,
   UserRound,
   X,
@@ -32,16 +30,10 @@ type NavigationItem = {
   badge?: string;
 };
 
-const navigationCitizen: NavigationItem[] = [
-  { label: 'Pulpit', icon: LayoutDashboard, to: '/mieszkaniec' },
-  { label: 'Pomysły mieszkańców', icon: Lightbulb, to: '/pomysly' },
-  { label: 'Ranking inicjatyw', icon: Trophy, to: '/pomysly?sort=popularne' },
-  { label: 'Zrealizowane', icon: BadgeCheck, to: '/pomysly?status=completed' },
-];
-
-const navigationLoggedIn: NavigationItem[] = [
-  { label: 'Moje pomysły', icon: FileText, to: '/moje-pomysly', badge: '5' },
-];
+type NavigationSection = {
+  label: string;
+  items: NavigationItem[];
+};
 
 function CitizenLogo() {
   return (
@@ -171,13 +163,60 @@ function Sidebar({
 }) {
   const { user } = useAuth();
   const location = useLocation();
-  const navigation = user
-    ? [
-        ...navigationCitizen.slice(0, 2),
-        ...navigationLoggedIn,
-        ...navigationCitizen.slice(2),
-      ]
-    : navigationCitizen;
+  const navigationSections: NavigationSection[] = [
+    {
+      label: 'Główne',
+      items: [
+        { label: 'Pulpit', icon: LayoutDashboard, to: '/mieszkaniec' },
+        { label: 'Wszystkie pomysły', icon: Lightbulb, to: '/pomysly' },
+      ],
+    },
+    {
+      label: 'Twoja aktywność',
+      items: [
+        {
+          label: 'Dodaj pomysł',
+          icon: Plus,
+          to: '/dodaj-pomysl',
+        },
+        ...(user
+          ? [
+              {
+                label: 'Moje pomysły',
+                icon: FileText,
+                to: '/moje-pomysly',
+                badge: '5',
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      label: 'Odkrywaj',
+      items: [
+        {
+          label: 'Najpopularniejsze',
+          icon: Trophy,
+          to: '/pomysly?sort=popularne',
+        },
+        {
+          label: 'Zrealizowane',
+          icon: BadgeCheck,
+          to: '/pomysly?status=completed',
+        },
+      ],
+    },
+    {
+      label: 'Informacje',
+      items: [
+        {
+          label: 'Dostępność',
+          icon: Accessibility,
+          to: '/dostepnosc',
+        },
+      ],
+    },
+  ];
 
   function isActive(to: string) {
     const [pathname, query] = to.split('?');
@@ -190,12 +229,16 @@ function Sidebar({
         location.search !== '?status=completed'
       );
     }
+    if (to.includes('#')) {
+      const [hashPathname, hash] = to.split('#');
+      return location.pathname === hashPathname && location.hash === `#${hash}`;
+    }
     return location.pathname === to;
   }
 
   return (
-    <aside className="bg-app-surface flex h-full flex-col px-4 py-5">
-      <div className="flex items-center justify-between px-1">
+    <aside className="app-sidebar-panel flex h-full min-h-0 flex-col px-4 py-5">
+      <div className="flex shrink-0 items-center justify-between px-1">
         <CitizenLogo />
         {onClose && (
           <button
@@ -210,70 +253,52 @@ function Sidebar({
         )}
       </div>
 
-      <Link
-        className={`${uiTheme.button.primary} mt-7 h-11 px-4 py-0`}
-        onClick={onClose}
-        to={user ? '/dodaj-pomysl' : '/logowanie'}
+      <nav
+        className="citizen-sidebar-scroll mt-8 -mr-4 min-h-0 flex-1 space-y-6 overflow-y-auto pr-4 pb-6"
+        aria-label="Nawigacja panelu mieszkańca"
       >
-        {user ? <Plus size={17} /> : <LogIn size={17} />}
-        {user ? 'Dodaj pomysł' : 'Zaloguj się'}
-      </Link>
-
-      <nav className="mt-5 space-y-1" aria-label="Nawigacja mieszkańca">
-        {navigation.map(({ label, icon: Icon, to, badge }) => {
-          const active = isActive(to);
-          return (
-            <Link
-              aria-current={active ? 'page' : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${uiTheme.focusRing} ${
-                active
-                  ? 'bg-app-primary font-semibold text-white shadow-sm shadow-blue-800/15'
-                  : 'text-app-text-muted hover:bg-app-muted hover:text-app-text'
-              }`}
-              key={label}
-              onClick={onClose}
-              to={to}
-            >
-              <Icon size={18} strokeWidth={1.9} />
-              <span>{label}</span>
-              {badge && (
-                <span
-                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    active
-                      ? 'bg-white/15 text-white'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+        {navigationSections.map((section) => (
+          <div key={section.label}>
+            <p className="px-3 text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">
+              {section.label}
+            </p>
+            <div className="mt-2 space-y-1">
+              {section.items.map(({ label, icon: Icon, to, badge }) => {
+                const active = isActive(to);
+                return (
+                  <Link
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${uiTheme.focusRing} ${
+                      active
+                        ? 'bg-app-primary font-semibold text-white shadow-sm shadow-blue-800/15'
+                        : 'text-app-text-muted hover:bg-app-muted hover:text-app-text'
+                    }`}
+                    key={label}
+                    onClick={onClose}
+                    to={to}
+                  >
+                    <Icon className="shrink-0" size={17} strokeWidth={1.9} />
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {badge && (
+                      <span
+                        className={`ml-auto min-w-5 shrink-0 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
+                          active
+                            ? 'bg-white/15 text-white'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      <div className="mt-auto">
-        <div className="mb-4 space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
-          <a
-            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
-            href="#pomoc"
-          >
-            <CircleHelp size={15} /> Pomoc / Jak to działa
-          </a>
-          <a
-            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
-            href="#standardy"
-          >
-            <ShieldCheck size={15} /> Karta Dialogu
-          </a>
-          <Link
-            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
-            onClick={onClose}
-            to="/dostepnosc"
-          >
-            <Accessibility size={15} /> Tryb dostępności
-          </Link>
-        </div>
+      <div className="shrink-0 border-t border-slate-100 pt-4">
         <CitizenProfile onClose={onClose} />
       </div>
     </aside>
@@ -328,11 +353,11 @@ export function AppShell() {
         </div>
       )}
 
-      <div className="lg:pl-64" inert={menuOpen}>
-        <div className="px-4 pt-4 lg:hidden">
+      <div className="dashboard-section min-h-screen lg:pl-64" inert={menuOpen}>
+        <div className="relative z-10 px-4 pt-4 lg:hidden">
           <button
             aria-label="Otwórz menu"
-            className={`${uiTheme.iconButton} bg-app-surface ring-app-border shadow-sm ring-1`}
+            className={`${uiTheme.iconButton} ring-app-border bg-white/80 shadow-sm ring-1`}
             onClick={() => setMenuOpen(true)}
             ref={menuButtonRef}
             type="button"
@@ -340,7 +365,9 @@ export function AppShell() {
             <Menu size={20} />
           </button>
         </div>
-        <Outlet />
+        <div className="relative z-10">
+          <Outlet />
+        </div>
       </div>
     </div>
   );
