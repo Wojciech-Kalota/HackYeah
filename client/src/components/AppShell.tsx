@@ -2,7 +2,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Accessibility,
   BadgeCheck,
-  Building2,
   ChevronRight,
   CircleHelp,
   FileText,
@@ -18,11 +17,13 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
 import { uiTheme } from '../styles/theme';
+import { RouteAccessibility } from './RouteAccessibility';
+import { SkipLink } from './SkipLink';
 
 type NavigationItem = {
   label: string;
@@ -44,8 +45,11 @@ const navigationLoggedIn: NavigationItem[] = [
 
 function CitizenLogo() {
   return (
-    <Link className="flex items-center gap-3" to="/mieszkaniec">
-      <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white shadow-sm shadow-blue-800/20">
+    <Link
+      className={`flex items-center gap-3 rounded-xl ${uiTheme.focusRing}`}
+      to="/mieszkaniec"
+    >
+      <span className="bg-app-primary grid size-10 place-items-center rounded-xl text-white shadow-sm shadow-blue-800/20">
         <img
           alt=""
           className="h-7 w-9 object-contain"
@@ -53,8 +57,8 @@ function CitizenLogo() {
         />
       </span>
       <span className="leading-tight">
-        <span className="block font-bold text-blue-950">Głos Miasta</span>
-        <span className="block text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
+        <span className="text-app-text block font-bold">Głos Miasta</span>
+        <span className="text-app-text-muted block text-[10px] font-semibold tracking-[0.2em] uppercase">
           Kraków
         </span>
       </span>
@@ -70,11 +74,11 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   if (!user) {
     return (
       <Link
-        className="flex items-center gap-3 rounded-2xl bg-blue-50 p-2.5 text-left ring-1 ring-blue-100 transition hover:bg-blue-100"
+        className={`${uiTheme.surface.muted} ${uiTheme.focusRing} flex items-center gap-3 p-2.5 text-left transition hover:bg-blue-100`}
         onClick={onClose}
         to="/logowanie"
       >
-        <span className="grid size-10 place-items-center rounded-xl bg-blue-800 text-white">
+        <span className="bg-app-primary grid size-10 place-items-center rounded-xl text-white">
           <LogIn size={18} />
         </span>
         <span>
@@ -102,7 +106,10 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   return (
     <div className="relative">
       {profileOpen && (
-        <div className="absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10">
+        <div
+          className={`${uiTheme.surface.card} absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden p-1.5 shadow-xl shadow-slate-900/10`}
+          id="citizen-profile-menu"
+        >
           <div className="border-b border-slate-100 px-3 py-2.5">
             <p className="text-xs font-bold text-slate-900">
               {user.firstName} {user.lastName}
@@ -112,14 +119,14 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
             </p>
           </div>
           <button
-            className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className={`${uiTheme.button.ghost} mt-1 w-full justify-start px-3 text-left text-xs`}
             onClick={() => setProfileOpen(false)}
             type="button"
           >
             <Settings size={16} /> Ustawienia konta
           </button>
           <button
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50"
+            className={`${uiTheme.button.danger} w-full justify-start px-3 text-left text-xs`}
             onClick={handleLogout}
             type="button"
           >
@@ -129,12 +136,13 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
       )}
 
       <button
+        aria-controls="citizen-profile-menu"
         aria-expanded={profileOpen}
-        className="flex w-full items-center gap-3 rounded-2xl bg-blue-50 p-2.5 text-left ring-1 ring-blue-100 transition hover:bg-blue-100"
+        className={`${uiTheme.surface.muted} ${uiTheme.focusRing} flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-blue-100`}
         onClick={() => setProfileOpen((current) => !current)}
         type="button"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-800 text-xs font-bold text-white shadow-sm shadow-blue-800/20">
+        <span className="bg-app-primary grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white shadow-sm shadow-blue-800/20">
           {initials}
         </span>
         <span className="min-w-0 flex-1 leading-tight">
@@ -154,7 +162,13 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function Sidebar({ onClose }: { onClose?: () => void }) {
+function Sidebar({
+  onClose,
+  closeButtonRef,
+}: {
+  onClose?: () => void;
+  closeButtonRef?: RefObject<HTMLButtonElement | null>;
+}) {
   const { user } = useAuth();
   const location = useLocation();
   const navigation = user
@@ -180,14 +194,15 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <aside className="flex h-full flex-col bg-white px-4 py-5">
+    <aside className="bg-app-surface flex h-full flex-col px-4 py-5">
       <div className="flex items-center justify-between px-1">
         <CitizenLogo />
         {onClose && (
           <button
             aria-label="Zamknij menu"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            className={`${uiTheme.iconButton} size-9 lg:hidden`}
             onClick={onClose}
+            ref={closeButtonRef}
             type="button"
           >
             <X size={20} />
@@ -209,10 +224,11 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           const active = isActive(to);
           return (
             <Link
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+              aria-current={active ? 'page' : undefined}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${uiTheme.focusRing} ${
                 active
-                  ? 'bg-blue-800 font-semibold text-white shadow-sm shadow-blue-800/15'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                  ? 'bg-app-primary font-semibold text-white shadow-sm shadow-blue-800/15'
+                  : 'text-app-text-muted hover:bg-app-muted hover:text-app-text'
               }`}
               key={label}
               onClick={onClose}
@@ -239,23 +255,24 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="mt-auto">
         <div className="mb-4 space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
           <a
-            className="flex items-center gap-2 px-1 hover:text-blue-800"
+            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
             href="#pomoc"
           >
             <CircleHelp size={15} /> Pomoc / Jak to działa
           </a>
           <a
-            className="flex items-center gap-2 px-1 hover:text-blue-800"
+            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
             href="#standardy"
           >
             <ShieldCheck size={15} /> Karta Dialogu
           </a>
-          <a
-            className="flex items-center gap-2 px-1 hover:text-blue-800"
-            href="#dostepnosc"
+          <Link
+            className={`${uiTheme.text.link} flex items-center gap-2 px-1 text-xs`}
+            onClick={onClose}
+            to="/dostepnosc"
           >
             <Accessibility size={15} /> Tryb dostępności
-          </a>
+          </Link>
         </div>
         <CitizenProfile onClose={onClose} />
       </div>
@@ -265,32 +282,59 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeMenu() {
+    setMenuOpen(false);
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    closeButtonRef.current?.focus();
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeMenu();
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [menuOpen]);
 
   return (
     <div className={uiTheme.layout.page}>
-      <div className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 lg:block">
+      <RouteAccessibility />
+      <SkipLink />
+      <div className="border-app-border fixed inset-y-0 left-0 z-40 hidden w-64 border-r lg:block">
         <Sidebar />
       </div>
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          aria-label="Menu nawigacyjne"
+          aria-modal="true"
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+        >
           <button
             aria-label="Zamknij menu"
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             type="button"
           />
           <div className="relative h-full w-72 shadow-2xl">
-            <Sidebar onClose={() => setMenuOpen(false)} />
+            <Sidebar closeButtonRef={closeButtonRef} onClose={closeMenu} />
           </div>
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-64" inert={menuOpen}>
         <div className="px-4 pt-4 lg:hidden">
           <button
             aria-label="Otwórz menu"
-            className="inline-flex size-10 items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-slate-200"
+            className={`${uiTheme.iconButton} bg-app-surface ring-app-border shadow-sm ring-1`}
             onClick={() => setMenuOpen(true)}
+            ref={menuButtonRef}
             type="button"
           >
             <Menu size={20} />

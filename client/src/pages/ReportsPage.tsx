@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { PageMain } from '../components/PageMain';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import { reports, type ReportStatus } from '../utils/dummyData';
@@ -81,16 +82,16 @@ export function ReportsPage() {
   );
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+          <div className={uiTheme.text.eyebrow}>
             <Lightbulb size={14} /> Baza pomysłów
           </div>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className={`${uiTheme.text.heading} mt-2 text-3xl md:text-4xl`}>
             Pomysły mieszkańców
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className={`${uiTheme.text.body} mt-2 max-w-2xl`}>
             Przeglądaj problemy i inicjatywy zgłoszone w krakowskich
             dzielnicach. Filtruj je według miejsca, kategorii lub etapu
             realizacji.
@@ -109,12 +110,11 @@ export function ReportsPage() {
           <div>
             <p className="font-semibold">Kreator nowego zgłoszenia</p>
             <p className="mt-1 text-xs text-blue-100">
-              To miejsce jest przygotowane pod kolejny ekran formularza lub
-              asystenta AI.
+              Opisz swoją inicjatywę i przekaż ją do oceny miasta.
             </p>
           </div>
           <button
-            className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-blue-900"
+            className={`${uiTheme.button.secondary} bg-white px-4 py-2 text-xs`}
             type="button"
           >
             Rozpocznij
@@ -131,7 +131,7 @@ export function ReportsPage() {
           <label className="relative">
             <span className="sr-only">Szukaj zgłoszeń</span>
             <Search
-              className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+              className="text-app-text-subtle absolute top-1/2 left-3 -translate-y-1/2"
               size={17}
             />
             <input
@@ -188,7 +188,7 @@ export function ReportsPage() {
             </select>
           </label>
           <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`${uiTheme.button.ghost} h-11 px-3 text-xs`}
             disabled={!hasFilters}
             onClick={() =>
               setSearchParams(user ? { district: 'all' } : {}, {
@@ -212,7 +212,7 @@ export function ReportsPage() {
           <label className="flex items-center gap-2 text-xs text-slate-500">
             Sortowanie
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-medium text-slate-800 outline-none"
+              className={`${uiTheme.field} h-9 w-auto rounded-lg py-0 text-xs font-medium`}
               onChange={(event) => setFilter('sort', event.target.value)}
               value={sort}
             >
@@ -242,6 +242,6 @@ export function ReportsPage() {
           </div>
         )}
       </section>
-    </main>
+    </PageMain>
   );
 }
