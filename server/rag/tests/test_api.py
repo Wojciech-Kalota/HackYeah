@@ -1,3 +1,4 @@
+CATEGORIES = [{"id": "integracja_spoleczna", "label": "Integracja społeczna"}]
 import os
 from threading import Event, Thread
 from unittest import TestCase
@@ -27,14 +28,14 @@ class ApiTests(TestCase):
         comparator = Mock()
         comparator.compare.return_value = Decision(kind="new", candidate_id=None, reason="Nowy", questions=[])
         try:
-            def process(sid, text):
+            def process(sid, text, categories):
                 worker_db = Database(os.environ["TEST_DATABASE_URL"], schema=db.schema)
                 try:
-                    return Pipeline(worker_db, extractor, Retriever(worker_db, embedder), comparator).process(sid, text)
+                    return Pipeline(worker_db, extractor, Retriever(worker_db, embedder), comparator).process(sid, text, categories)
                 finally:
                     worker_db.close()
             client = TestClient(create_app(process))
-            body = {"submission_id": "a", "text": "Pomysł"}
+            body = {"submission_id": "a", "text": "Pomysł", "categories": CATEGORIES}
             first = client.post("/api/ideas/analyze", json=body)
             self.assertEqual(first.status_code, 200)
             self.assertEqual(first.json()["decisions"][0]["liczba_zgloszen"], 1)
@@ -47,9 +48,9 @@ class ApiTests(TestCase):
         processor = Mock(return_value={"submission_id": "a", "decisions": []})
         client = TestClient(create_app(processor))
         self.assertEqual(client.get("/health").json(), {"status": "ok"})
-        response = client.post("/api/ideas/analyze", json={"submission_id": "a", "text": "Pomysł"})
+        response = client.post("/api/ideas/analyze", json={"submission_id": "a", "text": "Pomysł", "categories": CATEGORIES})
         self.assertEqual(response.status_code, 200)
-        processor.assert_called_once_with("a", "Pomysł")
+        processor.assert_called_once_with("a", "Pomysł", CATEGORIES)
 
     def test_invalid_body_does_not_process(self):
         processor = Mock()
@@ -62,19 +63,19 @@ class ApiTests(TestCase):
     def test_conflict_and_upstream_error_release_gate(self):
         processor = Mock(side_effect=[ValueError("Ten identyfikator należy do innego tekstu"), UpstreamError(), {"ok": True}])
         client = TestClient(create_app(processor))
-        body = {"submission_id": "a", "text": "Pomysł"}
+        body = {"submission_id": "a", "text": "Pomysł", "categories": CATEGORIES}
         self.assertEqual(client.post("/api/ideas/analyze", json=body).status_code, 409)
         self.assertEqual(client.post("/api/ideas/analyze", json=body).status_code, 502)
         self.assertEqual(client.post("/api/ideas/analyze", json=body).status_code, 200)
 
     def test_concurrent_request_returns_busy(self):
         entered, release = Event(), Event()
-        def processor(sid, text):
+        def processor(sid, text, categories):
             entered.set()
             release.wait(5)
             return {"ok": True}
         client = TestClient(create_app(processor))
-        body = {"submission_id": "a", "text": "Pomysł"}
+        body = {"submission_id": "a", "text": "Pomysł", "categories": CATEGORIES}
         thread = Thread(target=lambda: client.post("/api/ideas/analyze", json=body))
         thread.start()
         try:

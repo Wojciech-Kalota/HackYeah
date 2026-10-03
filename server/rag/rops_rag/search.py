@@ -26,6 +26,8 @@ def main():
     process = sub.add_parser("process", help="Pełny proces z porównaniem i zapisem")
     process.add_argument("file", type=Path)
     process.add_argument("--submission-id", required=True)
+    search.add_argument("--categories", type=Path, required=True)
+    process.add_argument("--categories", type=Path, required=True)
     args = parser.parse_args()
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     if not os.getenv("OPENAI_API_KEY", "").strip():
@@ -42,10 +44,10 @@ def main():
                 model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
                 pipeline = Pipeline(db, OpenAIExtractor(client, model), retriever,
                     OpenAIComparator(client, os.getenv("OPENAI_COMPARISON_MODEL", model)))
-                output = pipeline.process(args.submission_id, args.file.read_text(encoding="utf-8-sig"))
+                output = pipeline.process(args.submission_id, args.file.read_text(encoding="utf-8-sig"), json.loads(args.categories.read_text(encoding="utf-8-sig")))
             else:
                 text = args.file.read_text(encoding="utf-8-sig")
-                extraction = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text)
+                extraction = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text, json.loads(args.categories.read_text(encoding="utf-8-sig")))
                 output = {"extraction": extraction.model_dump(), "matches": []}
                 if extraction.status == "ok":
                     output["matches"] = [{"input_concept": c.model_dump(),
