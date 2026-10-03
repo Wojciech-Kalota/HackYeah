@@ -16,7 +16,6 @@ public class AppDbContext : DbContext
     public DbSet<District> Districts => Set<District>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Status> Statuses => Set<Status>();
-    public DbSet<Vote> Votes => Set<Vote>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
 
