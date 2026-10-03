@@ -42,21 +42,6 @@ Outputs. Klucz i hasło przechowuj tylko w backendzie.
 Znaki specjalne w haśle w `DATABASE_URL` muszą być zakodowane jako URL.
 Zmienne środowiskowe mają pierwszeństwo przed `.env`.
 
-## PostgreSQL
-
-Dołączony Compose uruchamia PostgreSQL 17 na `127.0.0.1:5432`, z bazą `rops`,
-użytkownikiem `rops` i hasłem `POSTGRES_PASSWORD` z `.env`:
-
-```powershell
-docker compose up -d postgres
-docker compose ps
-```
-
-Dane są przechowywane w trwałym woluminie. Możesz też użyć własnej bazy:
-ustaw jej adres w `DATABASE_URL`, bez uruchamiania Compose.
-Usługa tworzy tabele we własnym schemacie `rops_rag`. Baza wskazana w URL
-musi istnieć, a konto potrzebuje uprawnień CREATE w tej bazie.
-
 ## Uruchomienie API
 
 ```powershell

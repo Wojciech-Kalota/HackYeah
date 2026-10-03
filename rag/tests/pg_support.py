@@ -3,7 +3,7 @@ import uuid
 from unittest import SkipTest
 
 from psycopg import sql
-from rops_rag.database import Database
+from rag.rops_rag.database import Database
 
 
 def test_database():
@@ -19,6 +19,8 @@ def close_test_database(db):
         raise ValueError("Można usunąć wyłącznie schemat testowy")
     try:
         db.connection.rollback()
-        db.connection.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(db.schema)))
+        db.connection.execute(
+            sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(db.schema))
+        )
     finally:
         db.close()
