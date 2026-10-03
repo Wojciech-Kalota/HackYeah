@@ -51,26 +51,21 @@ class Retriever:
         self.db, self.embedder = db, embedder
 
     def index_missing(self):
-        """Indeksuje brakujące/zmienione rekordy; nie zmienia liczników."""
         updated = 0
         for row in self.db.list_concepts():
             text = row_concept(row).retrieval_text()
             digest = text_hash(text)
             stored = self.db.connection.execute(
                 "SELECT text_hash FROM concept_embeddings WHERE concept_id=%s AND model=%s",
-                (row["id"], self.embedder.model),
-            ).fetchone()
+                (row["id"], self.embedder.model)).fetchone()
             if stored and stored["text_hash"] == digest:
                 continue
             vector = self.embedder.embed(text)
             validate_vector(vector)
             with self.db.connection.transaction():
-                self.db.connection.execute(
-                    "INSERT INTO concept_embeddings VALUES (%s, %s, %s, %s) "
-                    "ON CONFLICT(concept_id, model) DO UPDATE SET "
-                    "text_hash=excluded.text_hash, vector_json=excluded.vector_json",
-                    (row["id"], self.embedder.model, digest, json.dumps(vector, allow_nan=False)),
-                )
+                self.db.connection.execute("INSERT INTO concept_embeddings VALUES (%s,%s,%s,%s) "
+                    "ON CONFLICT(concept_id,model) DO UPDATE SET text_hash=excluded.text_hash,vector_json=excluded.vector_json",
+                    (row["id"],self.embedder.model,digest,json.dumps(vector,allow_nan=False)))
             updated += 1
         return updated
 
@@ -81,8 +76,7 @@ class Retriever:
         if not rows:
             return []
         stored = {row["concept_id"]: row for row in self.db.connection.execute(
-            "SELECT * FROM concept_embeddings WHERE model=%s", (self.embedder.model,)
-        )}
+            "SELECT * FROM concept_embeddings WHERE model=%s",(self.embedder.model,))}
         for row in rows:
             item = stored.get(row["id"])
             if item is None or item["text_hash"] != text_hash(row_concept(row).retrieval_text()):

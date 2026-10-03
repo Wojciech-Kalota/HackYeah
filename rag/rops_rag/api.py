@@ -7,8 +7,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .extraction import ExtractionError
-from .categories import CategoryDefinition, validate_categories
 from .errors import BusyError
+from .categories import CategoryDefinition, validate_categories
 
 
 class AnalyzeRequest(BaseModel):
@@ -98,7 +98,7 @@ def create_app(processor=None):
             raise HTTPException(409 if conflict else 503, detail={
                 "code": "submission_conflict" if conflict else "index_error", "message": message})
         except BusyError:
-            raise HTTPException(503, detail={"code": "busy", "message": "Inna analiza trwa. Ponów z tym samym ID."}, headers={"Retry-After": "5"})
+            raise HTTPException(503, detail={"code":"busy","message":"Inna analiza trwa. Ponów z tym samym ID."}, headers={"Retry-After":"5"})
         except psycopg.Error:
             raise HTTPException(503, detail={"code": "database_unavailable", "message": "Baza jest zajęta lub niedostępna. Ponów z tym samym ID."}, headers={"Retry-After": "5"})
         finally:

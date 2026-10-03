@@ -1,46 +1,39 @@
 # ROPS RAG
 
-Usługa Python do analizy pomysłów społecznych, wywoływana przez backend .NET.
-OpenAI wydziela koncepcje i przypisuje kategorie. Wyszukiwanie embeddingów
-znajduje podobne rekordy, a drugie wywołanie LLM rozstrzyga dopasowanie.
-Wyniki, koncepcje i liczniki zgłoszeń są przechowywane w PostgreSQL.
-
-## Wymagania
-
-- Standardowy Python dla Windows; polecenia poniżej używają Python 3.12.
-- PostgreSQL z utworzoną bazą i kontem mogącym tworzyć schematy.
-- Klucz OpenAI API i dostęp do skonfigurowanych modeli.
-- Docker Desktop, jeśli wybierzesz bazę z dołączonego Compose.
-
-Python MSYS2/MinGW nie jest zalecany: zależności natywne mogą wymagać
-kompilacji zamiast instalacji gotowych pakietów.
+Usługa Python analizuje pomysły społeczne i zapisuje wyniki w PostgreSQL.
+.NET przesyła tekst, identyfikator zgłoszenia i listę kategorii.
+Proces: ekstrakcja LLM → wyszukiwanie embeddingów → porównanie LLM → zapis.
 
 ## Instalacja
 
-Uruchom z katalogu zawierającego `pyproject.toml`:
+Standardowy Python 3.12 dla Windows, PostgreSQL i klucz OpenAI API.
+Z katalogu projektu:
 
 ```powershell
 py -3.12 -m venv .venv-win
 .\.venv-win\Scripts\python.exe -m pip install -e ".[api,test]"
 ```
 
-Polecenia korzystają bezpośrednio z interpretera środowiska; aktywacja nie
-jest wymagana. Utwórz lokalny `.env` na podstawie `.env.example`.
-Jeśli `.env` już istnieje, uzupełnij go bez nadpisywania klucza i hasła.
+Utwórz lokalny .env na podstawie .env.example, bez nadpisywania istniejącego.
+Ustaw OPENAI_API_KEY, OPENAI_MODEL, OPENAI_EMBEDDING_MODEL i DATABASE_URL.
+Opcjonalny OPENAI_COMPARISON_MODEL domyślnie używa OPENAI_MODEL.
+Zmienne środowiskowe mają pierwszeństwo przed .env.
+Znaki specjalne w haśle DATABASE_URL zakoduj jako URL.
 
-```dotenv
-OPENAI_API_KEY=twoj-klucz
-OPENAI_MODEL=gpt-4.1-mini
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-DATABASE_URL=postgresql://rops:twoje-haslo@localhost:5432/rops
-POSTGRES_PASSWORD=twoje-haslo
+## PostgreSQL
+
+Baza wskazana w DATABASE_URL musi istnieć. Python tworzy własny schemat
+rops_rag oraz tabele, więc konto potrzebuje CREATE i uprawnień zapisu.
+Opcjonalna lokalna baza: ustaw POSTGRES_PASSWORD w .env, potem:
+
+```powershell
+docker compose up -d postgres
 ```
 
-`OPENAI_COMPARISON_MODEL` jest opcjonalny: domyślnie porównanie używa
-`OPENAI_MODEL`. Wpisz model dostępny na Twoim koncie, obsługujący Structured
-Outputs. Klucz i hasło przechowuj tylko w backendzie.
-Znaki specjalne w haśle w `DATABASE_URL` muszą być zakodowane jako URL.
-Zmienne środowiskowe mają pierwszeństwo przed `.env`.
+Compose udostępnia PostgreSQL 17 na localhost:5432 i trwały wolumin.
+Hasło musi odpowiadać DATABASE_URL. Model koncepcji zawiera problem, audience,
+solution, category i context. solution opisuje rozwiązanie i sposób działania.
+Nie uzupełniamy brakującego rozwiązania domysłami. Kategorie otrzymujemy w każdym POST jako listę {id,label}; model wybiera jedno ID.
 
 ## Uruchomienie API
 
@@ -48,82 +41,74 @@ Zmienne środowiskowe mają pierwszeństwo przed `.env`.
 .\.venv-win\Scripts\python.exe -m uvicorn rops_rag.api:load_app --factory --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-- [Swagger](http://127.0.0.1:8000/docs) — interaktywne wywołania.
-- [Kontrakt API](docs/API.md) — pola, statusy, błędy i ponawianie.
-- [Klient .NET 8](examples/RagClient.cs) — przykład integracji.
+[Swagger](http://127.0.0.1:8000/docs), [kontrakt API](docs/API.md),
+[klient .NET 8](examples/RagClient.cs).
+.NET wywołuje API i odbiera potwierdzenie wyniku; nie zapisuje drugi raz
+koncepcji ani liczników. API działa lokalnie, bez uwierzytelniania i CORS.
+Przy różnych hostach skonfiguruj prywatne połączenie i kontrolę dostępu.
 
-API obsługuje jedną analizę naraz. Wywołuje je backend .NET na localhost.
-Usługa nie ma uwierzytelniania ani CORS; dostęp między hostami wymaga
-prywatnego połączenia i kontroli dostępu.
+## Polecenia lokalne
 
-## Dane demonstracyjne i polecenia
-
-Przykładowy tekst: `examples/pomysl.txt`; przykładowe kategorie: `examples/categories.json`. Każde wywołanie LLM lub embeddingów
-korzysta z płatnego API OpenAI.
-
-Opcjonalnie dodaj cztery fikcyjne koncepcje i utwórz ich embeddingi:
+Opcjonalne fikcyjne dane demonstracyjne w bazie DATABASE_URL i ich indeks:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m rops_rag.seed_demo
 .\.venv-win\Scripts\python.exe -m rops_rag.search index
 ```
 
-Seed zapisuje dane w bazie z `DATABASE_URL`. Są to przykłady demonstracyjne,
-nie zweryfikowane innowacje ROPS. Ponowienie seeda nie dodaje ich drugi raz.
-Indeksowanie wywołuje API tylko dla brakujących lub zmienionych opisów.
-
-Analiza tekstu bez zapisu i bez dostępu do bazy:
+Seed zawiera dwa przykłady, nie zweryfikowane innowacje ROPS.
+Indeksowanie wywołuje płatne API tylko dla brakujących/zmienionych koncepcji.
+Analiza tekstu bez zapisu:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m rops_rag.analyze examples/pomysl.txt --categories examples/categories.json
 ```
 
-Analiza i wyszukiwanie kandydatów bez zapisu zgłoszenia:
+Wyszukiwanie bez zapisu zgłoszenia:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m rops_rag.search search examples/pomysl.txt --categories examples/categories.json --top-k 5
 ```
 
-Pełny proces z porównaniem i zapisem:
+Pełny proces z zapisem:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m rops_rag.search process examples/pomysl.txt --categories examples/categories.json --submission-id test-001
 ```
 
-Pusta baza jest obsługiwana: pierwsza koncepcja zostaje dodana jako nowa
-w tej bazie. Nowe koncepcje otrzymują embedding od razu.
+Pusta baza jest obsługiwana. Nowe koncepcje są indeksowane od razu.
+Nieaktualny indeks wymaga search index. Kategorie nie ograniczają wyszukiwania.
+Similarity to ranking -1..1, nie procent pewności; nowość jest oceniana
+względem odnalezionych kandydatów.
 
-## Zasady działania
+## Zapis i ponawianie
 
-- Koncepcja zawiera `problem`, `audience`, `solution`, `category`, `context`.
-  `solution` opisuje rozwiązanie razem ze sposobem działania.
-- LLM wybiera jedną główną kategorię z listy przesłanej przez backend .NET
-  w polu `categories`. Każda kategoria ma tekstowe `id` i `label`.
-- Ekstrakcja zawiera cytat źródłowy i pytania, jeśli opis wymaga doprecyzowania.
-  Walidacja cytatu toleruje różnice w odstępach i nowych liniach.
-- Kategorie nie ograniczają wyszukiwania. Podobieństwo cosinusowe służy
-  rankingowi kandydatów, nie jest prawdopodobieństwem duplikatu.
-- Nowość oznacza brak odpowiednika w znalezionych kandydatach.
-- Licznik oznacza liczbę niezależnych zgłoszeń przypisanych do koncepcji.
-  Nowa koncepcja zaczyna od 1; powtórzenie powiązania nie zwiększa licznika.
-- Identyczne ID, tekst i lista kategorii zwracają zachowany wynik bez kolejnych wywołań API.
-  Po zmianie opisu lub kategorii użyj nowego ID.
-- Cały zapis zgłoszenia jest transakcyjny. Błąd wycofuje zapis, ale nie
-  koszty już wykonanych wywołań API.
-- PostgreSQL advisory lock serializuje przetwarzanie także między procesami.
-  Konkurencyjne żądanie może otrzymać odpowiedź o zajętości.
-- Zmiana modelu embeddingów lub opisu koncepcji wymaga ponownego `index`.
-  Wyszukiwanie odrzuca nieaktualny indeks.
+duplicate wiąże zgłoszenie z identyczną lub podobną koncepcją; new tworzy nową.
+Jeśli rozwiązanie jest niejasne albo go nie podano, solution jest pustym
+tekstem. Opis samej potrzeby również podlega klasyfikacji i zapisowi. Licznik jest liczbą niezależnych powiązanych zgłoszeń.
+Nowa koncepcja zaczyna od 1. Powtórzenie powiązania nie zwiększa licznika.
 
-Embeddingi przechowujemy w PostgreSQL, a ranking obliczamy w Pythonie.
-Architektura jest przeznaczona do niewielkiej bazy i małego ruchu.
-Poprawny format odpowiedzi nie gwarantuje trafności interpretacji modelu.
+Ten sam submission_id, tekst i kategorie zwracają zapisany wynik z replayed=true,
+bez kolejnych wywołań API. Zmiana tekstu, ID lub etykiet kategorii wymaga nowego
+ID zgłoszenia. Kolejność kategorii nie wpływa na ponowienie.
+Liczniki w zachowanym wyniku są historyczne, z momentu przetworzenia.
+Cały zapis jest transakcyjny; błąd wycofuje dane, nie koszty wykonanych wywołań.
+Advisory lock PostgreSQL serializuje analizy także między procesami.
 
-## Testy
+## Ocena pomysłu
+
+LLM ocenia koszt, czas do pilotażu, znaczenie społeczne i zasięg korzyści
+w skali 1–5. Python oblicza score 0–100, premiując wpływ oraz niższy koszt
+i krótszy czas. API zwraca wyłącznie score, bez ocen składowych.
+Wynik zgłoszenia jest średnią wyników koncepcji; brak koncepcji oznacza null.
+Score jest szacunkiem priorytetu, nie kwotą ani obietnicą terminu.
+Wagi i wzór: [kontrakt API](docs/API.md).
+
+## Uruchomienie testów
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Testy PostgreSQL wymagają `TEST_DATABASE_URL`. Szczegóły i zakres:
-[tests/README.md](tests/README.md).
+Testy bazy wymagają TEST_DATABASE_URL. [Instrukcja](tests/README.md).
+Testy używają atrap OpenAI; trafność modeli oceniaj również ręcznie.

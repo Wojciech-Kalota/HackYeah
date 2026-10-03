@@ -17,7 +17,7 @@ from .pipeline import Pipeline
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Indeksowanie i wyszukiwanie koncepcji")
+    parser = argparse.ArgumentParser(description="Analiza i wyszukiwanie koncepcji")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("index", help="Uzupełnij embeddingi istniejących koncepcji")
     search = sub.add_parser("search", help="Analiza tekstu i kandydaci; bez zapisu zgłoszenia")
@@ -48,9 +48,9 @@ def main():
             else:
                 text = args.file.read_text(encoding="utf-8-sig")
                 extraction = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text, json.loads(args.categories.read_text(encoding="utf-8-sig")))
-                output = {"extraction": extraction.model_dump(), "matches": []}
+                output = {"score":extraction.score(),"extraction": extraction.public_dump(), "matches": []}
                 if extraction.status == "ok":
-                    output["matches"] = [{"input_concept": c.model_dump(),
+                    output["matches"] = [{"input_concept": c.public_dump(),
                         "candidates": retriever.search(c.to_concept(), args.top_k)} for c in extraction.concepts]
         print(json.dumps(output, ensure_ascii=False, indent=2))
         return 0

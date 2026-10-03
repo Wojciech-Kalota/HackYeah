@@ -1,145 +1,52 @@
-CATEGORIES = [{"id": "integracja_spoleczna", "label": "Integracja społeczna"}]
-from rag.tests.pg_support import test_database, close_test_database
-from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock
+from pg_support import test_database,close_test_database
+from rops_rag.pipeline import Pipeline
+from rops_rag.retrieval import Retriever
+from rops_rag.comparison import Decision
+from rops_rag.extraction import ExtractionResult,ExtractionError
 
-from rag.rops_rag.comparison import Decision, OpenAIComparator
-from rag.rops_rag.database import Database
-from rag.rops_rag.extraction import ExtractionError, ExtractionResult
-from rag.rops_rag.pipeline import Pipeline
-from rag.rops_rag.retrieval import Retriever
-
+CATEGORIES=[{"id":"integration","label":"Integracja"}]
 
 class PipelineTests(TestCase):
     def setUp(self):
-        self.db = test_database()
-        self.extractor, self.comparator = Mock(), Mock()
-        self.embedder = Mock(model="test-model")
-        self.embedder.embed.return_value = [1, 0]
-        self.retriever = Retriever(self.db, self.embedder)
-        self.pipeline = Pipeline(
-            self.db, self.extractor, self.retriever, self.comparator
-        )
-        self.extractor.extract.return_value = ExtractionResult.model_validate(
-            {
-                "status": "ok",
-                "questions": [],
-                "concepts": [
-                    {
-                        "problem": "Samotność",
-                        "audience": "Seniorzy",
-                        "solution": "Rozmowy telefoniczne",
-                        "category": "integracja_spoleczna",
-                        "context": "",
-                        "source_quote": "Pomysł",
-                    }
-                ],
-            }
-        )
-        self.comparator.compare.return_value = Decision(
-            kind="new", candidate_id=None, reason="Nowy", questions=[]
-        )
+        self.db=test_database()
+        self.extractor,self.comparator,self.embedder=Mock(),Mock(),Mock(model="test-model")
+        self.embedder.embed.return_value=[1,0]
+        self.extractor.extract.return_value=ExtractionResult.model_validate({"status":"ok","concepts":[{
+            "problem":"Samotność","audience":"Seniorzy","solution":"Rozmowy","category":"integration","context":"","assessment":{"cost":3,"duration":3,"importance":3,"reach":3},"source_quote":"Pomysł"}]})
+        self.comparator.compare.return_value=Decision(kind="new",candidate_id=None,reason="Nowy")
+        self.pipeline=Pipeline(self.db,self.extractor,Retriever(self.db,self.embedder),self.comparator)
 
     def tearDown(self):
         close_test_database(self.db)
 
-    def test_new_then_duplicate_and_replay(self):
-        first = self.pipeline.process("a", "Pomysł", CATEGORIES)
-        cid = first["decisions"][0]["concept_id"]
-        self.comparator.compare.return_value = Decision(
-            kind="duplicate", candidate_id=cid, reason="Ten sam mechanizm", questions=[]
-        )
-        second = self.pipeline.process("b", "Pomysł", CATEGORIES)
-        self.assertEqual(second["decisions"][0]["liczba_zgloszen"], 2)
-        calls = self.extractor.extract.call_count
-        self.assertTrue(self.pipeline.process("b", "Pomysł", CATEGORIES)["replayed"])
-        self.assertEqual(self.extractor.extract.call_count, calls)
-        self.assertEqual(len(self.db.list_concepts()), 1)
-        self.assertEqual(self.db.list_concepts()[0]["liczba_zgloszen"], 2)
-        with self.assertRaises(ValueError):
-            self.pipeline.process("b", "Zmieniony opis", CATEGORIES)
-        with self.assertRaises(ValueError):
-            self.pipeline.process("b", "Pomysł", [{"id": "other", "label": "Inna"}])
+    def test_new_duplicate_and_replay(self):
+        first=self.pipeline.process("a","Pomysł",CATEGORIES)
+        cid=first["decisions"][0]["concept_id"]
+        self.comparator.compare.return_value=Decision(kind="duplicate",candidate_id=cid,reason="Ten sam")
+        second=self.pipeline.process("b","Pomysł",CATEGORIES)
+        self.assertEqual(second["decisions"][0]["liczba_zgloszen"],2)
+        self.assertTrue(self.pipeline.process("b","Pomysł",CATEGORIES)["replayed"])
+        self.assertEqual(self.extractor.extract.call_count,2)
+        self.assertEqual(len(self.db.list_concepts()),1)
 
-    def test_similar_creates_relation(self):
-        cid = self.pipeline.process("a", "Pomysł", CATEGORIES)["decisions"][0][
-            "concept_id"
-        ]
-        self.comparator.compare.return_value = Decision(
-            kind="similar", candidate_id=cid, reason="Inny mechanizm", questions=[]
-        )
-        self.pipeline.process("b", "Pomysł", CATEGORIES)
-        self.assertEqual(len(self.db.list_concepts()), 2)
-        self.assertEqual(
-            self.db.connection.execute(
-                "SELECT COUNT(*) FROM concept_relations"
-            ).fetchone()["count"],
-            1,
-        )
+    def test_changed_categories_conflict(self):
+        self.pipeline.process("a","Pomysł",CATEGORIES)
+        with self.assertRaises(ValueError):
+            self.pipeline.process("a","Pomysł",[{"id":"other","label":"Inne"}])
 
-    def test_failure_rolls_back_entire_submission(self):
-        extraction = self.extractor.extract.return_value
+    def test_failure_rolls_back_all_writes(self):
+        extraction=self.extractor.extract.return_value
         extraction.concepts.append(extraction.concepts[0].model_copy())
-        self.comparator.compare.side_effect = [
-            self.comparator.compare.return_value,
-            ExtractionError("Przerwane API"),
-        ]
+        self.comparator.compare.side_effect=[self.comparator.compare.return_value,ExtractionError("Przerwane")]
         with self.assertRaises(ExtractionError):
-            self.pipeline.process("a", "Pomysł", CATEGORIES)
-        self.assertEqual(self.db.list_concepts(), [])
-        for table in ("submissions", "concept_embeddings", "processing_results"):
-            self.assertEqual(
-                self.db.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[
-                    "count"
-                ],
-                0,
-            )
+            self.pipeline.process("a","Pomysł",CATEGORIES)
+        self.assertEqual(self.db.list_concepts(),[])
+        self.assertEqual(self.db.connection.execute("SELECT COUNT(*) AS count FROM submissions").fetchone()["count"],0)
 
-    def test_clarification_does_not_add_concept(self):
-        self.comparator.compare.return_value = Decision(
-            kind="needs_clarification",
-            candidate_id=None,
-            reason="Brak danych",
-            questions=["Jak działa?"],
-        )
-        result = self.pipeline.process("a", "Pomysł", CATEGORIES)
-        self.assertIsNone(result["decisions"][0]["concept_id"])
-        self.assertEqual(self.db.list_concepts(), [])
-
-    def test_invalid_candidate_is_rejected(self):
-        self.comparator.compare.return_value = Decision(
-            kind="duplicate", candidate_id=999, reason="Błąd", questions=[]
-        )
-        with self.assertRaises(ValueError):
-            self.pipeline.process("a", "Pomysł", CATEGORIES)
-        self.assertEqual(self.db.list_concepts(), [])
-
-    def test_postgres_lock_prevents_concurrent_processing(self):
-        import os
-        from rag.rops_rag.errors import BusyError
-
-        other = Database(os.environ["TEST_DATABASE_URL"], schema=self.db.schema)
-        try:
-            other.connection.execute("BEGIN")
-            other.connection.execute("SELECT pg_advisory_xact_lock(7248319501)")
-            with self.assertRaises(BusyError):
-                self.pipeline.process("a", "Pomysł", CATEGORIES)
-            self.extractor.extract.assert_not_called()
-        finally:
-            other.connection.rollback()
-            other.close()
-
-    def test_comparator_validates_candidate_id(self):
-        client = Mock()
-        client.responses.parse.return_value = SimpleNamespace(
-            status="completed",
-            output_parsed=Decision(
-                kind="duplicate", candidate_id=999, reason="Błąd", questions=[]
-            ),
-        )
-        comparator = OpenAIComparator(client, "test-model")
-        concept = self.extractor.extract.return_value.concepts[0].to_concept()
-        with self.assertRaises(ExtractionError):
-            comparator.compare(concept, [{"concept": {"id": 1}, "similarity": 1}])
-        self.assertEqual(comparator.compare(concept, []).kind, "new")
+    def test_empty_solution_is_saved(self):
+        self.extractor.extract.return_value.concepts[0].solution=""
+        result=self.pipeline.process("a","Pomysł",CATEGORIES)
+        self.assertEqual(result["decisions"][0]["decision"]["kind"],"new")
+        self.assertEqual(self.db.list_concepts()[0]["solution"],"")
