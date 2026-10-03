@@ -6,6 +6,10 @@ import { AuthProvider } from './auth/AuthContext';
 import './index.css';
 import { router } from './router';
 
+if (localStorage.getItem('glos-miasta:theme') === 'contrast') {
+  document.documentElement.dataset.theme = 'contrast';
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>

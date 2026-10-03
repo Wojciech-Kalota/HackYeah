@@ -1,15 +1,26 @@
 import { Link } from 'react-router-dom';
 
+import { PageMain } from '../components/PageMain';
+import { RouteAccessibility } from '../components/RouteAccessibility';
+import { uiTheme } from '../styles/theme';
+
 export function NotFoundPage() {
   return (
-    <main className="grid min-h-screen place-items-center p-6 text-center">
-      <div>
-        <p className="text-sm font-semibold">404</p>
-        <h1 className="mt-2 text-2xl font-bold">Nie znaleziono strony</h1>
-        <Link className="mt-4 inline-block underline" to="/">
-          Wróć na stronę główną
-        </Link>
-      </div>
-    </main>
+    <>
+      <RouteAccessibility />
+      <PageMain
+        className={`${uiTheme.layout.page} grid place-items-center p-6 text-center`}
+      >
+        <div>
+          <p className="text-sm font-semibold">404</p>
+          <h1 className={`${uiTheme.text.heading} mt-2 text-2xl`}>
+            Nie znaleziono strony
+          </h1>
+          <Link className={`${uiTheme.text.link} mt-4 inline-block`} to="/">
+            Wróć na stronę główną
+          </Link>
+        </div>
+      </PageMain>
+    </>
   );
 }

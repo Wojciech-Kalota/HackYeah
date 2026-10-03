@@ -34,7 +34,7 @@ export function ReportCard({ report }: { report: Report }) {
       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center md:p-5">
         <Link className="shrink-0" to={`/pomysly/${report.id}`}>
           <img
-            alt="Ilustracja pomysłu"
+            alt={`Zdjęcie do pomysłu: ${report.title}`}
             className="h-36 w-full rounded-xl object-cover transition group-hover:opacity-90 sm:size-24"
             loading="lazy"
             src={report.image}
@@ -57,10 +57,10 @@ export function ReportCard({ report }: { report: Report }) {
           >
             {report.title}
           </Link>
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+          <p className="text-app-text-muted mt-1 line-clamp-2 text-xs leading-5">
             {report.description}
           </p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-400">
+          <div className="text-app-text-subtle mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px]">
             <span className="flex items-center gap-1">
               <MapPin size={12} /> {report.district}
             </span>
@@ -81,14 +81,14 @@ export function ReportCard({ report }: { report: Report }) {
           </span>
           <div className="flex items-center gap-2">
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 transition hover:bg-blue-100"
+              className={`${uiTheme.button.secondary} rounded-lg px-3 py-2 text-xs`}
               type="button"
             >
               <ThumbsUp size={14} /> {report.support}
             </button>
             <Link
               aria-label={`Otwórz pomysł ${report.title}`}
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-blue-800"
+              className={`${uiTheme.iconButton} size-9`}
               to={`/pomysly/${report.id}`}
             >
               <ChevronRight size={18} />
