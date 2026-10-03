@@ -49,14 +49,22 @@ namespace eInicjatywa.Controllers
         [HttpPatch("{id}")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] StatusDto statusDto)
         {
-            return Ok();
+            try
+            {
+                var result = await _statusService.UpdateStatus(id, statusDto);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [Authorize(Roles = "ADMIN_USER")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStatus(Guid id)
         {
-            return Ok();
+            return await _statusService.DeleteStatus(id) ? NoContent() : NotFound();
         }
     }
 }

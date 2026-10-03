@@ -15,13 +15,13 @@ import {
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { useReportsData } from '../api/useReports';
 import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import {
   completedProject,
-  reports,
   stats,
   type DashboardStatId,
 } from '../utils/dummyData';
@@ -92,6 +92,7 @@ function formatDate(date: string) {
 
 export function HomePage() {
   const { user } = useAuth();
+  const { reports } = useReportsData();
   const district = user?.district ?? 'Wszystkie dzielnice';
 
   return (

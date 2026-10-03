@@ -3,6 +3,7 @@ using eInicjatywa.Data;
 using eInicjatywa.Dtos;
 using eInicjatywa.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace eInicjatywa.Services
 {
@@ -16,10 +17,12 @@ namespace eInicjatywa.Services
     {
         private readonly AppDbContext _db;
         private readonly UtilsService _utilsService;
-        public UserService(AppDbContext db, UtilsService utilsService)
+        private readonly IPasswordHasher<User> _passwordHasher;
+        public UserService(AppDbContext db, UtilsService utilsService, IPasswordHasher<User> passwordHasher)
         {
             _db = db;
             _utilsService = utilsService;
+            _passwordHasher = passwordHasher;
         }
 
         public async Task<UserDto> RegisterAsync(ClaimsPrincipal? claimsPrincipal, RegisterDto request)
@@ -35,11 +38,11 @@ namespace eInicjatywa.Services
             {
                 Id = Guid.CreateVersion7(),
                 Email = request.Email,
-                Password = request.Password,
                 Name = request.NameFirst,
                 Surname = request.NameLast,
                 DistrictId = null
             };
+            user.Password = _passwordHasher.HashPassword(user, request.Password);
             
             var roles = await _db.Roles.ToListAsync();
 
@@ -53,6 +56,15 @@ namespace eInicjatywa.Services
                 {
                     throw new Exception("Specified role is not valid");
                 }
+            }
+
+            var adminAlreadyExists = await _db.UserRoles
+                .AnyAsync(userRole => userRole.Role.Name == "ADMIN_USER");
+            if (request.Roles.Contains("ADMIN_USER")
+                && adminAlreadyExists
+                && !await _utilsService.HasAdminRole(claimsPrincipal))
+            {
+                throw new Exception("Only an administrator can assign the ADMIN_USER role");
             }
 
             List<UserRole> userRoles = new List<UserRole>();

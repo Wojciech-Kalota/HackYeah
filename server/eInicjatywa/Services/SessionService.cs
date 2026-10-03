@@ -3,6 +3,8 @@ using System.Text.Json;
 using eInicjatywa.Data;
 using eInicjatywa.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using eInicjatywa.Entities;
 
 namespace eInicjatywa.Services
 {
@@ -17,19 +19,46 @@ namespace eInicjatywa.Services
         private readonly AppDbContext _db;
         private readonly ICacheService _cacheService;
         private readonly UtilsService _utilsService;
-        public SessionService(AppDbContext db,ICacheService cacheService, UtilsService utilsService)
+        private readonly IPasswordHasher<User> _passwordHasher;
+        public SessionService(AppDbContext db,ICacheService cacheService, UtilsService utilsService, IPasswordHasher<User> passwordHasher)
         {
             _db = db;
             _cacheService = cacheService;
             _utilsService = utilsService;
+            _passwordHasher = passwordHasher;
         }
         public async Task<InternalSessionDto> LoginAsync(ClaimsPrincipal? claimsPrincipal, LoginDto request)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.Password == request.Password);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if(user == null)
             {
                 throw new Exception("Invalid creadentials");
+            }
+
+            PasswordVerificationResult passwordResult;
+            try
+            {
+                passwordResult = _passwordHasher.VerifyHashedPassword(user, user.Password, request.Password);
+            }
+            catch (FormatException)
+            {
+                passwordResult = PasswordVerificationResult.Failed;
+            }
+
+            if (passwordResult == PasswordVerificationResult.Failed)
+            {
+                if (user.Password != request.Password)
+                    throw new Exception("Invalid credentials");
+
+                // Upgrade accounts created before password hashing was enabled.
+                user.Password = _passwordHasher.HashPassword(user, request.Password);
+                await _db.SaveChangesAsync();
+            }
+            else if (passwordResult == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                user.Password = _passwordHasher.HashPassword(user, request.Password);
+                await _db.SaveChangesAsync();
             }
 
             DateTime timeNow = DateTime.UtcNow;
@@ -51,7 +80,8 @@ namespace eInicjatywa.Services
             {
                 throw new Exception("No token in sesssion cookie");
             }
-            var redisKey = $"eInicjatywa:Session:{_utilsService.GetTokenGuid(claimsPrincipal)}";
+            var sessionToken = await _utilsService.GetTokenGuid(claimsPrincipal);
+            var redisKey = $"eInicjatywa:Session:{sessionToken}";
             await _cacheService.RemoveKeyAsync(redisKey);
             return;
         }

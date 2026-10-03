@@ -1,14 +1,16 @@
 import { CheckCircle2, Lightbulb, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { getApiErrorMessage } from '../api/client';
+import { loadReports } from '../api/reports';
 import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { IdeaStatus } from '../types/domain';
-import { citizenIdeas } from '../utils/dummyData';
-import { getLocalIdeas } from '../utils/localIdeas';
+import type { Report } from '../utils/dummyData';
 
 const ideaFilters: Array<{ value: 'all' | IdeaStatus; label: string }> = [
   { value: 'all', label: 'Wszystkie' },
@@ -18,18 +20,23 @@ const ideaFilters: Array<{ value: 'all' | IdeaStatus; label: string }> = [
 export function MyIdeasPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const accountIdeas = citizenIdeas.map((idea) => ({
-    id: `account-${idea.id}`,
-    user_id: user?.id ?? 'citizen',
-    district: idea.district,
-    category: idea.category,
-    title: idea.title,
-    desc: idea.description,
-    status: idea.status,
-    img: idea.image,
-    created_at: idea.updatedAt,
-  }));
-  const ideas = [...getLocalIdeas(user?.id), ...accountIdeas];
+  const [ideas, setIdeas] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    void loadReports()
+      .then((result) =>
+        setIdeas(
+          result.reports.filter(
+            (_report, index) => result.ideas[index].authorId === user.id,
+          ),
+        ),
+      )
+      .catch((loadError) => setError(getApiErrorMessage(loadError)))
+      .finally(() => setLoading(false));
+  }, [user]);
   const requestedStatus = searchParams.get('status');
   const activeStatus = IDEA_STATUS_OPTIONS.some(
     (option) => option.value === requestedStatus,
@@ -66,6 +73,13 @@ export function MyIdeasPage() {
           <CheckCircle2 size={19} /> Pomysł został zapisany.
         </div>
       )}
+
+      {error && (
+        <p className="mt-6 text-sm font-medium text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+      {loading && <p className="mt-6 text-sm text-slate-500">Ładowanie…</p>}
 
       <nav aria-label="Filtry pomysłów" className="mt-6">
         <ul className="flex flex-wrap gap-2">
@@ -116,11 +130,11 @@ export function MyIdeasPage() {
                 key={idea.id}
                 to={`/pomysly/${idea.id}`}
               >
-                {idea.img ? (
+                {idea.image ? (
                   <img
                     alt={`Zdjęcie do pomysłu: ${idea.title}`}
                     className="h-44 w-full object-cover"
-                    src={idea.img}
+                    src={idea.image}
                   />
                 ) : (
                   <div className="grid h-32 place-items-center bg-blue-50 text-blue-300">
@@ -137,7 +151,7 @@ export function MyIdeasPage() {
                   </div>
                   <h2 className="mt-4 font-semibold">{idea.title}</h2>
                   <p className={`${uiTheme.text.body} mt-2 line-clamp-3`}>
-                    {idea.desc}
+                    {idea.description}
                   </p>
                   <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs">
                     <span
@@ -147,7 +161,7 @@ export function MyIdeasPage() {
                     </span>
                     <time className="text-app-text-subtle">
                       {new Intl.DateTimeFormat('pl-PL').format(
-                        new Date(idea.created_at),
+                        new Date(idea.updatedAt),
                       )}
                     </time>
                   </div>

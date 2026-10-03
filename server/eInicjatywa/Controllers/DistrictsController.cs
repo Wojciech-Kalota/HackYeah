@@ -8,7 +8,6 @@ namespace eInicjatywa.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "ADMIN_USER")]
     public class DistrictsController : ControllerBase
     {
         private readonly IDistrictService _districtService;
@@ -50,14 +49,22 @@ namespace eInicjatywa.Controllers
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> UpdateDistrict(Guid id, [FromBody] DistrictDto districtDto)
         {
-            return Ok();
+            try
+            {
+                var result = await _districtService.UpdateDistrict(id, districtDto);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> DeleteDistrict(Guid id)
         {
-            return Ok();
+            return await _districtService.DeleteDistrict(id) ? NoContent() : NotFound();
         }
     }
 }

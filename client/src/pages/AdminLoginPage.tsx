@@ -10,36 +10,38 @@ import {
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { getApiErrorMessage } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { uiTheme } from '../styles/theme';
 
-const adminCredentials = {
-  email: 'admin@krakow.pl',
-  password: 'urzad2026',
-};
-
 export function AdminLoginPage() {
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(adminCredentials.email);
-  const [password, setPassword] = useState(adminCredentials.password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (
-      email.trim().toLowerCase() !== adminCredentials.email ||
-      password !== adminCredentials.password
-    ) {
-      setError(
-        'Nieprawidłowy adres e-mail lub hasło. Sprawdź dane i spróbuj ponownie.',
-      );
-      return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const account = await login(email, password);
+      if (!account.roles.includes('ADMIN_USER')) {
+        await logout();
+        setError('To konto nie ma uprawnień administratora.');
+        return;
+      }
+      navigate('/administrator/panel');
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError));
+    } finally {
+      setSubmitting(false);
     }
-
-    navigate('/administrator/panel');
   }
 
   return (
@@ -209,9 +211,11 @@ export function AdminLoginPage() {
 
                   <button
                     className={`${uiTheme.button.primary} h-12 w-full`}
+                    disabled={submitting}
                     type="submit"
                   >
-                    Zaloguj się <ArrowRight size={17} />
+                    {submitting ? 'Logowanie…' : 'Zaloguj się'}{' '}
+                    <ArrowRight size={17} />
                   </button>
                 </form>
               </div>
