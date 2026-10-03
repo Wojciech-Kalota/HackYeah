@@ -1,7 +1,8 @@
 import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
+import { useAuth } from '../auth/AuthContext';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import { reports, type ReportStatus } from '../utils/dummyData';
@@ -17,6 +18,7 @@ function isReportStatus(value: string | null): value is ReportStatus {
 }
 
 export function ReportsPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const district = searchParams.get('district') ?? 'all';
@@ -82,9 +84,12 @@ export function ReportsPage() {
             realizacji.
           </p>
         </div>
-        <button className={uiTheme.button.primary} type="button">
+        <Link
+          className={uiTheme.button.primary}
+          to={user ? '/dodaj-pomysl' : '/logowanie'}
+        >
           <Plus size={17} /> Dodaj zgłoszenie
-        </button>
+        </Link>
       </div>
 
       {searchParams.get('nowe') === 'true' && (
