@@ -1,15 +1,20 @@
-from pg_support import test_database, close_test_database
+from rag.tests.pg_support import test_database, close_test_database
 import psycopg
 import unittest
 
-from rops_rag.database import Database
-from rops_rag.models import Concept
+from rag.rops_rag.database import Database
+from rag.rops_rag.models import Concept
 
 
 class DatabaseTests(unittest.TestCase):
     def setUp(self):
         self.db = test_database()
-        self.concept = Concept("Samotność", "Seniorzy", "Cotygodniowe rozmowy telefoniczne", "integracja_spoleczna")
+        self.concept = Concept(
+            "Samotność",
+            "Seniorzy",
+            "Cotygodniowe rozmowy telefoniczne",
+            "integracja_spoleczna",
+        )
         self.db.add_submission("a", "Pomysł A")
 
     def tearDown(self):
