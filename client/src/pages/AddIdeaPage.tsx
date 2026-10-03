@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
-import { IDEA_CATEGORIES, KRAKOW_DISTRICTS } from '../constants/ideaOptions';
+import { IDEA_CATEGORIES, LOCATIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { Idea } from '../types/domain';
 import { saveLocalIdea } from '../utils/localIdeas';
@@ -307,7 +307,7 @@ export function AddIdeaPage() {
                   required
                   value={idea.district}
                 >
-                  {KRAKOW_DISTRICTS.map((district) => (
+                  {LOCATIONS.map((district) => (
                     <option key={district} value={district}>
                       {district}
                     </option>
