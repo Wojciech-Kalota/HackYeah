@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AddIdeaPage } from './pages/AddIdeaPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminPage } from './pages/AdminPage';
 import { HomePage } from './pages/HomePage';
 import { IdeaDetailsPage } from './pages/IdeaDetailsPage';
@@ -14,7 +15,9 @@ import { StartPage } from './pages/StartPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <StartPage /> },
-  { path: '/administrator', element: <AdminPage /> },
+  { path: '/admin', element: <AdminLoginPage /> },
+  { path: '/admin/panel', element: <AdminPage /> },
+  { path: '/admin/panel/projekty', element: <AdminPage view="projects" /> },
   {
     element: <App />,
     children: [

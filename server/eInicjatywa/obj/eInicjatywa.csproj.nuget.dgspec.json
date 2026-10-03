@@ -1,25 +1,46 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj": {}
+<<<<<<< HEAD:server/eInicjatywa/obj/eInicjatywa.csproj.nuget.dgspec.json
+    "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj": {
+    "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
-        "projectName": "eIncijatywa",
-        "projectPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
+        "projectUniqueName": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj",
+        "projectName": "eInicjatywa",
+        "projectPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\eInicjatywa.csproj",
         "packagesPath": "C:\\Users\\Jakub\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eIncijatywa\\obj\\",
+        "outputPath": "C:\\Users\\Jakub\\Desktop\\hackyeah2026\\HackYeah\\server\\eInicjatywa\\obj\\",
+=======
+    "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
+        "projectName": "eIncijatywa",
+        "projectPath": "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\eIncijatywa.csproj",
+        "packagesPath": "C:\\Users\\Wojtek\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Wojtek\\Desktop\\HackYeah\\HackYeah\\server\\eIncijatywa\\obj\\",
+>>>>>>> d3c194fa261f72d7c919b7cdb12c3a8e7cf42e6f:server/eIncijatywa/obj/eIncijatywa.csproj.nuget.dgspec.json
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\Jakub\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\Wojtek\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -49,6 +70,10 @@
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[10.0.12, )"
+            },
+            "Scalar.AspNetCore": {
+              "target": "Package",
+              "version": "[2.17.13, )"
             }
           },
           "imports": [

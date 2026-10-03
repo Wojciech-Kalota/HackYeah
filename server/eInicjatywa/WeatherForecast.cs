@@ -1,4 +1,4 @@
-namespace eIncijatywa;
+namespace eInicjatywa;
 
 public class WeatherForecast
 {
