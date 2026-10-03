@@ -12,7 +12,7 @@ docker build -f postgres_einicjatywa.Dockerfile -t postgres_einicjatywa_image .
 
 ## Launch Postgres Container
 ```dockerfile
-docker run -d --name postgres_einicjatywa_container --network einicjatywa_network --env-file .env -v einicjatywa_volume:/var/lib/postgresql/data -p 5432:5432 postgres_einicjatywa_image
+docker run -d --name postgres_einicjatywa_container --network network_einicjatywa --env-file .env -v einicjatywa_volume:/var/lib/postgresql/data -p 5432:5432 postgres_einicjatywa_image
 ```
 
 # Backend Setup
