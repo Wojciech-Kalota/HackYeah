@@ -1,7 +1,9 @@
 ﻿using eInicjatywa.Dtos;
+using eInicjatywa.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Build.Tasks;
 using System.Diagnostics.Contracts;
 
 namespace eInicjatywa.Controllers
@@ -10,24 +12,34 @@ namespace eInicjatywa.Controllers
     [ApiController]
     public class IdeasController : ControllerBase
     {
+        private readonly IIdeasService _ideasService;
+
+        public IdeasController(IIdeasService ideasService)
+        {
+            _ideasService = ideasService;
+        }
+
+
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
         {
-
-            return Ok();
+            var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
+            return Ok(results);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetIdeas()
         {
-            return Ok();
+            var results = await _ideasService.GetIdeasAsync();
+            return Ok(results);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetIdea(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.GetIdeaByIdAsync(id);
+            return Ok(results);
         }
 
         [HttpPatch("{id}")]
@@ -41,7 +53,8 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteIdea(Guid id)
         {
-            return Ok();
+            var results = await _ideasService.DeleteIdeaAsync(User, id);
+            return results ? NoContent() : BadRequest();
         }
 
         [HttpPost("{id}/comments")]

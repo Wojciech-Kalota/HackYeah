@@ -9,6 +9,8 @@ namespace eInicjatywa.Services
         Task<Guid> GetTokenGuid(ClaimsPrincipal? claimsPrincipal);
         Task<Guid> GetUserId(ClaimsPrincipal? claimsPrincipal);
         Task<bool> IsAuthenticated(ClaimsPrincipal? claimsPrincipal);
+        Task<bool> HasAdminRole(ClaimsPrincipal? claimsPrincipal);
+        Task<bool> HasUserRole(ClaimsPrincipal? claimsPrincipal);
     }
 
     public class UtilsService : IUtilsService
@@ -37,6 +39,32 @@ namespace eInicjatywa.Services
                 return Guid.Empty;
             }
             return Guid.TryParse(claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)!, out var guid) ? guid : Guid.Empty;
+        }
+
+        public async Task<bool> HasAdminRole(ClaimsPrincipal? claimsPrincipal)
+        {
+            if (claimsPrincipal == null)
+            {
+                return false;
+            }
+            if (!claimsPrincipal.IsInRole("ADMIN_USER"))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public async Task<bool> HasUserRole(ClaimsPrincipal? claimsPrincipal)
+        {
+            if (claimsPrincipal == null)
+            {
+                return false;
+            }
+            if (!claimsPrincipal.IsInRole("NORMAL_USER"))
+            {
+                return false;
+            }
+            return true;
         }
 
         public async Task<bool> IsAuthenticated(ClaimsPrincipal? claimsPrincipal)

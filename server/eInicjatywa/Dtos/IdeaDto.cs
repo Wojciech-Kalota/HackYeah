@@ -11,6 +11,7 @@ namespace eInicjatywa.Dtos
         Guid DistrictId,
         Guid CategoryId,
         Guid StatusId,
-        Guid AuthorId
+        Guid AuthorId,
+        List<Guid> CategoryIds
     );
 }

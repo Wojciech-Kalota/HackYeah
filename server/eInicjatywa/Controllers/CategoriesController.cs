@@ -8,7 +8,7 @@ namespace eInicjatywa.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "ADMIN_USER")]
-    public class CatgoriesController : ControllerBase
+    public class CategoriesController : ControllerBase
     {
         [HttpPost]
         [Authorize(Roles = "ADMIN_USER")]
