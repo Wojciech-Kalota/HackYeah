@@ -17,9 +17,22 @@ export const router = createBrowserRouter([
   { path: '/', element: <StartPage /> },
   { path: '/administrator', element: <AdminLoginPage /> },
   { path: '/administrator/panel', element: <AdminPage /> },
+  { path: '/logowanie', element: <LoginPage /> },
   {
     path: '/administrator/projekty',
     element: <AdminPage view="projects" />,
+  },
+  {
+    path: '/administrator/projekty/:id',
+    element: <AdminPage view="project" />,
+  },
+  {
+    path: '/administrator/projekty/:id/decyzja',
+    element: <AdminPage view="decision" />,
+  },
+  {
+    path: '/administrator/statystyki',
+    element: <AdminPage view="analytics" />,
   },
   { path: '/admin', element: <Navigate replace to="/administrator" /> },
   {
@@ -36,7 +49,6 @@ export const router = createBrowserRouter([
       { path: 'mieszkaniec', element: <HomePage /> },
       { path: 'pomysly', element: <ReportsPage /> },
       { path: 'pomysly/:id', element: <IdeaDetailsPage /> },
-      { path: 'logowanie', element: <LoginPage /> },
       {
         path: 'dodaj-pomysl',
         element: (

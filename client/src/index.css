@@ -29,3 +29,11 @@ a {
 button {
   cursor: pointer;
 }
+
+.login-field:-webkit-autofill,
+.login-field:-webkit-autofill:hover,
+.login-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1e293b;
+  box-shadow: 0 0 0 1000px #f5f7fb inset;
+  transition: background-color 9999s ease-out;
+}

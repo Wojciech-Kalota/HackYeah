@@ -34,8 +34,8 @@ export function StartPage() {
           <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-700 text-white shadow-lg shadow-blue-800/20">
             <img
               alt=""
-              className="h-11 w-9 object-contain mix-blend-screen"
-              src="/st-marys-logo.png"
+              className="h-10 w-12 object-contain"
+              src="/sukiennice-logo.png"
             />
           </div>
           <p className="mt-5 text-sm font-bold tracking-[0.18em] text-blue-800 uppercase">
