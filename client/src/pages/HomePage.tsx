@@ -1,19 +1,25 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   FileText,
+  LayoutDashboard,
+  MapPin,
+  MessageSquare,
   Plus,
   ShieldCheck,
   Sparkles,
+  ThumbsUp,
   Trophy,
   Wrench,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
-import { ReportCard } from '../components/ReportCard';
+import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import {
   completedProject,
@@ -24,36 +30,17 @@ import {
 
 const statStyles: Record<
   DashboardStatId,
-  {
-    icon: LucideIcon;
-    iconClass: string;
-    valueClass: string;
-    badgeClass: string;
-  }
+  { icon: LucideIcon; iconClass: string }
 > = {
-  submitted: {
-    icon: FileText,
-    iconClass: 'bg-blue-100 text-blue-800',
-    valueClass: 'text-slate-950',
-    badgeClass: 'bg-slate-100 text-slate-600',
-  },
+  submitted: { icon: FileText, iconClass: 'bg-blue-100 text-blue-800' },
   under_review: {
     icon: ClipboardCheck,
-    iconClass: 'bg-orange-100 text-orange-800',
-    valueClass: 'text-orange-800',
-    badgeClass: 'bg-orange-100 text-orange-800',
+    iconClass: 'bg-amber-100 text-amber-800',
   },
-  in_progress: {
-    icon: Wrench,
-    iconClass: 'bg-indigo-100 text-indigo-800',
-    valueClass: 'text-indigo-800',
-    badgeClass: 'bg-indigo-100 text-indigo-800',
-  },
+  in_progress: { icon: Wrench, iconClass: 'bg-indigo-100 text-indigo-800' },
   completed: {
     icon: CheckCircle2,
     iconClass: 'bg-emerald-100 text-emerald-800',
-    valueClass: 'text-emerald-800',
-    badgeClass: 'bg-emerald-100 text-emerald-800',
   },
 };
 
@@ -62,147 +49,214 @@ function StatCard({ stat }: { stat: (typeof stats)[number] }) {
   const Icon = style.icon;
 
   return (
-    <article className={`${uiTheme.surface.card} p-4`}>
-      <div className="flex items-center justify-between gap-3">
+    <article className={`${uiTheme.surface.card} p-5`}>
+      <div className="flex items-start justify-between gap-3">
         <span
           className={`grid size-10 place-items-center rounded-xl ${style.iconClass}`}
         >
           <Icon size={19} />
         </span>
-        <span
-          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${style.badgeClass}`}
-        >
+        <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">
           {stat.badge}
         </span>
       </div>
       <div className="mt-5 flex items-end gap-2">
-        <strong className={`text-3xl leading-none ${style.valueClass}`}>
+        <strong className="text-3xl leading-none text-slate-950">
           {stat.value}
         </strong>
-        <span className="pb-0.5 text-xs font-medium text-slate-700">
+        <span className="pb-0.5 text-sm font-semibold text-slate-700">
           {stat.label}
         </span>
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">{stat.description}</p>
+      <p className="mt-2 text-xs text-slate-500">{stat.description}</p>
     </article>
   );
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('pl-PL', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date));
 }
 
 export function HomePage() {
   const { user } = useAuth();
   const ideaPath = user ? '/dodaj-pomysl' : '/logowanie';
+  const district = user?.district ?? 'Wszystkie dzielnice';
 
   return (
     <main className={uiTheme.layout.content}>
-      <section
-        className={`${uiTheme.surface.card} flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between`}
-      >
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-600">
-            <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-blue-800">
-              <ShieldCheck size={13} /> Profil zaufany
-            </span>
-            <span>•</span>
-            <span>{user ? `Dzielnica ${user.district}` : 'Kraków'}</span>
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
+            <LayoutDashboard size={14} /> Pulpit mieszkańca
           </div>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            Dzień dobry{user ? `, ${user.firstName}` : ''}{' '}
-            <span aria-hidden="true">👋</span>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+            Dzień dobry{user ? `, ${user.firstName}` : ''}
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Masz pomysł, jak ulepszyć Kraków i swoją dzielnicę? Dołącz do
-            współdecydowania o lokalnych inwestycjach miejskich.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Pomysły, projekty i najważniejsze informacje z Twojej okolicy w
+            jednym miejscu.
           </p>
         </div>
-        {user && (
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-900">
-            <CheckCircle2 size={15} /> Mieszkaniec zalogowany
-          </span>
-        )}
-      </section>
 
-      <section className="relative mt-6 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950 via-blue-800 to-indigo-700 px-6 py-8 text-white shadow-lg shadow-blue-950/15 md:px-9 md:py-10">
-        <div className="relative z-10 max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-[11px] font-semibold ring-1 ring-white/15">
-            <span className="size-2 rounded-full bg-emerald-300" /> Budżet
-            Obywatelski 2026 · Nabór trwa
+        <section className="flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3 pr-5 shadow-sm ring-1 ring-slate-200/70 xl:min-w-[350px]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
+            <MapPin size={20} />
           </span>
-          <h2 className="mt-5 max-w-2xl text-3xl leading-tight font-bold tracking-tight md:text-4xl">
-            Zmień swoją dzielnicę. Twój głos ma realną moc.
-          </h2>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-blue-100 md:text-base">
-            42 mln zł czekają na inicjatywy krakowian. Opisz problem, a asystent
-            pomoże przygotować kompletne zgłoszenie.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link className={uiTheme.button.accent} to={ideaPath}>
-              <Plus size={17} /> Zgłoś nowy problem
-            </Link>
-            <Link
-              className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/20 transition hover:bg-white/15"
-              to="/pomysly"
-            >
-              Przeglądaj zgłoszenia <ArrowRight size={16} />
-            </Link>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              Obserwowana okolica
+            </p>
+            <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
+              {district}
+            </p>
           </div>
-        </div>
-        <div className="absolute -right-14 -bottom-24 size-80 rounded-full bg-white/10" />
-        <div className="absolute top-10 right-28 hidden size-28 rounded-full bg-cyan-300/10 blur-sm md:block" />
-      </section>
+          <Link
+            aria-label="Przeglądaj pomysły z okolicy"
+            className="ml-auto rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-800"
+            to="/pomysly"
+          >
+            <ChevronRight size={18} />
+          </Link>
+        </section>
+      </div>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Podsumowanie"
+      >
         {stats.map((stat) => (
           <StatCard key={stat.id} stat={stat} />
         ))}
       </section>
 
-      <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <section>
-          <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+        <section className={`${uiTheme.surface.card} overflow-hidden`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
-              <p className="text-xs font-semibold text-blue-800">
-                TWOJA OKOLICA
-              </p>
-              <h2 className="mt-1 text-xl font-bold">
-                Co dzieje się w Krakowie?
+              <h2 className="font-bold text-slate-950">
+                Popularne w Twojej okolicy
               </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Pomysły najczęściej wspierane przez mieszkańców
+              </p>
             </div>
             <Link
-              className="hidden text-sm font-semibold text-blue-800 hover:text-blue-950 sm:block"
+              className="text-xs font-bold text-blue-800 hover:text-blue-950"
               to="/pomysly"
             >
-              Wszystkie zgłoszenia
+              Zobacz wszystkie
             </Link>
           </div>
-          <div className="space-y-4">
-            {reports.slice(0, 3).map((report) => (
-              <ReportCard compact key={report.id} report={report} />
+
+          <div className="divide-y divide-slate-100">
+            {reports.slice(0, 4).map((report) => (
+              <article
+                className="group flex flex-col gap-4 px-5 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center"
+                key={report.id}
+              >
+                <img
+                  alt="Ilustracja pomysłu"
+                  className="h-16 w-full rounded-xl object-cover sm:size-16 sm:shrink-0"
+                  src={report.image}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold text-blue-700">
+                      BO-{String(report.id).padStart(3, '0')}
+                    </span>
+                    <span className="text-[10px] text-slate-300">•</span>
+                    <span className="text-[10px] font-medium text-slate-500">
+                      {report.category}
+                    </span>
+                  </div>
+                  <Link
+                    className="mt-1 block truncate text-sm font-semibold text-slate-900 hover:text-blue-800"
+                    to={`/pomysly/${report.id}`}
+                  >
+                    {report.title}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <MapPin size={12} /> {report.district}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CalendarDays size={12} /> {formatDate(report.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <div className="text-right">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${uiTheme.status[report.status]}`}
+                    >
+                      {statusLabels[report.status]}
+                    </span>
+                    <p className="mt-1.5 flex items-center justify-end gap-1 text-[10px] text-slate-400">
+                      <ThumbsUp size={11} /> {report.support}
+                      <MessageSquare className="ml-1" size={11} />{' '}
+                      {report.comments}
+                    </p>
+                  </div>
+                  <Link
+                    aria-label={`Otwórz pomysł ${report.title}`}
+                    className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-800 hover:shadow-sm"
+                    to={`/pomysly/${report.id}`}
+                  >
+                    <ChevronRight size={18} />
+                  </Link>
+                </div>
+              </article>
             ))}
           </div>
-          <Link
-            className="mx-auto mt-6 flex w-fit items-center gap-2 text-sm font-semibold text-blue-800 hover:text-blue-950"
-            to="/pomysly"
-          >
-            Zobacz wszystkie zgłoszenia w Krakowie <ArrowRight size={16} />
-          </Link>
         </section>
 
         <aside className="space-y-5">
-          <article className={`${uiTheme.surface.card} overflow-hidden p-5`}>
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-bold">
-                <span className="grid size-8 place-items-center rounded-lg bg-emerald-100 text-emerald-800">
-                  <Trophy size={17} />
-                </span>
-                Ostatnio zrealizowane
-              </h2>
-              <span className="text-[10px] font-bold tracking-wide text-emerald-700">
-                SUKCES
+          <section className="rounded-2xl bg-blue-950 p-5 text-white shadow-lg shadow-blue-950/10">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10">
+                <Sparkles size={18} />
+              </span>
+              <div>
+                <p className="text-sm font-bold">Budżet Obywatelski 2026</p>
+                <p className="mt-0.5 text-[11px] text-blue-200">
+                  Nabór projektów trwa
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-blue-100">
+              42 mln zł czekają na inicjatywy krakowian. Opisz problem, a
+              asystent pomoże przygotować kompletne zgłoszenie.
+            </p>
+            <Link
+              className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300"
+              to={ideaPath}
+            >
+              <Plus size={15} /> Dodaj własny pomysł{' '}
+              <ArrowRight className="ml-auto" size={15} />
+            </Link>
+          </section>
+
+          <section className={`${uiTheme.surface.card} overflow-hidden p-5`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-950">
+                  Ostatnio zrealizowane
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Projekt mieszkańców
+                </p>
+              </div>
+              <span className="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
+                <Trophy size={17} />
               </span>
             </div>
             <img
               alt="Zrealizowany projekt miejski"
-              className="mt-4 h-36 w-full rounded-xl object-cover"
+              className="mt-4 h-32 w-full rounded-xl object-cover"
               src={completedProject.image}
             />
             <h3 className="mt-4 text-sm font-semibold">
@@ -214,51 +268,27 @@ export function HomePage() {
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full w-full rounded-full bg-emerald-600" />
             </div>
-            <p className="mt-2 text-right text-[10px] font-medium text-emerald-800">
-              100% zrealizowano
-            </p>
-          </article>
+          </section>
 
-          <article className={`${uiTheme.surface.muted} p-5`} id="standardy">
-            <h2 className="flex items-start gap-2 font-bold text-blue-950">
-              <ShieldCheck className="mt-0.5 shrink-0" size={19} /> Karta
-              Dialogu i Przejrzystości
-            </h2>
-            <p className="mt-4 text-xs leading-5 text-slate-600">
-              Urząd Miasta Krakowa zobowiązuje się do standardu otwartej
-              partycypacji społecznej.
-            </p>
-            <div className="mt-4 space-y-2">
-              <div className="rounded-xl bg-white p-3 text-xs">
-                <strong>Maks. 14 dni roboczych</strong>
-                <p className="mt-1 text-slate-500">
-                  na pierwszą formalną ocenę wniosku.
+          <section className={`${uiTheme.surface.card} p-5`} id="standardy">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-950">
+                  Karta Dialogu
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Standard odpowiedzi miasta
                 </p>
               </div>
-              <div className="rounded-xl bg-white p-3 text-xs">
-                <strong>Imienny urzędnik prowadzący</strong>
-                <p className="mt-1 text-slate-500">
-                  i bezpośredni kontakt w sprawie.
-                </p>
-              </div>
+              <span className="grid size-9 place-items-center rounded-xl bg-blue-100 text-blue-800">
+                <ShieldCheck size={17} />
+              </span>
             </div>
-          </article>
-
-          <article className="rounded-2xl bg-blue-100 p-5 ring-1 ring-blue-200">
-            <h2 className="flex items-center gap-2 font-bold text-blue-950">
-              <Sparkles size={19} /> Zgłoś problem w 3 minuty
-            </h2>
             <p className="mt-4 text-xs leading-5 text-slate-600">
-              Asystent dopasuje kategorię urzędową, sprawdzi kompletność
-              zgłoszenia i wskaże właściwą jednostkę.
+              Pierwsza formalna ocena pomysłu nastąpi maksymalnie w ciągu 14 dni
+              roboczych.
             </p>
-            <Link
-              className={`${uiTheme.button.primary} mt-5 w-full text-xs`}
-              to={ideaPath}
-            >
-              <Sparkles size={15} /> Rozpocznij z Asystentem AI
-            </Link>
-          </article>
+          </section>
         </aside>
       </div>
     </main>
