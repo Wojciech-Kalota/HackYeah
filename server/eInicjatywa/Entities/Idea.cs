@@ -9,10 +9,15 @@ public class Idea
     public string Description { get; set; }
     public string? ImageUrl { get; set; } = string.Empty;
 
-    public Guid DistrictId { get; set; }
-    public Guid CategoryId { get; set; }
-    public Guid StatusId { get; set; }
-    public Guid UserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset LastUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    public List<Guid> Duplicates { get; set; } = new List<Guid>();
+    public District District { get; set; } = null!;
+    public Category Category { get; set; } = null!;
+    public Status Status { get; set; } = null!;
+    public User Author { get; set; } = null!;
+
+    public ICollection<Idea> DuplicateIds { get; set; } = new List<Idea>();
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public ICollection<User> Voters { get; set; } = new List<User>();
 }
