@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getApiErrorMessage, type ApiIdea } from './client';
 import { loadReports, type ApiCatalog } from './reports';
-import type { Report } from '../utils/dummyData';
+import type { Report } from '../types/domain';
 
 export function useReportsData() {
   const [reports, setReports] = useState<Report[]>([]);

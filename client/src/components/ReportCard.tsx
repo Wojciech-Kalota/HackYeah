@@ -3,13 +3,12 @@ import {
   ChevronRight,
   MapPin,
   MessageSquare,
-  ThumbsUp,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { AiScoreBadge } from './AiScoreBadge';
 import { uiTheme } from '../styles/theme';
-import type { Report, ReportStatus } from '../utils/dummyData';
+import type { Report, ReportStatus } from '../types/domain';
 
 const statusLabels: Record<ReportStatus, string> = {
   submitted: 'Nowe zgłoszenie',
@@ -17,6 +16,7 @@ const statusLabels: Record<ReportStatus, string> = {
   accepted: 'Przyjęte do realizacji',
   in_progress: 'W realizacji',
   completed: 'Zrealizowane',
+  rejected: 'Odrzucone',
 };
 
 function formatDate(date: string) {
@@ -32,13 +32,13 @@ export function ReportCard({
   detailsHref = `/pomysly/${report.id}`,
   nested = false,
   showProjectId = false,
-  supportIsAction = true,
+  showVotingNotice = true,
 }: {
   report: Report;
   detailsHref?: string;
   nested?: boolean;
   showProjectId?: boolean;
-  supportIsAction?: boolean;
+  showVotingNotice?: boolean;
 }) {
   return (
     <article
@@ -51,12 +51,19 @@ export function ReportCard({
         to={detailsHref}
       />
       <div className="pointer-events-none relative z-20 flex flex-col gap-4 p-4 sm:flex-row sm:items-center md:p-5">
-        <img
-          alt={`Zdjęcie do pomysłu: ${report.title}`}
-          className="h-36 w-full shrink-0 rounded-xl object-cover transition group-hover:opacity-90 sm:size-24"
-          loading="lazy"
-          src={report.image}
-        />
+        {report.image ? (
+          <img
+            alt={`Zdjęcie do pomysłu: ${report.title}`}
+            className="h-36 w-full shrink-0 rounded-xl object-cover transition group-hover:opacity-90 sm:size-24"
+            loading="lazy"
+            src={report.image}
+          />
+        ) : (
+          <span className="grid h-36 w-full shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-400 sm:size-24">
+            <ImageIcon aria-hidden="true" size={24} />
+            <span className="sr-only">Brak zdjęcia</span>
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +78,6 @@ export function ReportCard({
             <span className="text-[10px] font-medium text-slate-500">
               {report.category}
             </span>
-            <AiScoreBadge title={report.title} />
           </div>
           <h2 className="mt-2 text-base leading-snug font-semibold text-slate-950 transition-colors group-hover:text-blue-800">
             {report.title}
@@ -99,20 +105,9 @@ export function ReportCard({
             {statusLabels[report.status]}
           </span>
           <div className="flex items-center gap-2">
-            {supportIsAction ? (
-              <button
-                aria-label={`Poprzyj pomysł. Aktualnie ${report.support} głosów`}
-                className={`${uiTheme.button.secondary} pointer-events-auto relative z-30 rounded-lg px-3 py-2 text-xs`}
-                type="button"
-              >
-                <ThumbsUp size={14} /> {report.support}
-              </button>
-            ) : (
-              <span
-                aria-label={`${report.support} głosów poparcia`}
-                className={`${uiTheme.button.secondary} rounded-lg px-3 py-2 text-xs`}
-              >
-                <ThumbsUp size={14} /> {report.support}
+            {showVotingNotice && (
+              <span className="text-app-text-subtle text-[10px] font-medium">
+                Głosowanie wkrótce
               </span>
             )}
             <span className="text-app-text-muted grid size-9 place-items-center">

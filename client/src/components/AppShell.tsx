@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Accessibility,
   BadgeCheck,
+  CalendarDays,
   ChevronRight,
   FileText,
   LayoutDashboard,
@@ -10,8 +11,6 @@ import {
   LogOut,
   Menu,
   Plus,
-  Settings,
-  Trophy,
   UserRound,
   X,
 } from 'lucide-react';
@@ -111,13 +110,6 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
             </p>
           </div>
           <button
-            className={`${uiTheme.button.ghost} mt-1 w-full justify-start px-3 text-left text-xs`}
-            onClick={() => setProfileOpen(false)}
-            type="button"
-          >
-            <Settings size={16} /> Ustawienia konta
-          </button>
-          <button
             className={`${uiTheme.button.danger} w-full justify-start px-3 text-left text-xs`}
             onClick={handleLogout}
             type="button"
@@ -185,7 +177,6 @@ function Sidebar({
                 label: 'Moje pomysły',
                 icon: FileText,
                 to: '/moje-pomysly',
-                badge: '5',
               },
             ]
           : []),
@@ -195,9 +186,9 @@ function Sidebar({
       label: 'Odkrywaj',
       items: [
         {
-          label: 'Najpopularniejsze',
-          icon: Trophy,
-          to: '/pomysly?sort=popularne',
+          label: 'Najnowsze',
+          icon: CalendarDays,
+          to: '/pomysly?sort=najnowsze',
         },
         {
           label: 'Zrealizowane',
@@ -225,7 +216,7 @@ function Sidebar({
     if (to === '/pomysly') {
       return (
         location.pathname.startsWith('/pomysly') &&
-        location.search !== '?sort=popularne' &&
+        location.search !== '?sort=najnowsze' &&
         location.search !== '?status=completed'
       );
     }
