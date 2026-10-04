@@ -1,4 +1,10 @@
-import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -17,7 +23,7 @@ function isReportStatus(value: string | null): value is ReportStatus {
 
 export function ReportsPage() {
   const { user } = useAuth();
-  const { reports, catalog, loading, error } = useReportsData();
+  const { reports, catalog, loading, error, reload } = useReportsData();
   const [searchParams, setSearchParams] = useSearchParams();
   const districts = catalog.districts
     .map((item) => item.name)
@@ -72,14 +78,14 @@ export function ReportsPage() {
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         return sort === 'najstarsze' ? -difference : difference;
       });
-  }, [category, district, query, sort, status]);
+  }, [category, district, query, reports, sort, status]);
 
   const hasFilters = Boolean(
     query || district !== 'all' || category !== 'all' || status !== 'all',
   );
 
   return (
-    <PageMain className={uiTheme.layout.content}>
+    <PageMain aria-busy={loading} className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
@@ -91,12 +97,23 @@ export function ReportsPage() {
             realizacji.
           </p>
         </div>
-        <Link
-          className={uiTheme.button.primary}
-          to={user ? '/dodaj-pomysl' : '/logowanie'}
-        >
-          <Plus size={17} /> Dodaj zgłoszenie
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={uiTheme.button.secondary}
+            disabled={loading}
+            onClick={() => void reload()}
+            type="button"
+          >
+            <RefreshCw className={loading ? 'animate-spin' : ''} size={17} />
+            Odśwież
+          </button>
+          <Link
+            className={uiTheme.button.primary}
+            to={user ? '/dodaj-pomysl' : '/logowanie'}
+          >
+            <Plus size={17} /> Dodaj zgłoszenie
+          </Link>
+        </div>
       </div>
 
       {searchParams.get('nowe') === 'true' && (

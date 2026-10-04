@@ -57,16 +57,38 @@ export async function loadCatalog(): Promise<ApiCatalog> {
   return { categories, districts, statuses };
 }
 
-export async function loadReports() {
+export type ReportsData = {
+  ideas: ApiIdea[];
+  catalog: ApiCatalog;
+  reports: Report[];
+};
+
+let pendingReportsRequest: Promise<ReportsData> | null = null;
+
+async function fetchReports(): Promise<ReportsData> {
   const [ideas, catalog] = await Promise.all([api.ideas.list(), loadCatalog()]);
-  const commentLists = await Promise.all(
+  const commentResults = await Promise.allSettled(
     ideas.map((idea) => api.ideas.comments.list(idea.id)),
   );
   return {
     ideas,
     catalog,
-    reports: ideas.map((idea, index) =>
-      mapIdeaToReport(idea, catalog, commentLists[index].length),
-    ),
+    reports: ideas.map((idea, index) => {
+      const comments = commentResults[index];
+      return mapIdeaToReport(
+        idea,
+        catalog,
+        comments.status === 'fulfilled' ? comments.value.length : 0,
+      );
+    }),
   };
+}
+
+export function loadReports(): Promise<ReportsData> {
+  if (pendingReportsRequest) return pendingReportsRequest;
+
+  pendingReportsRequest = fetchReports().finally(() => {
+    pendingReportsRequest = null;
+  });
+  return pendingReportsRequest;
 }

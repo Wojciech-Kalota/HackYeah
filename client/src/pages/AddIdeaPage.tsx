@@ -20,6 +20,17 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import { api, getApiErrorMessage } from '../api/client';
+import {
+  analyzeRagSubmission,
+  clearPendingRagSubmission,
+  createRagSubmission,
+  getRagErrorMessage,
+  isSameRagPayload,
+  loadPendingRagSubmission,
+  RagApiError,
+  savePendingRagSubmission,
+  type RagSubmission,
+} from '../api/rag';
 import { loadCatalog, type ApiCatalog } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
@@ -105,6 +116,11 @@ export function AddIdeaPage() {
   const [catalog, setCatalog] = useState<ApiCatalog | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submissionStage, setSubmissionStage] = useState<
+    'idle' | 'analyzing' | 'saving'
+  >('idle');
+  const [pendingRagSubmission, setPendingRagSubmission] =
+    useState<RagSubmission | null>(() => loadPendingRagSubmission());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generatedTitle = createTitle(idea.desc);
@@ -199,23 +215,63 @@ export function AddIdeaPage() {
     }
 
     setSubmitting(true);
+    setSubmissionStage('analyzing');
     setSubmitError('');
     try {
+      const categories = catalog?.categories ?? [];
+      const analysisText = `${submissionTitle}\n\n${context}`.trim();
+      const ragSubmission =
+        pendingRagSubmission &&
+        isSameRagPayload(pendingRagSubmission, analysisText, categories)
+          ? pendingRagSubmission
+          : createRagSubmission(analysisText, categories);
+      setPendingRagSubmission(ragSubmission);
+      savePendingRagSubmission(ragSubmission);
+
+      const analysis = await analyzeRagSubmission(ragSubmission);
+      const analyzedCategoryId = analysis.extraction.concepts[0]?.category;
+      const analyzedCategory =
+        categories.find((item) => item.id === analyzedCategoryId) ?? category;
+
+      setSubmissionStage('saving');
       await api.ideas.create({
         title: submissionTitle,
         description: context,
         imageUrl: null,
         districtId: district.id,
-        categoryId: category.id,
-        categoryIds: [category.id],
+        categoryId: analyzedCategory.id,
+        categoryIds: [analyzedCategory.id],
         statusId: status.id,
         authorId: user.id,
       });
-      navigate('/moje-pomysly?dodano=true');
+      clearPendingRagSubmission();
+      setPendingRagSubmission(null);
+      const resultParams = new URLSearchParams({
+        dodano: 'true',
+        analiza: analysis.extraction.status,
+        duplikaty: String(
+          analysis.decisions.filter(
+            (item) => item.decision.kind === 'duplicate',
+          ).length,
+        ),
+      });
+      if (analysis.score !== null) {
+        resultParams.set('wynik', String(analysis.score));
+      }
+      navigate(`/moje-pomysly?${resultParams.toString()}`);
     } catch (error) {
-      setSubmitError(getApiErrorMessage(error));
+      if (error instanceof RagApiError) {
+        if (error.status === 409 || error.status === 422) {
+          clearPendingRagSubmission();
+          setPendingRagSubmission(null);
+        }
+        setSubmitError(getRagErrorMessage(error));
+      } else {
+        setSubmitError(getApiErrorMessage(error));
+      }
     } finally {
       setSubmitting(false);
+      setSubmissionStage('idle');
     }
   }
 
@@ -404,7 +460,7 @@ export function AddIdeaPage() {
               </div>
               <input
                 accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
+                className="hidden"
                 onChange={(event) => selectImage(event.target.files?.[0])}
                 ref={fileInputRef}
                 type="file"
@@ -625,13 +681,30 @@ export function AddIdeaPage() {
                 type="submit"
               >
                 <Send size={17} />
-                {submitting ? 'Wysyłanie…' : 'Wyślij pomysł'}
+                {submissionStage === 'analyzing'
+                  ? 'Analizowanie pomysłu…'
+                  : submissionStage === 'saving'
+                    ? 'Zapisywanie pomysłu…'
+                    : 'Wyślij pomysł'}
               </button>
             </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Przed zapisem opis zostanie przeanalizowany pod kątem kategorii,
+              podobnych koncepcji i orientacyjnego priorytetu. Analiza może
+              potrwać dłuższą chwilę.
+            </p>
             {submitError && (
-              <p className="mt-4 text-sm font-medium text-red-700" role="alert">
-                {submitError}
-              </p>
+              <div
+                className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800"
+                role="alert"
+              >
+                <p className="font-medium">{submitError}</p>
+                <p className="mt-1 text-xs leading-5">
+                  Kliknij ponownie „Wyślij pomysł”. Jeśli dane się nie zmieniły,
+                  analiza użyje tego samego identyfikatora i bezpiecznego
+                  mechanizmu ponawiania.
+                </p>
+              </div>
             )}
           </section>
         )}

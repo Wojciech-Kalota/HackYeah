@@ -7,6 +7,7 @@ import {
   FileText,
   MapPin,
   MessageSquare,
+  RefreshCw,
   ShieldCheck,
   Trophy,
   Wrench,
@@ -86,7 +87,7 @@ function formatDate(date: string) {
 
 export function HomePage() {
   const { user } = useAuth();
-  const { reports, ideas, loading, error } = useReportsData();
+  const { reports, ideas, loading, error, reload } = useReportsData();
   const district = user?.district ?? 'Wszystkie dzielnice';
   const myReports = reports.filter(
     (_report, index) => ideas[index]?.authorId === user?.id,
@@ -134,7 +135,7 @@ export function HomePage() {
   ];
 
   return (
-    <PageMain className={uiTheme.layout.content}>
+    <PageMain aria-busy={loading} className={uiTheme.layout.content}>
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
@@ -163,7 +164,7 @@ export function HomePage() {
           <Link
             aria-label="Przeglądaj pomysły z okolicy"
             className={`${uiTheme.iconButton} ml-auto size-9`}
-            to="/pomysly"
+            to="/pomysly?district=all"
           >
             <ChevronRight size={18} />
           </Link>
@@ -180,9 +181,19 @@ export function HomePage() {
       </section>
 
       {error && (
-        <p className="mt-5 text-sm font-medium text-red-700" role="alert">
-          {error}
-        </p>
+        <div
+          className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <p className="font-medium">{error}</p>
+          <button
+            className={`${uiTheme.button.ghost} px-3 py-2 text-xs text-red-800 hover:bg-red-100`}
+            onClick={() => void reload()}
+            type="button"
+          >
+            <RefreshCw size={15} /> Spróbuj ponownie
+          </button>
+        </div>
       )}
 
       <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
@@ -196,7 +207,10 @@ export function HomePage() {
                 Ostatnio zaktualizowane pomysły mieszkańców
               </p>
             </div>
-            <Link className={`${uiTheme.text.link} text-xs`} to="/pomysly">
+            <Link
+              className={`${uiTheme.text.link} text-xs`}
+              to="/pomysly?district=all"
+            >
               Zobacz wszystkie
             </Link>
           </div>
