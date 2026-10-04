@@ -2,7 +2,7 @@ CATEGORIES = [{"id": "integracja_spoleczna", "label": "Integracja społeczna"}]
 import os
 from threading import Event, Thread
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
@@ -53,3 +53,31 @@ class ApiTests(TestCase):
         finally:
             release.set()
             thread.join(5)
+
+    def test_cors_preflight_allows_only_configured_frontend(self):
+        processor = Mock(return_value={"ok": True})
+        with patch.dict(os.environ, {"CORS_ORIGINS": "https://frontend.example"}):
+            client = TestClient(create_app(processor))
+        headers = {"Origin": "https://frontend.example",
+                   "Access-Control-Request-Method": "POST",
+                   "Access-Control-Request-Headers": "content-type"}
+        response = client.options("/api/ideas/analyze", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["access-control-allow-origin"], headers["Origin"])
+        processor.assert_not_called()
+        headers["Origin"] = "https://other.example"
+        response = client.options("/api/ideas/analyze", headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("access-control-allow-origin", response.headers)
+
+    def test_cors_error_exposes_retry_after(self):
+        from rops_rag.errors import BusyError
+        processor = Mock(side_effect=BusyError())
+        with patch.dict(os.environ, {"CORS_ORIGINS": "https://frontend.example"}):
+            client = TestClient(create_app(processor))
+        response = client.post("/api/ideas/analyze", headers={"Origin": "https://frontend.example"},
+            json={"submission_id": "a", "text": "Pomysł", "categories": CATEGORIES})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.headers["access-control-allow-origin"], "https://frontend.example")
+        self.assertEqual(response.headers["access-control-expose-headers"], "Retry-After")
+        self.assertEqual(response.headers["Retry-After"], "5")

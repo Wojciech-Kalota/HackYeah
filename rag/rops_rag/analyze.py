@@ -14,7 +14,7 @@ from .extraction import ExtractionError, OpenAIExtractor
 def main() -> int:
     parser = argparse.ArgumentParser(description="Wydziel koncepcje z opisu projektu (bez zapisu do bazy)")
     parser.add_argument("file", type=Path, help="Plik tekstowy UTF-8 z pomysłem")
-    parser.add_argument("--categories", type=Path, required=True, help="JSON: lista kategorii z backendu")
+    parser.add_argument("--categories", type=Path, required=True, help="JSON: lista kategorii projektu")
     args = parser.parse_args()
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     if not os.getenv("OPENAI_API_KEY", "").strip():

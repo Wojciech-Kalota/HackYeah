@@ -153,7 +153,7 @@ class OpenAIExtractor:
             raise ExtractionError("OpenAI zakończyło odpowiedź, ale nie zwróciło analizy w wymaganym formacie.")
         parsed = response.output_parsed
         # Dynamiczny enum jest używany wyłącznie na granicy API; dalszy kod
-        # otrzymuje zwykły tekst ID, zgodny z modelem i kontraktem .NET.
+        # otrzymuje zwykły tekst ID, zgodny z modelem i kontraktem API.
         if isinstance(parsed, BaseModel):
             parsed = parsed.model_dump(mode="json")
         result = ExtractionResult.model_validate(parsed)
@@ -162,7 +162,7 @@ class OpenAIExtractor:
                 concept.assessment.cost = 3
                 concept.assessment.duration = 3
             if concept.category not in allowed:
-                raise ExtractionError("Model wybrał kategorię spoza listy backendu")
+                raise ExtractionError("Model wybrał kategorię spoza listy kategorii żądania")
             if concept.source_quote not in text:
                 # Modele czasem zamieniają nowe linie lub wielokrotne spacje
                 # na pojedyncze spacje. Zachowaj oryginalny fragment, bez
