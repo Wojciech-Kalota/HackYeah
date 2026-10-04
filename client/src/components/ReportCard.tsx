@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import type { VoteResult } from '../api/client';
 import { uiTheme } from '../styles/theme';
 import type { Report, ReportStatus } from '../types/domain';
+import { VoteButton } from './VoteButton';
 
 const statusLabels: Record<ReportStatus, string> = {
   submitted: 'Nowe zgłoszenie',
@@ -32,11 +34,13 @@ export function ReportCard({
   detailsHref = `/pomysly/${report.id}`,
   nested = false,
   showVotingNotice = true,
+  onVoteChanged,
 }: {
   report: Report;
   detailsHref?: string;
   nested?: boolean;
   showVotingNotice?: boolean;
+  onVoteChanged?: (result: VoteResult) => void;
 }) {
   return (
     <article
@@ -96,9 +100,13 @@ export function ReportCard({
           </span>
           <div className="flex items-center gap-2">
             {showVotingNotice && (
-              <span className="text-app-text-subtle text-[10px] font-medium">
-                Głosowanie wkrótce
-              </span>
+              <VoteButton
+                compact
+                hasVoted={report.hasVoted}
+                ideaId={report.id}
+                onChanged={onVoteChanged}
+                votes={report.votes}
+              />
             )}
             <span className="text-app-text-muted grid size-9 place-items-center">
               <ChevronRight size={18} />

@@ -19,6 +19,7 @@ import { api, getApiErrorMessage, type ApiComment } from '../api/client';
 import { loadCatalog, mapIdeaToReport } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
+import { VoteButton } from '../components/VoteButton';
 import { ReportCard } from '../components/ReportCard';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
@@ -77,6 +78,13 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
         <p className="text-app-text-muted mt-5 text-sm leading-7 whitespace-pre-wrap md:text-base">
           {report.description}
         </p>
+        <div className="mt-6">
+          <VoteButton
+            hasVoted={report.hasVoted}
+            ideaId={report.id}
+            votes={report.votes}
+          />
+        </div>
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
           <span className="flex items-center gap-2">
             <MapPin size={15} /> {report.district}

@@ -6,6 +6,8 @@ const RAG_API_BASE_URL = (
   import.meta.env.VITE_RAG_API_URL ?? 'http://localhost:8000'
 ).replace(/\/$/, '');
 
+export const AUTH_UNAUTHORIZED_EVENT = 'api:unauthorized';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -16,18 +18,24 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const isFormData = init.body instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.body && !isFormData
+        ? { 'Content-Type': 'application/json' }
+        : {}),
       ...init.headers,
     },
   });
 
   const text = await response.text();
   if (!response.ok) {
+    if (response.status === 401) {
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    }
     let message = text || `Błąd HTTP ${response.status}`;
     try {
       const parsed = JSON.parse(text) as {
@@ -97,6 +105,7 @@ function ideaFiltersQuery(filters: IdeaFilters = {}) {
   filters.categoryIds?.forEach((id) => params.append('CategoryIds', id));
   if (filters.name?.trim()) params.set('Name', filters.name.trim());
   if (filters.authoredByMe) params.set('AuthoredByMe', 'true');
+  if (filters.upVotedByMe) params.set('UpVotedByMe', 'true');
   if (filters.page) params.set('Page', String(filters.page));
   if (filters.pageSize) params.set('PageSize', String(filters.pageSize));
   if (filters.originals !== undefined)
@@ -126,7 +135,14 @@ function normalizeIdeasPage(
       `${idea.title} ${idea.description}`
         .toLocaleLowerCase('pl')
         .includes(normalizedName);
-    return matchesStatus && matchesDistrict && matchesCategory && matchesName;
+    const matchesVote = !filters.upVotedByMe || idea.hasVoted === true;
+    return (
+      matchesStatus &&
+      matchesDistrict &&
+      matchesCategory &&
+      matchesName &&
+      matchesVote
+    );
   });
   const page = Math.max(filters.page ?? 1, 1);
   const pageSize = Math.max((filters.pageSize ?? filtered.length) || 1, 1);
@@ -184,11 +200,13 @@ export type ApiIdea = {
   createdAt: string;
   lastUpdatedAt?: string;
   updatedAt?: string;
+  votes?: number;
+  hasVoted?: boolean;
 };
 
 export type IdeaRequest = Omit<
   ApiIdea,
-  'id' | 'createdAt' | 'lastUpdatedAt' | 'updatedAt'
+  'id' | 'createdAt' | 'lastUpdatedAt' | 'updatedAt' | 'votes' | 'hasVoted'
 >;
 
 export type CreateIdeaRequest = IdeaRequest & { id: string };
@@ -199,6 +217,7 @@ export type IdeaFilters = {
   categoryIds?: string[];
   name?: string;
   authoredByMe?: boolean;
+  upVotedByMe?: boolean;
   page?: number;
   pageSize?: number;
   originals?: boolean;
@@ -214,6 +233,12 @@ export type PagedResult<T> = {
 };
 
 export type ApiComment = { id: string; text: string; userId: string };
+
+export type VoteResult = {
+  id: string;
+  voteCount: number;
+  hasVoted: boolean;
+};
 
 export type RagCategory = { id: string; label: string };
 
@@ -308,10 +333,20 @@ export const api = {
     },
     create: (body: CreateIdeaRequest) =>
       request<ApiIdea>('/api/ideas', json('POST', body)),
+    uploadImage: (id: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request<ApiIdea>(`/api/ideas/${id}`, {
+        method: 'POST',
+        body: formData,
+      });
+    },
     update: (id: string, body: IdeaRequest) =>
       request<ApiIdea>(`/api/ideas/${id}`, json('PUT', body)),
     delete: (id: string) =>
       request<void>(`/api/ideas/${id}`, { method: 'DELETE' }),
+    changeVote: (id: string) =>
+      request<VoteResult>(`/api/ideas/${id}/change-vote`, { method: 'POST' }),
     comments: {
       list: (ideaId: string) =>
         request<ApiComment[]>(`/api/ideas/${ideaId}/comments`),
@@ -332,6 +367,16 @@ export const api = {
     },
   },
 };
+
+export function getApiFileUrl(path: string | null | undefined) {
+  if (!path) return '';
+  if (/^(?:https?:|data:|blob:)/i.test(path)) return path;
+
+  const normalizedPath = path.startsWith('/api/file/')
+    ? path
+    : `/api/file/${path.replace(/^\/+/, '')}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
 
 export function getApiErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return 'Nie udało się połączyć z serwerem.';

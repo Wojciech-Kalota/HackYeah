@@ -7,7 +7,12 @@ import {
   type ReactNode,
 } from 'react';
 
-import { api, type ApiUser, type Role } from '../api/client';
+import {
+  api,
+  AUTH_UNAUTHORIZED_EVENT,
+  type ApiUser,
+  type Role,
+} from '../api/client';
 
 export type CitizenUser = {
   id: string;
@@ -69,7 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    const handleUnauthorized = () => setUser(null);
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
     void refresh().finally(() => setLoading(false));
+
+    return () =>
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
   const value = useMemo<AuthContextValue>(

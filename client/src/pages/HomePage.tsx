@@ -9,6 +9,7 @@ import {
   MessageSquare,
   RefreshCw,
   ShieldCheck,
+  ThumbsUp,
   Trophy,
   Wrench,
 } from 'lucide-react';
@@ -312,6 +313,9 @@ export function HomePage() {
                     <span className="flex items-center gap-1">
                       <CalendarDays size={12} /> {formatDate(report.updatedAt)}
                     </span>
+                    <span className="flex items-center gap-1">
+                      <ThumbsUp size={12} /> {report.votes}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
@@ -366,6 +370,9 @@ export function HomePage() {
                 </h3>
                 <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">
                   {completedProject.description}
+                </p>
+                <p className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-800">
+                  <ThumbsUp size={13} /> {completedProject.votes} poparć
                 </p>
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div className="h-full w-full rounded-full bg-emerald-600" />

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   Plus,
+  ThumbsUp,
   UserRound,
   X,
 } from 'lucide-react';
@@ -202,6 +203,11 @@ function Sidebar({
                 label: 'Moje pomysły',
                 icon: FileText,
                 to: '/moje-pomysly',
+              },
+              {
+                label: 'Poparte pomysły',
+                icon: ThumbsUp,
+                to: '/pomysly?district=all&poparte=true',
               },
             ]
           : []),

@@ -115,9 +115,10 @@ export function AddIdeaPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [catalog, setCatalog] = useState<ApiCatalog | null>(null);
   const [submitError, setSubmitError] = useState('');
+  const [canSafelyRetryAnalysis, setCanSafelyRetryAnalysis] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submissionStage, setSubmissionStage] = useState<
-    'idle' | 'analyzing' | 'saving'
+    'idle' | 'analyzing' | 'saving' | 'uploading'
   >('idle');
   const [pendingRagSubmission, setPendingRagSubmission] =
     useState<RagSubmission | null>(() => loadPendingRagSubmission());
@@ -216,7 +217,9 @@ export function AddIdeaPage() {
     setSubmitting(true);
     setSubmissionStage('analyzing');
     setSubmitError('');
+    setCanSafelyRetryAnalysis(false);
     try {
+      await api.me();
       const categories = catalog?.categories ?? [];
       const analysisText = `${submissionTitle}\n\n${context}`.trim();
       const ragSubmission =
@@ -248,6 +251,10 @@ export function AddIdeaPage() {
         statusId: status.id,
         authorId: user.id,
       });
+      if (imageFile) {
+        setSubmissionStage('uploading');
+        await api.ideas.uploadImage(createdIdea.id, imageFile);
+      }
       clearPendingRagSubmission();
       setPendingRagSubmission(null);
       const resultParams = new URLSearchParams({
@@ -269,8 +276,10 @@ export function AddIdeaPage() {
           clearPendingRagSubmission();
           setPendingRagSubmission(null);
         }
+        setCanSafelyRetryAnalysis(true);
         setSubmitError(getRagErrorMessage(error));
       } else {
+        setCanSafelyRetryAnalysis(false);
         setSubmitError(getApiErrorMessage(error));
       }
     } finally {
@@ -542,12 +551,10 @@ export function AddIdeaPage() {
               )}
               {imageFile && !imageError && (
                 <p
-                  className="mt-2 text-xs font-medium text-amber-800"
+                  className="mt-2 text-xs font-medium text-emerald-800"
                   role="status"
                 >
-                  To jest podgląd lokalny. Serwer nie udostępnia jeszcze
-                  endpointu do zapisu plików, więc zdjęcie nie zostanie wysłane
-                  z pomysłem.
+                  Zdjęcie zostanie wysłane po zapisaniu pomysłu.
                 </p>
               )}
             </div>
@@ -662,9 +669,9 @@ export function AddIdeaPage() {
                     </span>
                   )}
                   {imageFile && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-900">
+                    <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-900">
                       <ImagePlus className="mr-1 inline" size={12} /> Zdjęcie
-                      tylko w podglądzie
+                      gotowe do wysłania
                     </span>
                   )}
                 </div>
@@ -689,7 +696,9 @@ export function AddIdeaPage() {
                   ? 'Analizowanie pomysłu…'
                   : submissionStage === 'saving'
                     ? 'Zapisywanie pomysłu…'
-                    : 'Wyślij pomysł'}
+                    : submissionStage === 'uploading'
+                      ? 'Wysyłanie zdjęcia…'
+                      : 'Wyślij pomysł'}
               </button>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">
@@ -703,11 +712,13 @@ export function AddIdeaPage() {
                 role="alert"
               >
                 <p className="font-medium">{submitError}</p>
-                <p className="mt-1 text-xs leading-5">
-                  Kliknij ponownie „Wyślij pomysł”. Jeśli dane się nie zmieniły,
-                  analiza użyje tego samego identyfikatora i bezpiecznego
-                  mechanizmu ponawiania.
-                </p>
+                {canSafelyRetryAnalysis && (
+                  <p className="mt-1 text-xs leading-5">
+                    Kliknij ponownie „Wyślij pomysł”. Jeśli dane się nie
+                    zmieniły, analiza użyje tego samego identyfikatora i
+                    bezpiecznego mechanizmu ponawiania.
+                  </p>
+                )}
               </div>
             )}
           </section>

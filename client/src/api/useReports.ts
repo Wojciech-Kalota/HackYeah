@@ -11,6 +11,7 @@ export function useReportsData(options: ReportQuery = {}) {
     status,
     query,
     authoredByMe,
+    upVotedByMe,
     page = 1,
     pageSize = 100,
   } = options;
@@ -41,6 +42,7 @@ export function useReportsData(options: ReportQuery = {}) {
         status,
         query,
         authoredByMe,
+        upVotedByMe,
         page,
         pageSize,
       });
@@ -59,7 +61,16 @@ export function useReportsData(options: ReportQuery = {}) {
     } finally {
       setLoading(false);
     }
-  }, [authoredByMe, category, district, page, pageSize, query, status]);
+  }, [
+    authoredByMe,
+    category,
+    district,
+    page,
+    pageSize,
+    query,
+    status,
+    upVotedByMe,
+  ]);
 
   useEffect(() => {
     void reload();

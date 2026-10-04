@@ -25,6 +25,8 @@ export type Report = {
   description: string;
   status: ReportStatus;
   comments: number;
+  votes: number;
+  hasVoted: boolean;
   updatedAt: string;
   image: string;
 };

@@ -551,7 +551,7 @@ namespace eInicjatywa.Services
                 throw new Exception("Error saving fileUrl into a idea record");
             }
 
-            return await GetIdeaByIdAsync(user, id);
+            return await GetIdeaByIdAsync(user, ideaId);
         }
 
         public async Task<IdeaDto> ChangeIdeaTesterStatusAsync(ClaimsPrincipal? user, Guid id)
