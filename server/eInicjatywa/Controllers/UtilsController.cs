@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eInicjatywa.Controllers
@@ -9,6 +10,7 @@ namespace eInicjatywa.Controllers
     {
 
         [HttpGet("health")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get()
         {
             return Ok("healthy");

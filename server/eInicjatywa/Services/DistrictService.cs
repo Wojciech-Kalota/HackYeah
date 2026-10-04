@@ -10,8 +10,8 @@ namespace eInicjatywa.Services
     {
         public Task<DistrictDto> AddDistrict(ClaimsPrincipal? claimsPrincipal,DistrictAddDto categoryAddDto);
         public Task<List<DistrictDto>> GetDistrict(ClaimsPrincipal? claimsPrincipal);
-        public Task<DistrictDto?> UpdateDistrict(Guid id, DistrictDto dto);
-        public Task<bool> DeleteDistrict(Guid id);
+        public Task<DistrictDto> UpdateDistrict(Guid id, DistrictDto dto);
+        public Task DeleteDistrict(Guid id);
     }
 
     public class DistrictService : IDistrictService
@@ -47,25 +47,28 @@ namespace eInicjatywa.Services
             return await _db.Districts.AsNoTracking().Select(d => new DistrictDto(d.Id,d.Name)).ToListAsync();
         }
 
-        public async Task<DistrictDto?> UpdateDistrict(Guid id, DistrictDto dto)
+        public async Task<DistrictDto> UpdateDistrict(Guid id, DistrictDto dto)
         {
-            var district = await _db.Districts.FindAsync(id);
-            if (district == null) return null;
-            if (await _db.Districts.AnyAsync(d => d.Id != id && d.Name == dto.Name))
-                throw new Exception("District already exists");
-
+            var district = await _db.Districts.FirstOrDefaultAsync(d=> d.Id == id);
+            if (district == null)
+            {
+                throw new Exception("Noting to update");
+            }
             district.Name = dto.Name;
             await _db.SaveChangesAsync();
             return new DistrictDto(district.Id, district.Name);
         }
 
-        public async Task<bool> DeleteDistrict(Guid id)
+        public async Task DeleteDistrict(Guid id)
         {
-            var district = await _db.Districts.FindAsync(id);
-            if (district == null) return false;
+            var district = await _db.Districts.FirstOrDefaultAsync(d => d.Id == id);
+            if(district == null)
+            {
+                throw new Exception("Nothing to delete");
+            }
             _db.Districts.Remove(district);
             await _db.SaveChangesAsync();
-            return true;
+            return;
         }
     }
 }

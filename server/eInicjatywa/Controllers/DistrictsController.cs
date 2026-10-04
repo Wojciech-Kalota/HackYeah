@@ -32,6 +32,7 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetDistricts()
         {
             try
@@ -45,14 +46,14 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpPatch("{id}")]
+        [HttpPut("{id}")]
         [Authorize(Roles = "ADMIN_USER")]
-        public async Task<IActionResult> UpdateDistrict(Guid id, [FromBody] DistrictDto districtDto)
+        public async Task<IActionResult> UpdateDistrict([FromRoute] Guid id, [FromBody] DistrictDto districtDto)
         {
             try
             {
                 var result = await _districtService.UpdateDistrict(id, districtDto);
-                return result == null ? NotFound() : Ok(result);
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -64,7 +65,15 @@ namespace eInicjatywa.Controllers
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> DeleteDistrict(Guid id)
         {
-            return await _districtService.DeleteDistrict(id) ? NoContent() : NotFound();
+            try
+            {
+                await _districtService.DeleteDistrict(id);
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

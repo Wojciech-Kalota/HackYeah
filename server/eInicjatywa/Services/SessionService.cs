@@ -48,12 +48,7 @@ namespace eInicjatywa.Services
 
             if (passwordResult == PasswordVerificationResult.Failed)
             {
-                if (user.Password != request.Password)
-                    throw new Exception("Invalid credentials");
-
-                // Upgrade accounts created before password hashing was enabled.
-                user.Password = _passwordHasher.HashPassword(user, request.Password);
-                await _db.SaveChangesAsync();
+                throw new Exception("Invalid credentials");
             }
             else if (passwordResult == PasswordVerificationResult.SuccessRehashNeeded)
             {
@@ -61,8 +56,10 @@ namespace eInicjatywa.Services
                 await _db.SaveChangesAsync();
             }
 
+            var roles = await _db.UserRoles.Where(ur=> ur.UserId == user.Id).Select(ur => ur.Role.Name).ToListAsync();
+
             DateTime timeNow = DateTime.UtcNow;
-            InternalSessionDto sessionDto = new InternalSessionDto(Guid.CreateVersion7(), user.Id,timeNow, timeNow.AddHours(2));
+            InternalSessionDto sessionDto = new InternalSessionDto(Guid.CreateVersion7(), user.Id,timeNow, timeNow.AddHours(2), roles);
 
             var redisKey = $"eInicjatywa:Session:{sessionDto.Token}";
             await _cacheService.SetValueAtKeyAsync(redisKey, JsonSerializer.Serialize(sessionDto), timeNow.AddHours(2));

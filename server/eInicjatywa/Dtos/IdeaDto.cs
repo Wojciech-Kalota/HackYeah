@@ -9,14 +9,11 @@ namespace eInicjatywa.Dtos
         string? ImageUrl,
 
         Guid DistrictId,
-        Guid CategoryId,
         Guid StatusId,
         Guid AuthorId,
-        List<Guid> CategoryIds
-    )
-    {
-        public Guid Id { get; init; }
-        public DateTimeOffset CreatedAt { get; init; }
-        public DateTimeOffset LastUpdatedAt { get; init; }
-    }
+        List<Guid> CategoryIds,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        Guid Id
+    );
 }

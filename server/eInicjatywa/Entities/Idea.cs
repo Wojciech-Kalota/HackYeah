@@ -12,8 +12,8 @@ public class Idea
     public Guid? DuplicateOfId { get; set; }
     public Idea? DuplicateOf { get; set; }
 
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset LastUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
 
     public Guid DistrictId { get; set; }
     public District District { get; set; } = null!;

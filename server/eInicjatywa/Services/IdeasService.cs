@@ -10,14 +10,14 @@ namespace eInicjatywa.Services
     {
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
         Task<IEnumerable<IdeaDto>> GetIdeasAsync();
-        Task<IdeaDto?> GetIdeaByIdAsync(Guid id);
-        Task<IdeaDto?> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
-        Task<bool> DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
+        Task<IdeaDto> GetIdeaByIdAsync(Guid id);
+        Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
+        Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
         Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto);
         Task<IEnumerable<CommentDto>> GetCommentsByIdeaIdAsync(Guid ideaId);
         Task<CommentDto?> UpdateCommentAsync(ClaimsPrincipal? user, Guid commentId, CommentDto commentDto);
-        Task<bool> DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
+        Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
     }
 
     public class IdeasService : IIdeasService
@@ -35,25 +35,21 @@ namespace eInicjatywa.Services
         {
             Guid userId = await _utilsService.GetUserId(user);
             if (userId == Guid.Empty)
-                throw new UnauthorizedAccessException("Not authenticated");
+                throw new Exception("Not authenticated");
 
-            var categoryIds = ideaDto.CategoryIds
-                .Append(ideaDto.CategoryId)
-                .Where(id => id != Guid.Empty)
-                .Distinct()
-                .ToList();
+            var categoryIds = ideaDto.CategoryIds;
 
             if (!await _context.Districts.AnyAsync(d => d.Id == ideaDto.DistrictId))
-                throw new ArgumentException("District does not exist");
+                throw new Exception("District does not exist");
             if (!await _context.Statuses.AnyAsync(s => s.Id == ideaDto.StatusId))
-                throw new ArgumentException("Status does not exist");
+                throw new Exception("Status does not exist");
 
             var existingCategoryIds = await _context.Categories
                 .Where(category => categoryIds.Contains(category.Id))
                 .Select(category => category.Id)
                 .ToListAsync();
             if (existingCategoryIds.Count != categoryIds.Count)
-                throw new ArgumentException("One or more categories do not exist");
+                throw new Exception("One or more categories do not exist");
 
             var idea = new Idea
             {
@@ -71,7 +67,19 @@ namespace eInicjatywa.Services
 
             _context.Ideas.Add(idea);
             await _context.SaveChangesAsync();
-            return ToDto(idea);
+            return new IdeaDto
+            (
+                idea.Title,
+                idea.Description,
+                idea.ImageUrl,
+                idea.DistrictId,
+                idea.StatusId,
+                idea.AuthorId,
+                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                idea.CreatedAt,
+                idea.LastUpdatedAt,
+                idea.Id
+            );
         }
 
         public async Task<IEnumerable<IdeaDto>> GetIdeasAsync()
@@ -80,46 +88,74 @@ namespace eInicjatywa.Services
                 .AsNoTracking()
                 .Include(idea => idea.IdeaCategorys)
                 .ToListAsync();
-            return ideas.Select(ToDto);
+            return ideas.Select(i => new IdeaDto
+            (
+                i.Title,
+                i.Description,
+                i.ImageUrl,
+                i.DistrictId,
+                i.StatusId,
+                i.AuthorId,
+                i.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                i.CreatedAt,
+                i.LastUpdatedAt,
+                i.Id
+            ));
         }
 
-        public async Task<IdeaDto?> GetIdeaByIdAsync(Guid id)
+        public async Task<IdeaDto> GetIdeaByIdAsync(Guid id)
         {
             var idea = await _context.Ideas
                 .AsNoTracking()
                 .Include(existingIdea => existingIdea.IdeaCategorys)
                 .FirstOrDefaultAsync(existingIdea => existingIdea.Id == id);
-            return idea == null ? null : ToDto(idea);
+            if(idea == null)
+            {
+                throw new Exception("Idea does not exist");
+            }
+            return new IdeaDto
+            (
+                idea.Title,
+                idea.Description,
+                idea.ImageUrl,
+                idea.DistrictId,
+                idea.StatusId,
+                idea.AuthorId,
+                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                idea.CreatedAt,
+                idea.LastUpdatedAt,
+                idea.Id
+            );
         }
 
-        public async Task<IdeaDto?> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
+        public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             var idea = await _context.Ideas
                 .Include(existingIdea => existingIdea.IdeaCategorys)
                 .FirstOrDefaultAsync(existingIdea => existingIdea.Id == id);
-            if (idea == null) return null;
+            if (idea == null)
+            {
+                throw new Exception("Nothing to update");
+            }
+            ;
             if (idea.AuthorId != userId && !await _utilsService.HasAdminRole(user))
-                throw new UnauthorizedAccessException("You cannot update this idea");
+                throw new Exception("You cannot update this idea");
 
-            var categoryIds = ideaDto.CategoryIds
-                .Append(ideaDto.CategoryId)
-                .Where(categoryId => categoryId != Guid.Empty)
-                .Distinct()
-                .ToList();
+            var categoryIds = ideaDto.CategoryIds;
             if (!await _context.Districts.AnyAsync(d => d.Id == ideaDto.DistrictId))
-                throw new ArgumentException("District does not exist");
+                throw new Exception("District does not exist");
             if (!await _context.Statuses.AnyAsync(s => s.Id == ideaDto.StatusId))
-                throw new ArgumentException("Status does not exist");
+                throw new Exception("Status does not exist");
             if (await _context.Categories.CountAsync(c => categoryIds.Contains(c.Id)) != categoryIds.Count)
-                throw new ArgumentException("One or more categories do not exist");
+                throw new Exception("One or more categories do not exist");
 
             idea.Title = ideaDto.Title;
             idea.Description = ideaDto.Description;
             idea.ImageUrl = ideaDto.ImageUrl;
             idea.DistrictId = ideaDto.DistrictId;
             idea.StatusId = ideaDto.StatusId;
-            idea.LastUpdatedAt = DateTimeOffset.UtcNow;
+            idea.LastUpdatedAt = DateTime.UtcNow;
 
             _context.IdeaCategories.RemoveRange(idea.IdeaCategorys);
             idea.IdeaCategorys = categoryIds
@@ -127,32 +163,47 @@ namespace eInicjatywa.Services
                 .ToList();
 
             await _context.SaveChangesAsync();
-            return ToDto(idea);
+            return new IdeaDto
+            (
+                idea.Title,
+                idea.Description,
+                idea.ImageUrl,
+                idea.DistrictId,
+                idea.StatusId,
+                idea.AuthorId,
+                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                idea.CreatedAt,
+                idea.LastUpdatedAt,
+                idea.Id
+            );
         }
 
-        public async Task<bool> DeleteIdeaAsync(ClaimsPrincipal? user, Guid id)
+        public async Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id)
         {
             Guid userId = await _utilsService.GetUserId(user);
             var idea = await _context.Ideas.FindAsync(id);
-            if (idea == null) return false;
-
-            if (idea.AuthorId == userId || await _utilsService.HasAdminRole(user))
+            if (idea == null)
             {
-                _context.Ideas.Remove(idea);
-                await _context.SaveChangesAsync();
-                return true;
+                throw new Exception("Nothing to delete");
             }
 
-            return false;
+            if (idea.AuthorId != userId && !await _utilsService.HasAdminRole(user))
+            {
+                throw new Exception("Canot delete");
+            }
+            _context.Ideas.Remove(idea);
+            await _context.SaveChangesAsync();
+            return;
+
         }
 
         public async Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             if (userId == Guid.Empty)
-                throw new UnauthorizedAccessException("Not authenticated");
+                throw new Exception("Not authenticated");
             if (!await _context.Ideas.AnyAsync(idea => idea.Id == ideaId))
-                throw new ArgumentException("Idea does not exist");
+                throw new Exception("Idea does not exist");
 
             var comment = new Comment
             {
@@ -182,48 +233,34 @@ namespace eInicjatywa.Services
         {
             Guid userId = await _utilsService.GetUserId(user);
             var comment = await _context.Comments.FindAsync(commentId);
-            if (comment == null) return null;
+            if (comment == null)
+            {
+                throw new Exception("Nothing to update");
+            }
             if (comment.UserId != userId && !await _utilsService.HasAdminRole(user))
-                throw new UnauthorizedAccessException("You cannot update this comment");
+                throw new Exception("You cannot update this comment");
 
             comment.Text = commentDto.Text;
             await _context.SaveChangesAsync();
             return new CommentDto(comment.Text) { Id = comment.Id, UserId = comment.UserId };
         }
 
-        public async Task<bool> DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId)
+        public async Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId)
         {
             Guid userId = await _utilsService.GetUserId(user);
             var comment = await _context.Comments.FindAsync(commentId);
-            if (comment == null) return false;
-
-            if (comment.UserId == userId || await _utilsService.HasAdminRole(user))
+            if (comment == null)
             {
-                _context.Comments.Remove(comment);
-                await _context.SaveChangesAsync();
-                return true;
+                throw new Exception("Nothing to delete");
             }
 
-            return false;
-        }
-
-        private static IdeaDto ToDto(Idea idea)
-        {
-            var categoryIds = idea.IdeaCategorys.Select(category => category.CategoryId).ToList();
-            return new IdeaDto(
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.DistrictId,
-                categoryIds.FirstOrDefault(),
-                idea.StatusId,
-                idea.AuthorId,
-                categoryIds)
+            if (comment.UserId != userId && !await _utilsService.HasAdminRole(user))
             {
-                Id = idea.Id,
-                CreatedAt = idea.CreatedAt,
-                LastUpdatedAt = idea.LastUpdatedAt
-            };
+                throw new Exception("Canot delete");   
+            }
+            _context.Comments.Remove(comment);
+            await _context.SaveChangesAsync();
+            return;
         }
     }
 }

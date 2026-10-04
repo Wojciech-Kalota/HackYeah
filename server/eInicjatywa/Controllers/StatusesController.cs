@@ -32,6 +32,7 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetStatuses()
         {
             try
@@ -46,8 +47,8 @@ namespace eInicjatywa.Controllers
         }
 
         [Authorize(Roles = "ADMIN_USER")]
-        [HttpPatch("{id}")]
-        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] StatusDto statusDto)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] StatusDto statusDto)
         {
             try
             {
@@ -62,9 +63,17 @@ namespace eInicjatywa.Controllers
 
         [Authorize(Roles = "ADMIN_USER")]
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStatus(Guid id)
+        public async Task<IActionResult> DeleteStatus([FromRoute] Guid id)
         {
-            return await _statusService.DeleteStatus(id) ? NoContent() : NotFound();
+            try
+            {
+                await _statusService.DeleteStatus(id);
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
