@@ -19,7 +19,6 @@ namespace eInicjatywa.Controllers
             _ideasService = ideasService;
         }
 
-
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
@@ -27,6 +26,21 @@ namespace eInicjatywa.Controllers
             try
             {
                 var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}")]
+        [Authorize]
+        public async Task<IActionResult> AddImage([FromRoute] Guid id, [FromForm] IFormFile file)
+        {
+            try
+            {
+                var results = await _ideasService.AddImageAsync(User, id, file);
                 return Ok(results);
             }
             catch(Exception ex)
