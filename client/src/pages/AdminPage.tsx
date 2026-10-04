@@ -17,6 +17,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Trash2,
   UserRound,
   X,
 } from 'lucide-react';
@@ -657,12 +658,15 @@ function AdminProjectsView() {
 
 function AdminProjectDetailsView() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { reports, catalog, loading } = useReportsData();
   const report = reports.find((item) => String(item.id) === id);
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [duplicateIdeas, setDuplicateIdeas] = useState<ApiIdea[]>([]);
   const [commentsError, setCommentsError] = useState('');
   const [duplicatesError, setDuplicatesError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const duplicates = useMemo(
     () => duplicateIdeas.map((idea) => mapIdeaToReport(idea, catalog)),
     [catalog, duplicateIdeas],
@@ -675,6 +679,26 @@ function AdminProjectDetailsView() {
       .then(setComments)
       .catch((error) => setCommentsError(getApiErrorMessage(error)));
   }, [id]);
+
+  async function deleteProject() {
+    if (!id || !report) return;
+
+    const confirmed = window.confirm(
+      `Czy na pewno chcesz trwale usunąć problem „${report.title}”? Tej operacji nie można cofnąć.`,
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      await api.ideas.delete(id);
+      navigate('/administrator/projekty', { replace: true });
+    } catch (error) {
+      setDeleteError(getApiErrorMessage(error));
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -892,6 +916,30 @@ function AdminProjectDetailsView() {
                 <p className="mt-1 text-[11px] text-slate-500">Duplikatów</p>
               </div>
             </div>
+          </section>
+
+          <section className={`${uiTheme.surface.card} border-red-100 p-5`}>
+            <h2 className="font-bold text-slate-950">Usuń problem</h2>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Problem oraz powiązane z nim dane zostaną trwale usunięte.
+            </p>
+            {deleteError && (
+              <p
+                className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700"
+                role="alert"
+              >
+                {deleteError}
+              </p>
+            )}
+            <button
+              className={`${uiTheme.button.danger} mt-4 w-full border border-red-200`}
+              disabled={deleting}
+              onClick={() => void deleteProject()}
+              type="button"
+            >
+              <Trash2 size={16} />
+              {deleting ? 'Usuwanie…' : 'Usuń problem'}
+            </button>
           </section>
         </aside>
       </div>

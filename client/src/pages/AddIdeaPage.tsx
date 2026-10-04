@@ -253,7 +253,7 @@ export function AddIdeaPage() {
       });
       if (imageFile) {
         setSubmissionStage('uploading');
-        await api.ideas.uploadImage(createdIdea.id, imageFile);
+        await api.ideas.uploadImage(ragSubmission.submission_id, imageFile);
       }
       clearPendingRagSubmission();
       setPendingRagSubmission(null);
