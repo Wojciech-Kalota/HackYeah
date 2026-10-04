@@ -4,7 +4,7 @@
         List<Guid>? StatusIds,
         List<Guid>? DistrictIds,
         List<Guid>? CategoryIds,
-        string Name,
+        string? Name,
         bool UpVotedByMe,
         bool AuthoredByMe,
         int Page = 1,

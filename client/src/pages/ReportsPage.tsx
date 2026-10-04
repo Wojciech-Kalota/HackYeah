@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  ThumbsUp,
 } from 'lucide-react';
 import { useDeferredValue } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -32,6 +33,7 @@ export function ReportsPage() {
   const category = searchParams.get('category') ?? 'all';
   const statusParam = searchParams.get('status');
   const status = isReportStatus(statusParam) ? statusParam : 'all';
+  const upVotedByMe = user ? searchParams.get('poparte') === 'true' : false;
   const requestedPage = Number(searchParams.get('page') ?? 1);
   const page =
     Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -41,6 +43,7 @@ export function ReportsPage() {
       district: district === 'all' ? undefined : district,
       category: category === 'all' ? undefined : category,
       status: status === 'all' ? undefined : status,
+      upVotedByMe,
       query: deferredQuery,
       page,
       pageSize,
@@ -61,7 +64,11 @@ export function ReportsPage() {
   }
 
   const hasFilters = Boolean(
-    query || district !== 'all' || category !== 'all' || status !== 'all',
+    query ||
+    district !== 'all' ||
+    category !== 'all' ||
+    status !== 'all' ||
+    upVotedByMe,
   );
 
   return (
@@ -191,6 +198,16 @@ export function ReportsPage() {
             <RotateCcw size={15} /> Wyczyść
           </button>
         </div>
+        {user && (
+          <button
+            aria-pressed={upVotedByMe}
+            className={`${upVotedByMe ? uiTheme.button.primary : uiTheme.button.secondary} mt-3 px-4 py-2 text-xs`}
+            onClick={() => setFilter('poparte', upVotedByMe ? 'all' : 'true')}
+            type="button"
+          >
+            <ThumbsUp size={15} /> Poparte przeze mnie
+          </button>
+        )}
       </section>
 
       <section className="mt-6">
@@ -216,7 +233,11 @@ export function ReportsPage() {
         {reports.length > 0 ? (
           <div className="space-y-4">
             {reports.map((report) => (
-              <ReportCard key={report.id} report={report} />
+              <ReportCard
+                key={report.id}
+                onVoteChanged={() => void reload()}
+                report={report}
+              />
             ))}
           </div>
         ) : (

@@ -1,4 +1,10 @@
-import { CheckCircle2, Lightbulb, Plus, RefreshCw } from 'lucide-react';
+import {
+  CheckCircle2,
+  Lightbulb,
+  Plus,
+  RefreshCw,
+  ThumbsUp,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -199,6 +205,9 @@ export function MyIdeasPage() {
                       )}
                     </time>
                   </div>
+                  <p className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-800">
+                    <ThumbsUp size={13} /> {idea.votes} poparć
+                  </p>
                 </div>
               </Link>
             );

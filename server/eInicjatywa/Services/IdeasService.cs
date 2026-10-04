@@ -79,7 +79,7 @@ namespace eInicjatywa.Services
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                idea.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
                 idea.CreatedAt,
                 idea.LastUpdatedAt,
                 idea.Id
@@ -445,7 +445,7 @@ namespace eInicjatywa.Services
                 throw new Exception("Error saving fileUrl into a idea record");
             }
 
-            return await GetIdeaByIdAsync(user, id);
+            return await GetIdeaByIdAsync(user, ideaId);
         }
     }
 }

@@ -1,5 +1,6 @@
 import {
   api,
+  getApiFileUrl,
   type ApiIdea,
   type IdeaFilters,
   type NamedResource,
@@ -48,8 +49,10 @@ export function mapIdeaToReport(
     description: idea.description,
     status: normalizeStatus(byId(catalog.statuses, idea.statusId)),
     comments,
+    votes: idea.votes ?? 0,
+    hasVoted: idea.hasVoted ?? false,
     updatedAt: idea.updatedAt || idea.lastUpdatedAt || idea.createdAt,
-    image: idea.imageUrl ?? '',
+    image: getApiFileUrl(idea.imageUrl),
   };
 }
 
@@ -79,6 +82,7 @@ export type ReportQuery = {
   status?: ReportStatus;
   query?: string;
   authoredByMe?: boolean;
+  upVotedByMe?: boolean;
   page?: number;
   pageSize?: number;
 };
@@ -102,6 +106,7 @@ async function fetchReports(options: ReportQuery): Promise<ReportsData> {
     statusIds: statusId ? [statusId] : undefined,
     name: options.query,
     authoredByMe: options.authoredByMe,
+    upVotedByMe: options.upVotedByMe,
     page: options.page ?? 1,
     pageSize: options.pageSize ?? 100,
   };
