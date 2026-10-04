@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from openai import OpenAI, OpenAIError
 
 from .database import Database
+from .application_store import ApplicationStore
 from .extraction import ExtractionError, OpenAIExtractor
 from .retrieval import OpenAIEmbedder, Retriever
 from .comparison import OpenAIComparator
@@ -26,6 +27,8 @@ def main():
     process = sub.add_parser("process", help="Pełny proces z porównaniem i zapisem")
     process.add_argument("file", type=Path)
     process.add_argument("--submission-id", required=True)
+    process.add_argument("--author-id", required=True)
+    process.add_argument("--district-id", required=True)
     search.add_argument("--categories", type=Path, required=True)
     process.add_argument("--categories", type=Path, required=True)
     args = parser.parse_args()
@@ -36,16 +39,23 @@ def main():
     db = None
     try:
         db = Database()
+        application = ApplicationStore(db)
+        application.initialize()
         with OpenAI(timeout=60.0, max_retries=1) as client:
             retriever = Retriever(db, OpenAIEmbedder(client, os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")))
             if args.command == "index":
+                with db.connection.transaction():
+                    application.sync_existing()
                 output = {"indexed": retriever.index_missing(), "total": len(db.list_concepts())}
             elif args.command == "process":
                 model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
                 pipeline = Pipeline(db, OpenAIExtractor(client, model), retriever,
-                    OpenAIComparator(client, os.getenv("OPENAI_COMPARISON_MODEL", model)))
-                output = pipeline.process(args.submission_id, args.file.read_text(encoding="utf-8-sig"), json.loads(args.categories.read_text(encoding="utf-8-sig")))
+                    OpenAIComparator(client, os.getenv("OPENAI_COMPARISON_MODEL", model)), application_store=application)
+                output = pipeline.process(args.submission_id, args.file.read_text(encoding="utf-8-sig"), json.loads(args.categories.read_text(encoding="utf-8-sig")), {"author_id":args.author_id,"district_id":args.district_id})
             else:
+                with db.connection.transaction():
+                    application.sync_existing()
+                retriever.index_missing()
                 text = args.file.read_text(encoding="utf-8-sig")
                 extraction = OpenAIExtractor(client, os.getenv("OPENAI_MODEL", "gpt-4.1-mini")).extract(text, json.loads(args.categories.read_text(encoding="utf-8-sig")))
                 output = {"score":extraction.score(),"extraction": extraction.public_dump(), "matches": []}

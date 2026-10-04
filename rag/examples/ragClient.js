@@ -1,8 +1,10 @@
 // ES module. API URL comes from frontend configuration, never an OpenAI key.
-export function createSubmission(text, categories) {
+export function createSubmission(text, categories, authorId, districtId) {
   return {
     submission_id: crypto.randomUUID(),
     text,
+    author_id: authorId,
+    district_id: districtId,
     categories: categories.map(({ id, label }) => ({ id, label })),
   };
 }
@@ -36,6 +38,6 @@ export async function analyzeSubmission(apiBaseUrl, submission) {
   }
 }
 
-// const pending = createSubmission(text, categories);
+// const pending = createSubmission(text, categories, authorId, districtId);
 // const result = await analyzeSubmission("http://127.0.0.1:8000", pending);
 // Retry using pending; do not regenerate its submission_id.

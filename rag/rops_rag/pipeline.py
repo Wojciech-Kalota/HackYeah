@@ -5,11 +5,12 @@ from .retrieval import text_hash, validate_vector
 
 
 class Pipeline:
-    def __init__(self, db, extractor, retriever, comparator):
+    def __init__(self, db, extractor, retriever, comparator, application_store=None):
+        self.application_store = application_store
         self.db, self.extractor = db, extractor
         self.retriever, self.comparator = retriever, comparator
 
-    def process(self, submission_id, text, categories):
+    def process(self, submission_id, text, categories, context=None):
         categories = sorted(validate_categories(categories), key=lambda item: item["id"])
         if not isinstance(submission_id,str) or not submission_id.strip() or len(submission_id)>200:
             raise ValueError("Identyfikator musi mieć od 1 do 200 znaków")
@@ -20,6 +21,9 @@ class Pipeline:
         try:
             if not conn.execute("SELECT pg_try_advisory_xact_lock(7248319501) AS acquired").fetchone()["acquired"]:
                 raise BusyError("Inna analiza trwa")
+            application_context = None
+            if self.application_store:
+                application_context = self.application_store.validate_context(context or {}, categories)
             old=conn.execute("SELECT original_text FROM submissions WHERE id=%s",(submission_id,)).fetchone()
             if old:
                 if old["original_text"]!=text:
@@ -28,13 +32,18 @@ class Pipeline:
                 if not cached:
                     raise ValueError("Zgłoszenie istnieje bez wyniku procesu; użyj nowego ID")
                 result=json.loads(cached["result_json"])
-                if result.get("contract_version") != 3:
+                if result.get("contract_version") != (4 if self.application_store else 3):
                     raise ValueError("Zgłoszenie istnieje bez wyniku procesu zgodnego z kontraktem; użyj nowego ID")
                 if result.get("categories")!=categories:
                     raise ValueError("Ten identyfikator należy do innej listy kategorii; użyj nowego ID")
+                if self.application_store and result.get("application_context") != application_context:
+                    raise ValueError("Ten identyfikator należy do innego autora lub obszaru; użyj nowego ID")
                 result["replayed"]=True
                 conn.commit()
                 return result
+            if self.application_store:
+                self.application_store.sync_existing()
+                self.retriever.index_missing()
             extraction=self.extractor.extract(text,categories)
             result={"contract_version":3,"submission_id":submission_id,"replayed":False,"categories":categories,
                     "score":extraction.score(),"extraction":extraction.public_dump(),"decisions":[]}
@@ -64,6 +73,8 @@ class Pipeline:
             counts={row["id"]:row["liczba_zgloszen"] for row in self.db.list_concepts()}
             for item in result["decisions"]:
                 item["liczba_zgloszen"]=counts.get(item["concept_id"])
+            if self.application_store:
+                self.application_store.save(result, application_context)
             conn.execute("INSERT INTO processing_results VALUES (%s,%s)",(submission_id,json.dumps(result,ensure_ascii=False)))
             conn.commit()
             return result

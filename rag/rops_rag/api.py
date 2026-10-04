@@ -1,6 +1,7 @@
 import os
 import psycopg
 from pathlib import Path
+from uuid import UUID
 from threading import Lock
 
 from fastapi import FastAPI, HTTPException
@@ -15,8 +16,15 @@ from .categories import CategoryDefinition, validate_categories
 class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     submission_id: str = Field(min_length=1, max_length=200)
+    author_id: str
+    district_id: str
     text: str = Field(min_length=1, max_length=30000)
     categories: list[CategoryDefinition] = Field(min_length=1, max_length=100)
+
+    @field_validator("author_id", "district_id")
+    @classmethod
+    def guid(cls, value):
+        return str(UUID(value))
 
     @field_validator("categories")
     @classmethod
@@ -36,28 +44,33 @@ class ServiceConfigurationError(RuntimeError):
     pass
 
 
-def process_request(submission_id, text, categories):
+def process_request(submission_id, text, categories, context):
     # Osobne połączenie PostgreSQL w tym samym wątku co cały proces.
     from openai import OpenAI, OpenAIError
     from .comparison import OpenAIComparator
     from .database import Database
     from .extraction import OpenAIExtractor
     from .pipeline import Pipeline
+    from .application_store import ApplicationStore
     from .retrieval import OpenAIEmbedder, Retriever
 
     if not os.getenv("OPENAI_API_KEY", "").strip():
         raise ServiceConfigurationError("Brak konfiguracji OpenAI")
+    if not os.getenv("APP_INITIAL_STATUS_ID", "").strip():
+        raise ServiceConfigurationError("Brak APP_INITIAL_STATUS_ID")
     if not os.getenv("DATABASE_URL"):
         raise ServiceConfigurationError("Brak DATABASE_URL")
     db = Database()
     try:
+        application = ApplicationStore(db)
+        application.initialize()
         with OpenAI(timeout=60.0, max_retries=1) as client:
             model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
             retriever = Retriever(db, OpenAIEmbedder(client, os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")))
             pipeline = Pipeline(db, OpenAIExtractor(client, model), retriever,
-                OpenAIComparator(client, os.getenv("OPENAI_COMPARISON_MODEL", model)))
+                OpenAIComparator(client, os.getenv("OPENAI_COMPARISON_MODEL", model)), application_store=application)
             try:
-                return pipeline.process(submission_id, text, categories)
+                return pipeline.process(submission_id, text, categories, context)
             except OpenAIError as error:
                 raise UpstreamError() from error
     finally:
@@ -95,9 +108,10 @@ def create_app(processor=None):
         if not gate.acquire(blocking=False):
             raise HTTPException(503, detail={"code": "busy", "message": "Analiza trwa. Ponów z tym samym ID."}, headers={"Retry-After": "5"})
         try:
-            return run(request.submission_id, request.text, [item.model_dump() for item in request.categories])
+            return run(request.submission_id, request.text, [item.model_dump() for item in request.categories],
+                       {"author_id": request.author_id, "district_id": request.district_id})
         except ServiceConfigurationError:
-            raise HTTPException(503, detail={"code": "configuration", "message": "Usługa wymaga OPENAI_API_KEY i DATABASE_URL."})
+            raise HTTPException(503, detail={"code": "configuration", "message": "Usługa wymaga OPENAI_API_KEY, DATABASE_URL i APP_INITIAL_STATUS_ID."})
         except UpstreamError:
             raise HTTPException(502, detail={"code": "openai_error", "message": "Wywołanie OpenAI nie powiodło się. Ponów z tym samym ID."})
         except ExtractionError as error:
@@ -107,7 +121,7 @@ def create_app(processor=None):
         except ValueError as error:
             message = str(error)
             conflict = "identyfikator" in message or "bez wyniku procesu" in message
-            raise HTTPException(409 if conflict else 503, detail={
+            raise HTTPException(409 if conflict else (422 if any(word in message for word in ("author_id", "district_id", "status_id", "UUID", "Kategoria", "Kategorie")) else 503), detail={
                 "code": "submission_conflict" if conflict else "index_error", "message": message})
         except BusyError:
             raise HTTPException(503, detail={"code":"busy","message":"Inna analiza trwa. Ponów z tym samym ID."}, headers={"Retry-After":"5"})

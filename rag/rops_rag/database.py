@@ -78,7 +78,15 @@ class Database:
         return cid
 
     def list_concepts(self):
-        rows = self.connection.execute("SELECT c.*, COUNT(sc.submission_id) AS liczba_zgloszen FROM concepts c LEFT JOIN submission_concepts sc ON sc.concept_id=c.id GROUP BY c.id ORDER BY c.id").fetchall()
+        app_schema = getattr(self, "application_schema", None)
+        if app_schema:
+            rows = self.connection.execute(sql.SQL(
+                'SELECT c.*, i."Id"::text AS idea_id, (SELECT COUNT(*)+1 FROM {} d WHERE d."DuplicateOfId"=i."Id") AS liczba_zgloszen '
+                'FROM concepts c JOIN concept_idea_map m ON m.concept_id=c.id '
+                'JOIN {} i ON i."Id"=m.idea_id WHERE i."DuplicateOfId" IS NULL ORDER BY c.id'
+            ).format(sql.Identifier(app_schema, "Ideas"), sql.Identifier(app_schema, "Ideas"))).fetchall()
+        else:
+            rows = self.connection.execute("SELECT c.*, COUNT(sc.submission_id) AS liczba_zgloszen FROM concepts c LEFT JOIN submission_concepts sc ON sc.concept_id=c.id GROUP BY c.id ORDER BY c.id").fetchall()
         for row in rows:
             row["created_at"] = row["created_at"].isoformat()
         return rows

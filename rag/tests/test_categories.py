@@ -1,3 +1,4 @@
+CONTEXT = {"author_id": "00000000-0000-4000-8000-000000000001", "district_id": "00000000-0000-4000-8000-000000000002"}
 from unittest import TestCase
 from unittest.mock import Mock
 from types import SimpleNamespace
@@ -48,14 +49,14 @@ class CategoryTests(TestCase):
         categories = [{"id": "custom-123", "label": "Kategoria backendu"}]
         processor = Mock(return_value={"ok": True})
         client = TestClient(create_app(processor))
-        response = client.post("/api/ideas/analyze", json={"submission_id": "a", "text": "Pomysł", "categories": categories})
+        response = client.post("/api/ideas/analyze", json={**CONTEXT, "submission_id": "a", "text": "Pomysł", "categories": categories})
         self.assertEqual(response.status_code, 200)
-        processor.assert_called_once_with("a", "Pomysł", categories)
+        processor.assert_called_once_with("a", "Pomysł", categories, CONTEXT)
 
     def test_missing_empty_or_duplicate_categories_rejected(self):
         processor = Mock()
         client = TestClient(create_app(processor))
-        base = {"submission_id": "a", "text": "Pomysł"}
+        base = {**CONTEXT, "submission_id": "a", "text": "Pomysł"}
         for cats in [None, [], [{"id": "x", "label": "X"}]*2, [{"id": 1, "label": "X"}]]:
             body = dict(base)
             if cats is not None:
