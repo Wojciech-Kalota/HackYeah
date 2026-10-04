@@ -106,6 +106,9 @@ namespace eInicjatywa.Services
             if (filter?.DistrictIds is { Count: > 0 })
                 query = query.Where(i => filter.DistrictIds.Contains(i.DistrictId));
 
+            if (filter?.UpVotedByMe == true)
+                query = query.Where(i => i.Voters.Any(v => v.Id == userId));
+
             if (filter?.CategoryIds is { Count: > 0 })
             {
 
