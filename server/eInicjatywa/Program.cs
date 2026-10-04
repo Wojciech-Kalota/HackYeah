@@ -141,41 +141,6 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
 
-    string[] districtNames =
-    [
-        "I Stare Miasto", "II Grzegórzki", "III Prądnik Czerwony",
-        "IV Prądnik Biały", "V Krowodrza", "VI Bronowice",
-        "VII Zwierzyniec", "VIII Dębniki", "IX Łagiewniki-Borek Fałęcki",
-        "X Swoszowice", "XI Podgórze Duchackie", "XII Bieżanów-Prokocim",
-        "XIII Podgórze", "XIV Czyżyny", "XV Mistrzejowice", "XVI Bieńczyce",
-        "XVII Wzgórza Krzesławickie", "XVIII Nowa Huta"
-    ];
-    string[] categoryNames =
-    [
-        "Bezpieczeństwo", "Czystość i odpady", "Edukacja",
-        "Infrastruktura drogowa", "Infrastruktura rowerowa", "Kultura",
-        "Sport i rekreacja", "Tereny zielone", "Transport publiczny",
-        "Zdrowie i dostępność"
-    ];
-    string[] statusNames =
-    [
-        "submitted", "under_review", "accepted", "in_progress", "completed", "rejected"
-    ];
-
-    var existingDistricts = await db.Districts.Select(item => item.Name).ToListAsync();
-    var existingCategories = await db.Categories.Select(item => item.Name).ToListAsync();
-    var existingStatuses = await db.Statuses.Select(item => item.Name).ToListAsync();
-
-    db.Districts.AddRange(districtNames
-        .Except(existingDistricts)
-        .Select(name => new District { Name = name }));
-    db.Categories.AddRange(categoryNames
-        .Except(existingCategories)
-        .Select(name => new Category { Name = name }));
-    db.Statuses.AddRange(statusNames
-        .Except(existingStatuses)
-        .Select(name => new Status { Name = name }));
-    await db.SaveChangesAsync();
 }
 
 if (!app.Environment.IsDevelopment())

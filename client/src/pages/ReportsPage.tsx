@@ -1,5 +1,13 @@
-import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
-import { useMemo } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { useDeferredValue } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
@@ -17,69 +25,47 @@ function isReportStatus(value: string | null): value is ReportStatus {
 
 export function ReportsPage() {
   const { user } = useAuth();
-  const { reports, catalog, loading, error } = useReportsData();
   const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+  const deferredQuery = useDeferredValue(query);
+  const district = searchParams.get('district') ?? user?.district ?? 'all';
+  const category = searchParams.get('category') ?? 'all';
+  const statusParam = searchParams.get('status');
+  const status = isReportStatus(statusParam) ? statusParam : 'all';
+  const requestedPage = Number(searchParams.get('page') ?? 1);
+  const page =
+    Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const pageSize = 10;
+  const { reports, catalog, loading, error, pagination, reload } =
+    useReportsData({
+      district: district === 'all' ? undefined : district,
+      category: category === 'all' ? undefined : category,
+      status: status === 'all' ? undefined : status,
+      query: deferredQuery,
+      page,
+      pageSize,
+    });
   const districts = catalog.districts
     .map((item) => item.name)
     .sort((a, b) => a.localeCompare(b, 'pl'));
   const categories = catalog.categories
     .map((item) => item.name)
     .sort((a, b) => a.localeCompare(b, 'pl'));
-  const query = searchParams.get('q') ?? '';
-  const residentDistrict = user?.district ?? 'all';
-  const defaultDistrict = districts.includes(residentDistrict)
-    ? residentDistrict
-    : 'all';
-  const district = searchParams.get('district') ?? defaultDistrict;
-  const category = searchParams.get('category') ?? 'all';
-  const statusParam = searchParams.get('status');
-  const status = isReportStatus(statusParam) ? statusParam : 'all';
-  const sort =
-    searchParams.get('sort') === 'najstarsze' ? 'najstarsze' : 'najnowsze';
-
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (key === 'district' && value === 'all') next.set(key, value);
     else if (!value || value === 'all') next.delete(key);
     else next.set(key, value);
+    if (key !== 'page') next.delete('page');
     setSearchParams(next, { replace: true });
   }
-
-  const filteredReports = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('pl');
-
-    return reports
-      .filter((report) => {
-        const matchesQuery =
-          !normalizedQuery ||
-          [
-            report.title,
-            report.description,
-            report.district,
-            report.category,
-          ].some((value) =>
-            value.toLocaleLowerCase('pl').includes(normalizedQuery),
-          );
-        return (
-          matchesQuery &&
-          (district === 'all' || report.district === district) &&
-          (category === 'all' || report.category === category) &&
-          (status === 'all' || report.status === status)
-        );
-      })
-      .sort((a, b) => {
-        const difference =
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        return sort === 'najstarsze' ? -difference : difference;
-      });
-  }, [category, district, query, reports, sort, status]);
 
   const hasFilters = Boolean(
     query || district !== 'all' || category !== 'all' || status !== 'all',
   );
 
   return (
-    <PageMain className={uiTheme.layout.content}>
+    <PageMain aria-busy={loading} className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
@@ -91,12 +77,23 @@ export function ReportsPage() {
             realizacji.
           </p>
         </div>
-        <Link
-          className={uiTheme.button.primary}
-          to={user ? '/dodaj-pomysl' : '/logowanie'}
-        >
-          <Plus size={17} /> Dodaj zgłoszenie
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={uiTheme.button.secondary}
+            disabled={loading}
+            onClick={() => void reload()}
+            type="button"
+          >
+            <RefreshCw className={loading ? 'animate-spin' : ''} size={17} />
+            Odśwież
+          </button>
+          <Link
+            className={uiTheme.button.primary}
+            to={user ? '/dodaj-pomysl' : '/logowanie'}
+          >
+            <Plus size={17} /> Dodaj zgłoszenie
+          </Link>
+        </div>
       </div>
 
       {searchParams.get('nowe') === 'true' && (
@@ -131,7 +128,7 @@ export function ReportsPage() {
             <input
               className={`${uiTheme.field} pl-10`}
               onChange={(event) => setFilter('q', event.target.value)}
-              placeholder="Nazwa, opis, dzielnica..."
+              placeholder="Tytuł lub opis..."
               type="search"
               value={query}
             />
@@ -206,25 +203,19 @@ export function ReportsPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600">
             Znaleziono{' '}
-            <strong className="text-slate-950">{filteredReports.length}</strong>{' '}
+            <strong className="text-slate-950">{pagination.totalCount}</strong>{' '}
             zgłoszeń
           </p>
-          <label className="flex items-center gap-2 text-xs text-slate-500">
-            Sortowanie
-            <select
-              className={`${uiTheme.field} h-9 w-auto rounded-lg py-0 text-xs font-medium`}
-              onChange={(event) => setFilter('sort', event.target.value)}
-              value={sort}
-            >
-              <option value="najnowsze">Najnowsze</option>
-              <option value="najstarsze">Najstarsze</option>
-            </select>
-          </label>
+          {pagination.totalCount > 0 && (
+            <p className="text-xs text-slate-500">
+              Strona {pagination.currentPage} z {pagination.totalPages}
+            </p>
+          )}
         </div>
 
-        {filteredReports.length > 0 ? (
+        {reports.length > 0 ? (
           <div className="space-y-4">
-            {filteredReports.map((report) => (
+            {reports.map((report) => (
               <ReportCard key={report.id} report={report} />
             ))}
           </div>
@@ -240,6 +231,41 @@ export function ReportsPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {pagination.totalPages > 1 && (
+          <nav
+            aria-label="Paginacja pomysłów"
+            className="mt-6 flex items-center justify-center gap-3"
+          >
+            <button
+              aria-label="Poprzednia strona"
+              className={`${uiTheme.button.secondary} px-3`}
+              disabled={loading || pagination.currentPage <= 1}
+              onClick={() =>
+                setFilter('page', String(pagination.currentPage - 1))
+              }
+              type="button"
+            >
+              <ChevronLeft size={17} /> Poprzednia
+            </button>
+            <span className="min-w-24 text-center text-sm text-slate-600">
+              {pagination.currentPage} / {pagination.totalPages}
+            </span>
+            <button
+              aria-label="Następna strona"
+              className={`${uiTheme.button.secondary} px-3`}
+              disabled={
+                loading || pagination.currentPage >= pagination.totalPages
+              }
+              onClick={() =>
+                setFilter('page', String(pagination.currentPage + 1))
+              }
+              type="button"
+            >
+              Następna <ChevronRight size={17} />
+            </button>
+          </nav>
         )}
       </section>
     </PageMain>

@@ -37,11 +37,11 @@ namespace eInicjatywa.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetIdeas()
+        public async Task<IActionResult> GetIdeas([FromQuery] IdeaFilterDto? filter = null, [FromQuery] bool? originals = null)
         {
             try
             {
-                var results = await _ideasService.GetIdeasAsync();
+                var results = await _ideasService.GetIdeasAsync(User, filter, originals);
                 return Ok(results);
             }
             catch(Exception ex)

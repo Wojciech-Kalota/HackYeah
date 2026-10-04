@@ -6,12 +6,13 @@ import {
   MapPin,
   MessageSquare,
   Pencil,
+  RefreshCw,
   Send,
   Trash2,
   UserRound,
   X,
 } from 'lucide-react';
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { api, getApiErrorMessage, type ApiComment } from '../api/client';
@@ -168,6 +169,7 @@ function CommentsSection({
             onClick={() => setTab(item)}
             onKeyDown={handleTabKeyDown}
             role="tab"
+            tabIndex={tab === item ? 0 : -1}
             type="button"
           >
             {item === 'comments' ? (
@@ -187,7 +189,6 @@ function CommentsSection({
           aria-labelledby="duplicates-tab"
           id="duplicates-panel"
           role="tabpanel"
-          tabIndex={0}
         >
           <p className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
             Brak informacji o podobnych zgłoszeniach. Backend nie udostępnia
@@ -195,12 +196,7 @@ function CommentsSection({
           </p>
         </div>
       ) : (
-        <div
-          aria-labelledby="comments-tab"
-          id="comments-panel"
-          role="tabpanel"
-          tabIndex={0}
-        >
+        <div aria-labelledby="comments-tab" id="comments-panel" role="tabpanel">
           {currentUserId ? (
             <div className="mt-5 rounded-2xl bg-slate-50/60 p-4">
               <label className="sr-only" htmlFor="new-comment">
@@ -358,21 +354,30 @@ export function IdeaDetailsPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!id) return;
-    void Promise.all([
-      api.ideas.get(id),
-      loadCatalog(),
-      api.ideas.comments.list(id),
-    ])
-      .then(([idea, catalog, apiComments]) => {
-        setReport(mapIdeaToReport(idea, catalog, apiComments.length));
-        setAuthorId(idea.authorId);
-        setComments(apiComments);
-      })
-      .catch((loadError) => setError(getApiErrorMessage(loadError)))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    setError('');
+    try {
+      const [idea, catalog, apiComments] = await Promise.all([
+        api.ideas.get(id),
+        loadCatalog(),
+        api.ideas.comments.list(id),
+      ]);
+      setReport(mapIdeaToReport(idea, catalog, apiComments.length));
+      setAuthorId(idea.authorId);
+      setComments(apiComments);
+    } catch (loadError) {
+      setReport(undefined);
+      setError(getApiErrorMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   async function addComment(text: string) {
     if (!id) return;
@@ -415,7 +420,11 @@ export function IdeaDetailsPage() {
   }
 
   if (loading)
-    return <PageMain className={uiTheme.layout.content}>Ładowanie…</PageMain>;
+    return (
+      <PageMain aria-busy="true" className={uiTheme.layout.content}>
+        Ładowanie…
+      </PageMain>
+    );
   if (!report) {
     return (
       <PageMain
@@ -426,9 +435,21 @@ export function IdeaDetailsPage() {
           <h1 className={`${uiTheme.text.heading} mt-2 text-2xl`}>
             {error || 'Nie znaleziono pomysłu'}
           </h1>
-          <Link className={`${uiTheme.button.secondary} mt-5`} to="/pomysly">
+          <Link
+            className={`${uiTheme.button.secondary} mt-5`}
+            to="/pomysly?district=all"
+          >
             <ArrowLeft size={16} /> Wróć do listy
           </Link>
+          {error && (
+            <button
+              className={`${uiTheme.button.ghost} mt-3`}
+              onClick={() => void reload()}
+              type="button"
+            >
+              <RefreshCw size={16} /> Spróbuj ponownie
+            </button>
+          )}
         </div>
       </PageMain>
     );
@@ -441,7 +462,7 @@ export function IdeaDetailsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           className={`${uiTheme.text.link} inline-flex items-center gap-2 text-sm`}
-          to="/pomysly"
+          to="/pomysly?district=all"
         >
           <ArrowLeft size={16} /> Wszystkie pomysły
         </Link>

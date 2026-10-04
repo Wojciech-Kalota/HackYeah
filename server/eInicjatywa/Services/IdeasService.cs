@@ -9,7 +9,7 @@ namespace eInicjatywa.Services
     public interface IIdeasService
     {
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
-        Task<IEnumerable<IdeaDto>> GetIdeasAsync();
+        Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
         Task<IdeaDto> GetIdeaByIdAsync(Guid id);
         Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
@@ -82,25 +82,81 @@ namespace eInicjatywa.Services
             );
         }
 
-        public async Task<IEnumerable<IdeaDto>> GetIdeasAsync()
+        private const int MaxPageSize = 100;
+
+        public async Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null)
         {
-            var ideas = await _context.Ideas
-                .AsNoTracking()
-                .Include(idea => idea.IdeaCategorys)
+            var page = Math.Max(filter?.Page ?? 1, 1);
+            var pageSize = Math.Clamp(filter?.PageSize ?? 20, 1, MaxPageSize);
+
+            Guid userId = await _utilsService.GetUserId(user);
+
+            // ideas match if they have ANY of the selected categories
+            var query = _context.Ideas.AsNoTracking().AsQueryable();
+
+            if (filter?.AuthoredByMe == true)
+                query = query.Where(i => i.AuthorId == userId);
+
+            if (filter?.StatusIds is { Count: > 0 })
+                query = query.Where(i => filter.StatusIds.Contains(i.StatusId));
+
+            if (filter?.DistrictIds is { Count: > 0 })
+                query = query.Where(i => filter.DistrictIds.Contains(i.DistrictId));
+
+            if (filter?.CategoryIds is { Count: > 0 })
+            {
+
+                query = query.Where(i => i.IdeaCategorys
+                    .Any(ic => filter.CategoryIds.Contains(ic.CategoryId)));
+            }
+
+            if(originals != null)
+            {
+                if(originals == true)
+                {
+                    query = query.Where(i => i.DuplicateOfId == null);   
+                }
+                if(originals == false)
+                {
+                    query = query.Where(i => i.DuplicateOfId != null);   
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter?.Name))
+            {
+                var name = filter.Name.Trim();
+                query = query.Where(i => i.Title.Contains(name) || i.Description.Contains(name));
+            }
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var items = await query
+                .OrderByDescending(i => i.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(i => new IdeaDto(
+                    i.Title,
+                    i.Description,
+                    i.ImageUrl,
+                    i.DistrictId,
+                    i.StatusId,
+                    i.AuthorId,
+                    i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
+                    i.CreatedAt,
+                    i.LastUpdatedAt,
+                    i.Id
+                ))
                 .ToListAsync();
-            return ideas.Select(i => new IdeaDto
-            (
-                i.Title,
-                i.Description,
-                i.ImageUrl,
-                i.DistrictId,
-                i.StatusId,
-                i.AuthorId,
-                i.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                i.CreatedAt,
-                i.LastUpdatedAt,
-                i.Id
-            ));
+
+            return new PagedResult<IdeaDto>(
+                items,
+                page,
+                pageSize,
+                items.Count,
+                totalCount,
+                totalPages
+            );
         }
 
         public async Task<IdeaDto> GetIdeaByIdAsync(Guid id)

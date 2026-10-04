@@ -291,5 +291,31 @@ public class AppDbContext : DbContext
                 new() { Id = Guid.Parse("01a1040b-379b-75cc-bf98-0085b05b1313"), Name = "XVII Wzgórza Krzesławickie" },
                 new() { Id = Guid.Parse("01a1040b-379b-7d4a-ad15-e2cfcf63f85f"), Name = "XVIII Nowa Huta" }
             );
+
+        modelBuilder.Entity<Category>()
+            .HasData
+            (
+                new () { Id = Guid.Parse("01a104fb-7d11-77b5-adf7-233e51a05e92"), Name = "Bezpieczeństwo" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7b01-9319-e1b72378436c"), Name = "Czystość i odpady" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7a33-89bf-244e7be3dfaf"), Name = "Edukacja" },
+                new () { Id = Guid.Parse("01a104fb-7d11-70ef-9aa5-f94e0000915d"), Name = "Infrastruktura drogowa" },
+                new () { Id = Guid.Parse("01a104fb-7d11-710d-b9f6-a3c4fa059fde"), Name = "Infrastruktura rowerowa" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7538-81ee-7133f477b457"), Name = "Kultura" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7bce-8827-fa296ee77e8a"), Name = "Sport i rekreacja" },
+                new () { Id = Guid.Parse("01a104fb-7d11-70c3-81b9-5a914e5a9d3c"), Name = "Tereny zielone" },
+                new () { Id = Guid.Parse("01a104fb-7d11-706b-8c6f-ae2aebdd9b31"), Name = "Transport publiczny" },
+                new () { Id = Guid.Parse("01a104fb-7d11-74ec-a17d-f3ac1ee247c0"), Name = "Zdrowie i dostępność" }
+            );
+
+        modelBuilder.Entity<Status>()
+            .HasData
+            (
+                new () { Id = Guid.Parse("01a104fb-7d11-798f-8bcf-a2608258b2d3"), Name = "submitted" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7f3e-9633-c8ca561f9467"), Name = "under_review" },
+                new () { Id = Guid.Parse("01a104fb-7d11-74a2-9477-9b26b0968fa9"), Name = "accepted" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7988-affe-7ecb76adf1bc"), Name = "in_progress" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7215-96fb-f16cb32d6308"), Name = "completed" },
+                new () { Id = Guid.Parse("01a104fb-7d11-7c78-a8e5-913da2fa5d26"), Name = "rejected" }
+            );
     }
 }
