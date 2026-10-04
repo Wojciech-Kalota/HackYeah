@@ -18,6 +18,8 @@ namespace eInicjatywa.Services
         Task<IEnumerable<CommentDto>> GetCommentsByIdeaIdAsync(Guid ideaId);
         Task<CommentDto?> UpdateCommentAsync(ClaimsPrincipal? user, Guid commentId, CommentDto commentDto);
         Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
+
+        Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id);
     }
 
     public class IdeasService : IIdeasService
@@ -72,6 +74,7 @@ namespace eInicjatywa.Services
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
+                0, // votes
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
@@ -127,6 +130,7 @@ namespace eInicjatywa.Services
                     i.Title,
                     i.Description,
                     i.ImageUrl,
+                    i.Voters.Count,
                     i.DistrictId,
                     i.StatusId,
                     i.AuthorId,
@@ -162,6 +166,7 @@ namespace eInicjatywa.Services
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
+                idea.Voters.Count,
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
@@ -212,6 +217,7 @@ namespace eInicjatywa.Services
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
+                idea.Voters.Count,
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
@@ -305,6 +311,43 @@ namespace eInicjatywa.Services
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();
             return;
+        }
+
+        public async Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var idea = await _context.Ideas
+                .Include(i => i.Voters.Where(v => v.Id == userId))
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (idea is null)
+                throw new Exception("Idea not found");
+
+            var existingVoter = idea.Voters.FirstOrDefault();
+
+            bool hasVoted;
+            if (existingVoter is not null)
+            {
+                idea.Voters.Remove(existingVoter);
+                hasVoted = false;
+            }
+            else
+            {
+                var voter = await _context.Users.FindAsync(userId)
+                    ?? throw new Exception("User not found");
+                idea.Voters.Add(voter); 
+                hasVoted = true;
+            }
+
+            await _context.SaveChangesAsync();
+ 
+            var voteCount = await _context.Ideas
+                .Where(i => i.Id == id)
+                .Select(i => i.Voters.Count)
+                .FirstAsync();
+
+            return new VoteResultDto(id, voteCount, hasVoted);
         }
     }
 }

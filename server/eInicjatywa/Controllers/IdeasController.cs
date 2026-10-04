@@ -156,5 +156,20 @@ namespace eInicjatywa.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpPost("{id}/change-vote")]
+        [Authorize]
+        public async Task<IActionResult> ChangeIdeaVote([FromRoute] Guid id)
+        {
+            try
+            {
+                var result = await _ideasService.ChangeIdeaVoteAsync(User, id);
+                return Ok(result);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
