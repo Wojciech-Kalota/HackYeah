@@ -41,6 +41,7 @@ export function mapIdeaToReport(
     items.find((item) => item.id === id)?.name;
   return {
     id: idea.id,
+    duplicateOfId: idea.duplicateOfId,
     district: byId(catalog.districts, idea.districtId) ?? 'Nieznana dzielnica',
     category:
       byId(catalog.categories, idea.categoryIds[0] ?? idea.categoryId) ??

@@ -62,6 +62,9 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className={uiTheme.badge.info}>{report.district}</span>
           <span className={uiTheme.badge.neutral}>{report.category}</span>
+          {report.duplicateOfId && (
+            <span className={uiTheme.badge.warning}>Duplikat</span>
+          )}
           <span
             className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
           >
@@ -78,6 +81,14 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
         <p className="text-app-text-muted mt-5 text-sm leading-7 whitespace-pre-wrap md:text-base">
           {report.description}
         </p>
+        {report.duplicateOfId && (
+          <Link
+            className={`${uiTheme.text.link} mt-5 inline-flex w-fit items-center gap-2 text-sm`}
+            to={`/pomysly/${report.duplicateOfId}`}
+          >
+            <Copy size={15} /> Zobacz oryginalny pomysł
+          </Link>
+        )}
         <div className="mt-6">
           <VoteButton
             hasVoted={report.hasVoted}

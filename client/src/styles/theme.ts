@@ -37,6 +37,8 @@ export const uiTheme = Object.freeze({
     info: 'rounded-md bg-app-primary-soft px-2 py-1 text-[10px] font-semibold text-app-primary-strong',
     neutral:
       'rounded-md bg-app-muted px-2 py-1 text-[10px] font-medium text-app-text-muted',
+    warning:
+      'rounded-md bg-app-status-warning-bg px-2 py-1 text-[10px] font-semibold text-app-status-warning-text',
   },
   status: {
     submitted: 'bg-app-status-neutral-bg text-app-status-neutral-text',

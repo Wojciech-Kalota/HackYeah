@@ -62,6 +62,10 @@ export function MyIdeasPage() {
   const analysisStatus = searchParams.get('analiza');
   const score = searchParams.get('wynik');
   const duplicateCount = Number(searchParams.get('duplikaty') ?? 0);
+  const decision = searchParams.get('decyzja');
+  const relatedCount = Number(searchParams.get('powiazane') ?? 1);
+  const decisionReason = searchParams.get('powod');
+  const createdCount = Number(searchParams.get('utworzone') ?? 1);
 
   return (
     <PageMain aria-busy={loading} className={uiTheme.layout.content}>
@@ -86,8 +90,10 @@ export function MyIdeasPage() {
           role="status"
         >
           <div className="flex items-center gap-3 text-sm font-semibold">
-            <CheckCircle2 size={19} /> Pomysł został zapisany i przekazany do
-            analizy.
+            <CheckCircle2 size={19} />{' '}
+            {createdCount > 1
+              ? `Zgłoszenie rozdzielono i zapisano jako ${createdCount} pomysły.`
+              : 'Pomysł został przeanalizowany i zapisany.'}
           </div>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 pl-8 text-xs text-emerald-900">
             {analysisStatus === 'no_concepts' ? (
@@ -96,12 +102,27 @@ export function MyIdeasPage() {
               <>
                 {score && <span>Orientacyjny priorytet: {score}/100</span>}
                 <span>
-                  Podobne koncepcje:{' '}
-                  {Number.isFinite(duplicateCount) ? duplicateCount : 0}
+                  {decision === 'duplicate'
+                    ? 'Połączono z istniejącym pomysłem'
+                    : 'Utworzono nowy pomysł'}
                 </span>
+                {decision === 'duplicate' && Number.isFinite(relatedCount) && (
+                  <span>Powiązane zgłoszenia: {relatedCount}</span>
+                )}
+                {decision !== 'duplicate' && (
+                  <span>
+                    Podobne koncepcje:{' '}
+                    {Number.isFinite(duplicateCount) ? duplicateCount : 0}
+                  </span>
+                )}
               </>
             )}
           </div>
+          {decisionReason && (
+            <p className="mt-2 pl-8 text-xs leading-5 text-emerald-900">
+              {decisionReason}
+            </p>
+          )}
         </section>
       )}
 
@@ -188,6 +209,9 @@ export function MyIdeasPage() {
                     <span className={uiTheme.badge.neutral}>
                       {idea.category}
                     </span>
+                    {idea.duplicateOfId && (
+                      <span className={uiTheme.badge.warning}>Duplikat</span>
+                    )}
                   </div>
                   <h2 className="mt-4 font-semibold">{idea.title}</h2>
                   <p className={`${uiTheme.text.body} mt-2 line-clamp-3`}>

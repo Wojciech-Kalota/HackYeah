@@ -72,6 +72,9 @@ export function ReportCard({
             <span className="text-[10px] font-medium text-slate-500">
               {report.category}
             </span>
+            {report.duplicateOfId && (
+              <span className={uiTheme.badge.warning}>Duplikat</span>
+            )}
           </div>
           <h2 className="mt-2 text-base leading-snug font-semibold text-slate-950 transition-colors group-hover:text-blue-800">
             {report.title}

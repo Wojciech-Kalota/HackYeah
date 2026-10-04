@@ -29,6 +29,7 @@ import {
   loadPendingRagSubmission,
   RagApiError,
   savePendingRagSubmission,
+  type RagDecision,
   type RagSubmission,
 } from '../api/rag';
 import { loadCatalog, type ApiCatalog } from '../api/reports';
@@ -94,6 +95,70 @@ function inferCategory(description: string) {
       keywords.some((keyword) => normalizedDescription.includes(keyword)),
     )?.category ?? 'Infrastruktura drogowa'
   );
+}
+
+function normalizeIdeaText(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pl-PL');
+}
+
+async function resolveDuplicateIdeaId(decision: RagDecision) {
+  const canonicalSubmissionId = decision.canonical_submission_id;
+  if (!canonicalSubmissionId) {
+    throw new RagApiError(
+      'Analiza oznaczyła pomysł jako duplikat, ale nie wskazała zgłoszenia źródłowego.',
+      502,
+      'invalid_duplicate_mapping',
+    );
+  }
+
+  try {
+    const canonicalIdea = await api.ideas.get(canonicalSubmissionId);
+    return canonicalIdea.duplicateOfId ?? canonicalIdea.id;
+  } catch {
+    // Starsze wpisy RAG i aplikacji miały niezależnie generowane identyfikatory.
+  }
+
+  const candidate = decision.candidates.find(
+    (item) => item.concept.id === decision.decision.candidate_id,
+  );
+  if (!candidate) {
+    throw new RagApiError(
+      'Nie udało się powiązać duplikatu z pomysłem źródłowym.',
+      409,
+      'duplicate_target_not_found',
+    );
+  }
+
+  const candidatesPage = await api.ideas.listOriginals({
+    categoryIds: [candidate.concept.category],
+    name: candidate.concept.problem,
+    page: 1,
+    pageSize: 100,
+  });
+  const expectedTitle = normalizeIdeaText(candidate.concept.problem);
+  const exactMatches = candidatesPage.items.filter(
+    (item) => normalizeIdeaText(item.title) === expectedTitle,
+  );
+  const conceptCreatedAt = Date.parse(candidate.concept.created_at);
+  const exactMatch = exactMatches.sort((first, second) => {
+    if (!Number.isFinite(conceptCreatedAt)) return 0;
+    return (
+      Math.abs(Date.parse(first.createdAt) - conceptCreatedAt) -
+      Math.abs(Date.parse(second.createdAt) - conceptCreatedAt)
+    );
+  })[0];
+  const matchedIdea =
+    exactMatch ??
+    (candidatesPage.items.length === 1 ? candidatesPage.items[0] : undefined);
+
+  if (!matchedIdea) {
+    throw new RagApiError(
+      'RAG wykrył duplikat, ale powiązany starszy pomysł nie istnieje już w aplikacji.',
+      409,
+      'duplicate_target_not_found',
+    );
+  }
+  return matchedIdea.id;
 }
 
 export function AddIdeaPage() {
@@ -206,7 +271,6 @@ export function AddIdeaPage() {
           name.includes('zgłos')
         );
       }) ?? catalog?.statuses[0];
-
     if (!catalog || !district || !category || !status) {
       setSubmitError(
         'Brakuje skonfigurowanej dzielnicy, kategorii lub statusu. Administrator musi najpierw uzupełnić słowniki.',
@@ -231,17 +295,43 @@ export function AddIdeaPage() {
       savePendingRagSubmission(ragSubmission);
 
       const analysis = await analyzeRagSubmission(ragSubmission);
-      const analyzedCategoryId = analysis.extraction.concepts[0]?.category;
-      const analyzedCategory =
-        categories.find((item) => item.id === analyzedCategoryId) ?? category;
-      const duplicateOfId = analysis.decisions.find(
-        (item) => item.decision.kind === 'duplicate',
-      )?.canonical_submission_id;
+      if (
+        analysis.extraction.status === 'no_concepts' ||
+        analysis.decisions.length === 0
+      ) {
+        throw new RagApiError(
+          'Nie udało się wyodrębnić konkretnego pomysłu. Uzupełnij opis o problem, odbiorców lub proponowane rozwiązanie.',
+          422,
+          'no_concepts',
+        );
+      }
+      if (analysis.decisions.length > 1) {
+        throw new RagApiError(
+          'Opis zawiera kilka odrębnych pomysłów. Rozdziel je i wyślij jako osobne zgłoszenia.',
+          422,
+          'multiple_concepts',
+        );
+      }
+      const primaryDecision = analysis.decisions[0];
+      const analyzedCategory = categories.find(
+        (item) => item.id === primaryDecision.input_concept.category,
+      );
+      if (!analyzedCategory) {
+        throw new RagApiError(
+          'Analiza zwróciła kategorię spoza aktualnego słownika.',
+          502,
+          'invalid_category_mapping',
+        );
+      }
+      const isDuplicate = primaryDecision.decision.kind === 'duplicate';
+      const duplicateOfId = isDuplicate
+        ? await resolveDuplicateIdeaId(primaryDecision)
+        : null;
 
       setSubmissionStage('saving');
-      await api.ideas.create({
+      const createdIdea = await api.ideas.create({
         id: ragSubmission.submission_id,
-        duplicateOfId: duplicateOfId ?? null,
+        duplicateOfId,
         title: submissionTitle,
         description: context,
         imageUrl: null,
@@ -253,7 +343,7 @@ export function AddIdeaPage() {
       });
       if (imageFile) {
         setSubmissionStage('uploading');
-        await api.ideas.uploadImage(ragSubmission.submission_id, imageFile);
+        await api.ideas.uploadImage(createdIdea.id, imageFile);
       }
       clearPendingRagSubmission();
       setPendingRagSubmission(null);
@@ -265,6 +355,10 @@ export function AddIdeaPage() {
             (item) => item.decision.kind === 'duplicate',
           ).length,
         ),
+        powiazane: String(primaryDecision.liczba_zgloszen ?? 1),
+        decyzja: primaryDecision.decision.kind,
+        powod: primaryDecision.decision.reason,
+        utworzone: '1',
       });
       if (analysis.score !== null) {
         resultParams.set('wynik', String(analysis.score));
@@ -272,11 +366,21 @@ export function AddIdeaPage() {
       navigate(`/moje-pomysly?${resultParams.toString()}`);
     } catch (error) {
       if (error instanceof RagApiError) {
-        if (error.status === 409 || error.status === 422) {
+        if (
+          (error.status === 409 &&
+            error.code !== 'duplicate_target_not_found') ||
+          error.status === 422
+        ) {
           clearPendingRagSubmission();
           setPendingRagSubmission(null);
         }
-        setCanSafelyRetryAnalysis(true);
+        setCanSafelyRetryAnalysis(
+          (error.status === undefined ||
+            error.status === 502 ||
+            error.status === 503) &&
+            error.code !== 'invalid_duplicate_mapping' &&
+            error.code !== 'invalid_category_mapping',
+        );
         setSubmitError(getRagErrorMessage(error));
       } else {
         setCanSafelyRetryAnalysis(false);

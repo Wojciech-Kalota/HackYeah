@@ -19,6 +19,7 @@ export type ReportStatus = IdeaStatus;
 
 export type Report = {
   id: number | string;
+  duplicateOfId?: string | null;
   district: string;
   category: string;
   title: string;

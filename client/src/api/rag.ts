@@ -29,6 +29,15 @@ export type RagConcept = {
   source_quote: string;
 };
 
+export type RagCandidate = {
+  concept: Omit<RagConcept, 'source_quote'> & {
+    id: number;
+    created_at: string;
+    liczba_zgloszen: number;
+  };
+  similarity: number;
+};
+
 export type RagDecision = {
   input_concept: RagConcept;
   decision: {
@@ -39,6 +48,7 @@ export type RagDecision = {
   score: number;
   concept_id: number | null;
   canonical_submission_id?: string | null;
+  candidates: RagCandidate[];
   liczba_zgloszen: number | null;
 };
 
@@ -132,7 +142,11 @@ export function loadPendingRagSubmission(): RagSubmission | null {
       sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
       return null;
     }
-    return parsed as RagSubmission;
+    return {
+      submission_id: parsed.submission_id,
+      text: parsed.text,
+      categories: parsed.categories as RagCategory[],
+    };
   } catch {
     return null;
   }
@@ -182,7 +196,11 @@ export async function analyzeRagSubmission(
     const response = await fetch(`${RAG_API_BASE_URL}/api/ideas/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(submission),
+      body: JSON.stringify({
+        submission_id: submission.submission_id,
+        text: submission.text,
+        categories: submission.categories,
+      }),
       signal: controller.signal,
     });
     const body = (await response.json()) as
