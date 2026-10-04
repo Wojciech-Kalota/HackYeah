@@ -9,8 +9,8 @@ namespace eInicjatywa.Services
     public interface IIdeasService
     {
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
-        Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null);
-        Task<IdeaDto> GetIdeaByIdAsync(Guid id);
+        Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
+        Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id);
         Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
@@ -18,6 +18,8 @@ namespace eInicjatywa.Services
         Task<IEnumerable<CommentDto>> GetCommentsByIdeaIdAsync(Guid ideaId);
         Task<CommentDto?> UpdateCommentAsync(ClaimsPrincipal? user, Guid commentId, CommentDto commentDto);
         Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
+        Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id);
+        Task<IdeaDto> AddImageAsync(ClaimsPrincipal? user, Guid ideaId, IFormFile file);
     }
 
     public class IdeasService : IIdeasService
@@ -72,6 +74,8 @@ namespace eInicjatywa.Services
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
+                0, // votes
+                false, // hasVoted
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
@@ -84,7 +88,7 @@ namespace eInicjatywa.Services
 
         private const int MaxPageSize = 100;
 
-        public async Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null)
+        public async Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null)
         {
             var page = Math.Max(filter?.Page ?? 1, 1);
             var pageSize = Math.Clamp(filter?.PageSize ?? 20, 1, MaxPageSize);
@@ -103,11 +107,26 @@ namespace eInicjatywa.Services
             if (filter?.DistrictIds is { Count: > 0 })
                 query = query.Where(i => filter.DistrictIds.Contains(i.DistrictId));
 
+            if (filter?.UpVotedByMe == true)
+                query = query.Where(i => i.Voters.Any(v => v.Id == userId));
+
             if (filter?.CategoryIds is { Count: > 0 })
             {
 
                 query = query.Where(i => i.IdeaCategorys
                     .Any(ic => filter.CategoryIds.Contains(ic.CategoryId)));
+            }
+
+            if(originals != null)
+            {
+                if(originals == true)
+                {
+                    query = query.Where(i => i.DuplicateOfId == null);   
+                }
+                if(originals == false)
+                {
+                    query = query.Where(i => i.DuplicateOfId != null);   
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(filter?.Name))
@@ -127,6 +146,8 @@ namespace eInicjatywa.Services
                     i.Title,
                     i.Description,
                     i.ImageUrl,
+                    i.Voters.Count,
+                    userId != Guid.Empty && i.Voters.Any(v => v.Id == userId),
                     i.DistrictId,
                     i.StatusId,
                     i.AuthorId,
@@ -147,29 +168,29 @@ namespace eInicjatywa.Services
             );
         }
 
-        public async Task<IdeaDto> GetIdeaByIdAsync(Guid id)
+        public async Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id)
         {
-            var idea = await _context.Ideas
-                .AsNoTracking()
-                .Include(existingIdea => existingIdea.IdeaCategorys)
-                .FirstOrDefaultAsync(existingIdea => existingIdea.Id == id);
-            if(idea == null)
-            {
-                throw new Exception("Idea does not exist");
-            }
-            return new IdeaDto
-            (
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.DistrictId,
-                idea.StatusId,
-                idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                idea.CreatedAt,
-                idea.LastUpdatedAt,
-                idea.Id
-            );
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var dto = await _context.Ideas
+            .AsNoTracking()
+            .Where(i => i.Id == id)
+            .Select(i => new IdeaDto(
+                i.Title,
+                i.Description,
+                i.ImageUrl,
+                i.Voters.Count,
+                userId != Guid.Empty && i.Voters.Any(v => v.Id == userId),
+                i.DistrictId,
+                i.StatusId,
+                i.AuthorId,
+                i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
+                i.CreatedAt,
+                i.LastUpdatedAt,
+                i.Id))
+            .FirstOrDefaultAsync();
+
+            return dto ?? throw new Exception("Idea does not exist");
         }
 
         public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
@@ -207,19 +228,7 @@ namespace eInicjatywa.Services
                 .ToList();
 
             await _context.SaveChangesAsync();
-            return new IdeaDto
-            (
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.DistrictId,
-                idea.StatusId,
-                idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                idea.CreatedAt,
-                idea.LastUpdatedAt,
-                idea.Id
-            );
+            return await GetIdeaByIdAsync(user, id);
         }
 
         public async Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id)
@@ -235,6 +244,25 @@ namespace eInicjatywa.Services
             {
                 throw new Exception("Canot delete");
             }
+
+            if(!string.IsNullOrEmpty(idea.ImageUrl))
+            {
+                try
+                {
+                    var _path = idea.ImageUrl;
+                    var _physicalPath = Path.Combine("/app/storage", _path);
+                    
+                    if (File.Exists(_physicalPath))
+                    {
+                        File.Delete(_physicalPath);
+                    }
+                }
+                catch
+                {
+                    //IGNORE HERE
+                }
+            }
+
             _context.Ideas.Remove(idea);
             await _context.SaveChangesAsync();
             return;
@@ -305,6 +333,119 @@ namespace eInicjatywa.Services
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();
             return;
+        }
+
+        public async Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var idea = await _context.Ideas
+                .Include(i => i.Voters.Where(v => v.Id == userId))
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (idea is null)
+                throw new Exception("Idea not found");
+
+            var existingVoter = idea.Voters.FirstOrDefault();
+
+            bool hasVoted;
+            if (existingVoter is not null)
+            {
+                idea.Voters.Remove(existingVoter);
+                hasVoted = false;
+            }
+            else
+            {
+                var voter = await _context.Users.FindAsync(userId)
+                    ?? throw new Exception("User not found");
+                idea.Voters.Add(voter);
+                hasVoted = true;
+            }
+
+            await _context.SaveChangesAsync();
+
+            var voteCount = await _context.Ideas
+                .Where(i => i.Id == id)
+                .Select(i => i.Voters.Count)
+                .FirstAsync();
+
+            return new VoteResultDto(id, voteCount, hasVoted);
+
+        }
+
+        public async Task<IdeaDto> AddImageAsync(ClaimsPrincipal? user, Guid ideaId, IFormFile file)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var idea = await _context.Ideas.FirstOrDefaultAsync(i => i.Id == ideaId);
+            if(idea == null)
+            {
+                throw new Exception("No Idea");
+            }
+
+            if (idea.AuthorId != userId && !await _utilsService.HasAdminRole(user))
+                throw new Exception("You cannot update this idea");
+
+            try
+            {
+                Directory.CreateDirectory("/app/storage");
+            }
+            catch
+            {
+                throw new Exception("Error when creating a folder holding files");    
+            }
+
+            if(!string.IsNullOrEmpty(idea.ImageUrl))
+            {
+                try
+                {
+                    var _path = idea.ImageUrl;
+                    var _physicalPath = Path.Combine("/app/storage", _path);
+                    
+                    if (File.Exists(_physicalPath))
+                    {
+                        File.Delete(_physicalPath);
+                    }
+                }
+                catch
+                {
+                    //IGNORE HERE
+                }
+            }
+
+            var id = Guid.CreateVersion7();
+            var extension = Path.GetExtension(file.FileName);
+            var path = $"{id}{extension}";
+            var physicalPath = Path.Combine("/app/storage", path);
+            
+            try
+            {       
+                await using (var stream = new FileStream(physicalPath, FileMode.CreateNew))
+                {
+                    await file.CopyToAsync(stream);
+                }
+            }
+            catch
+            {
+                throw new Exception("Error creating a file");
+            }
+
+            try
+            {
+                idea.ImageUrl = path;
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                if (File.Exists(physicalPath))
+                {
+                    File.Delete(physicalPath);
+                }
+
+                throw new Exception("Error saving fileUrl into a idea record");
+            }
+
+            return await GetIdeaByIdAsync(user, id);
         }
     }
 }

@@ -30,12 +30,23 @@ Opcjonalna lokalna baza: ustaw POSTGRES_PASSWORD w .env, potem:
 docker compose up -d postgres
 ```
 
-Compose udostępnia PostgreSQL 17 na localhost:5432 i trwały wolumin.
+Compose udostępnia PostgreSQL 17 na localhost:5433 i trwały wolumin.
 Hasło musi odpowiadać DATABASE_URL. Model koncepcji zawiera problem, audience,
 solution, category i context. solution opisuje rozwiązanie i sposób działania.
 Nie uzupełniamy brakującego rozwiązania domysłami. Kategorie otrzymujemy w każdym POST jako listę {id,label}; model wybiera jedno ID.
 
 ## Uruchomienie API
+
+Najprościej uruchomić PostgreSQL i API razem w Dockerze:
+
+```powershell
+docker compose up -d --build
+```
+
+API jest wtedy dostępne na `http://127.0.0.1:8000`. Po zmianie `.env`
+uruchom ponownie `docker compose up -d api`, aby kontener wczytał nowe zmienne.
+
+Alternatywnie API można uruchomić lokalnie:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m uvicorn rops_rag.api:load_app --factory --host 127.0.0.1 --port 8000 --workers 1
@@ -128,3 +139,12 @@ Testy używają atrap OpenAI; trafność modeli oceniaj również ręcznie.
 Oceny korzystają z progów i przykładów kalibracyjnych: ważność wynika z konkretnej szkody, a zasięg z opisanego wdrożenia. Brak zasięgu oznacza poziom 2; brak opisanej szkody poziom 2 ważności. Nie zakładamy automatycznie regionalnego wdrożenia. Przy pustym rozwiązaniu koszt i czas pozostają na poziomie 3. Wynik jest orientacyjnym rankingiem, a nie wyceną.
 
 Powtórzenie tego samego `submission_id` zwraca zapisaną odpowiedź. Do sprawdzenia nowych ocen użyj nowego `submission_id`; restart serwera nie przelicza zapisanych wyników.
+
+Score zapisujemy jako osobne kolumny PostgreSQL: `submissions.score` (średnia
+zgłoszenia), `concepts.score` (ocena przy utworzeniu koncepcji) oraz
+`submission_concepts.score` (ocena koncepcji w danym zgłoszeniu). Duplikat nie
+nadpisuje pierwotnej oceny koncepcji. Wynik odpowiedzi nadal zawiera ocenę
+bieżącego zgłoszenia. Kandydaci wyszukiwania zawierają również `concept.score`.
+Kolumny dodawane są automatycznie przy połączeniu z bazą; konto bazy potrzebuje
+uprawnień ALTER do tych tabel. Wcześniejsze rekordy i dane demo mają NULL;
+nie są automatycznie przeliczane. Zachowane odpowiedzi pozostają bez zmian.
