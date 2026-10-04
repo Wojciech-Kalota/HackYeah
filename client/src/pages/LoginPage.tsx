@@ -178,22 +178,6 @@ export function LoginPage() {
                     </span>
                   </label>
 
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <label className="flex items-center gap-2 text-slate-600">
-                      <input
-                        className="size-4 rounded border-slate-300 accent-blue-800"
-                        type="checkbox"
-                      />
-                      Zapamiętaj mnie
-                    </label>
-                    <button
-                      className="font-semibold text-blue-800 hover:text-blue-950"
-                      type="button"
-                    >
-                      Nie pamiętam hasła
-                    </button>
-                  </div>
-
                   <button
                     className={`${uiTheme.button.primary} h-12 w-full`}
                     disabled={submitting}
@@ -211,6 +195,12 @@ export function LoginPage() {
                     </p>
                   )}
                 </form>
+                <p className="mt-5 text-center text-sm text-slate-600">
+                  Nie masz konta?{' '}
+                  <Link className={uiTheme.text.link} to="/rejestracja">
+                    Załóż konto mieszkańca
+                  </Link>
+                </p>
               </div>
             </section>
           </div>

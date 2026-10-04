@@ -22,6 +22,12 @@ type AuthContextValue = {
   user: CitizenUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<CitizenUser>;
+  register: (data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }) => Promise<CitizenUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<CitizenUser | null>;
 };
@@ -63,6 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login: async (email, password) => {
+        await api.login(email, password);
+        const currentUser = mapUser(await api.me());
+        setUser(currentUser);
+        return currentUser;
+      },
+      register: async ({ email, password, firstName, lastName }) => {
+        await api.register({
+          email,
+          password,
+          nameFirst: firstName,
+          nameLast: lastName,
+          roles: ['NORMAL_USER'],
+        });
         await api.login(email, password);
         const currentUser = mapUser(await api.me());
         setUser(currentUser);

@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage';
 import { MyIdeasPage } from './pages/MyIdeasPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { StartPage } from './pages/StartPage';
 
 export const router = createBrowserRouter([
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
     ),
   },
   { path: '/logowanie', element: <LoginPage /> },
+  { path: '/rejestracja', element: <RegisterPage /> },
   {
     path: '/administrator/projekty',
     element: (
@@ -61,6 +63,14 @@ export const router = createBrowserRouter([
       </AdminProtectedRoute>
     ),
   },
+  {
+    path: '/administrator/slowniki',
+    element: (
+      <AdminProtectedRoute>
+        <AdminPage view="catalogs" />
+      </AdminProtectedRoute>
+    ),
+  },
   { path: '/admin', element: <Navigate replace to="/administrator" /> },
   {
     path: '/admin/panel',
@@ -76,7 +86,6 @@ export const router = createBrowserRouter([
       { path: 'mieszkaniec', element: <HomePage /> },
       { path: 'pomysly', element: <ReportsPage /> },
       { path: 'pomysly/:id', element: <IdeaDetailsPage /> },
-      { path: 'logowanie', element: <LoginPage /> },
       { path: 'dostepnosc', element: <AccessibilityPage /> },
       {
         path: 'dodaj-pomysl',

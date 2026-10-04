@@ -8,7 +8,6 @@ import {
   MapPin,
   MessageSquare,
   ShieldCheck,
-  ThumbsUp,
   Trophy,
   Wrench,
 } from 'lucide-react';
@@ -16,15 +15,10 @@ import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
 import { useReportsData } from '../api/useReports';
-import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
-import {
-  completedProject,
-  stats,
-  type DashboardStatId,
-} from '../utils/dummyData';
+import type { DashboardStat, DashboardStatId } from '../types/domain';
 
 const statStyles: Record<
   DashboardStatId,
@@ -49,7 +43,7 @@ const statFilters: Record<DashboardStatId, string> = {
   completed: 'completed',
 };
 
-function StatCard({ stat }: { stat: (typeof stats)[number] }) {
+function StatCard({ stat }: { stat: DashboardStat }) {
   const style = statStyles[stat.id];
   const Icon = style.icon;
 
@@ -92,8 +86,52 @@ function formatDate(date: string) {
 
 export function HomePage() {
   const { user } = useAuth();
-  const { reports } = useReportsData();
+  const { reports, ideas, loading, error } = useReportsData();
   const district = user?.district ?? 'Wszystkie dzielnice';
+  const myReports = reports.filter(
+    (_report, index) => ideas[index]?.authorId === user?.id,
+  );
+  const neighborhoodReports = reports
+    .filter((report) => !user?.district || report.district === user.district)
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  const completedProject = neighborhoodReports.find(
+    (report) => report.status === 'completed',
+  );
+  const stats: DashboardStat[] = [
+    {
+      id: 'submitted',
+      label: 'Twoje zgłoszenia',
+      value: myReports.length,
+      description: 'Wszystkie pomysły przypisane do Twojego konta',
+      badge: 'Twój wkład',
+    },
+    {
+      id: 'under_review',
+      label: 'W analizie',
+      value: myReports.filter((report) => report.status === 'under_review')
+        .length,
+      description: 'Pomysły aktualnie oceniane przez miasto',
+      badge: 'Aktywne',
+    },
+    {
+      id: 'in_progress',
+      label: 'W realizacji',
+      value: myReports.filter((report) => report.status === 'in_progress')
+        .length,
+      description: 'Pomysły na etapie realizacji',
+      badge: 'Etap prac',
+    },
+    {
+      id: 'completed',
+      label: 'Zrealizowane',
+      value: myReports.filter((report) => report.status === 'completed').length,
+      description: 'Zakończone pomysły mieszkańca',
+      badge: 'Sukces',
+    },
+  ];
 
   return (
     <PageMain className={uiTheme.layout.content}>
@@ -141,15 +179,21 @@ export function HomePage() {
         ))}
       </section>
 
+      {error && (
+        <p className="mt-5 text-sm font-medium text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
         <section className={`${uiTheme.surface.card} overflow-hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
               <h2 className="font-bold text-slate-950">
-                Popularne w Twojej okolicy
+                Najnowsze w Twojej okolicy
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Pomysły najczęściej wspierane przez mieszkańców
+                Ostatnio zaktualizowane pomysły mieszkańców
               </p>
             </div>
             <Link className={`${uiTheme.text.link} text-xs`} to="/pomysly">
@@ -158,24 +202,29 @@ export function HomePage() {
           </div>
 
           <div>
-            {reports.slice(0, 4).map((report) => (
+            {neighborhoodReports.slice(0, 4).map((report) => (
               <Link
                 aria-label={`Otwórz pomysł ${report.title}`}
                 className={`${uiTheme.focusRing} group flex flex-col gap-4 border border-transparent border-b-slate-100 px-5 py-4 transition-colors last:border-b-transparent hover:border-blue-200 sm:flex-row sm:items-center`}
                 key={report.id}
                 to={`/pomysly/${report.id}`}
               >
-                <img
-                  alt={`Zdjęcie do pomysłu: ${report.title}`}
-                  className="h-16 w-full rounded-xl object-cover sm:size-16 sm:shrink-0"
-                  src={report.image}
-                />
+                {report.image ? (
+                  <img
+                    alt={`Zdjęcie do pomysłu: ${report.title}`}
+                    className="h-16 w-full rounded-xl object-cover sm:size-16 sm:shrink-0"
+                    src={report.image}
+                  />
+                ) : (
+                  <span className="grid h-16 w-full place-items-center rounded-xl bg-slate-100 text-slate-400 sm:size-16 sm:shrink-0">
+                    <FileText aria-hidden="true" size={20} />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-medium text-slate-500">
                       {report.category}
                     </span>
-                    <AiScoreBadge title={report.title} />
                   </div>
                   <h3 className="text-app-primary-strong mt-1 truncate text-sm font-semibold">
                     {report.title}
@@ -197,9 +246,7 @@ export function HomePage() {
                       {statusLabels[report.status]}
                     </span>
                     <p className="text-app-text-subtle mt-1.5 flex items-center justify-end gap-1 text-[10px]">
-                      <ThumbsUp size={11} /> {report.support}
-                      <MessageSquare className="ml-1" size={11} />{' '}
-                      {report.comments}
+                      <MessageSquare size={11} /> {report.comments}
                     </p>
                   </div>
                   <span className="text-app-text-muted grid size-9 place-items-center">
@@ -226,23 +273,35 @@ export function HomePage() {
                 <Trophy size={17} />
               </span>
             </div>
-            <img
-              alt={`Zdjęcie projektu: ${completedProject.title}`}
-              className="mt-4 h-32 w-full rounded-xl object-cover"
-              src={completedProject.image}
-            />
-            <h3 className="mt-4 text-sm font-semibold">
-              {completedProject.title}
-            </h3>
-            <div className="mt-3">
-              <AiScoreBadge title={completedProject.title} />
-            </div>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              {completedProject.description}
-            </p>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full w-full rounded-full bg-emerald-600" />
-            </div>
+            {completedProject ? (
+              <Link
+                className={`${uiTheme.focusRing} mt-4 block rounded-xl`}
+                to={`/pomysly/${completedProject.id}`}
+              >
+                {completedProject.image && (
+                  <img
+                    alt={`Zdjęcie projektu: ${completedProject.title}`}
+                    className="h-32 w-full rounded-xl object-cover"
+                    src={completedProject.image}
+                  />
+                )}
+                <h3 className="mt-4 text-sm font-semibold">
+                  {completedProject.title}
+                </h3>
+                <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">
+                  {completedProject.description}
+                </p>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full w-full rounded-full bg-emerald-600" />
+                </div>
+              </Link>
+            ) : (
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                {loading
+                  ? 'Ładowanie danych…'
+                  : 'Brak zrealizowanych projektów w wybranej okolicy.'}
+              </p>
+            )}
           </section>
 
           <section className={`${uiTheme.surface.card} p-5`} id="standardy">

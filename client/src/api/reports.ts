@@ -1,6 +1,5 @@
 import { api, type ApiIdea, type NamedResource } from './client';
-import type { IdeaStatus } from '../types/domain';
-import type { Report, ReportStatus } from '../utils/dummyData';
+import type { IdeaStatus, Report, ReportStatus } from '../types/domain';
 
 export type ApiCatalog = {
   categories: NamedResource[];
@@ -10,14 +9,16 @@ export type ApiCatalog = {
 
 function normalizeStatus(name?: string): ReportStatus {
   const normalized = name?.toLowerCase().replace(/[ -]+/g, '_');
+  if (normalized === 'rejected' || normalized?.includes('odrzu'))
+    return 'rejected';
+  if (normalized === 'completed' || normalized?.includes('zrealiz'))
+    return 'completed';
   if (normalized?.includes('review') || normalized?.includes('analiz'))
     return 'under_review';
   if (normalized?.includes('accept') || normalized?.includes('przyj'))
     return 'accepted';
   if (normalized?.includes('progress') || normalized?.includes('realiz'))
     return 'in_progress';
-  if (normalized?.includes('complete') || normalized?.includes('zrealiz'))
-    return 'completed';
   return 'submitted';
 }
 
@@ -42,7 +43,6 @@ export function mapIdeaToReport(
     description: idea.description,
     status: normalizeStatus(byId(catalog.statuses, idea.statusId)),
     comments,
-    support: 0,
     updatedAt: idea.lastUpdatedAt || idea.createdAt,
     image: idea.imageUrl ?? '',
   };
