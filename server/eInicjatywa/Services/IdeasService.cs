@@ -20,6 +20,7 @@ namespace eInicjatywa.Services
         Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
         Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id);
         Task<IdeaDto> AddImageAsync(ClaimsPrincipal? user, Guid ideaId, IFormFile file);
+        Task<IdeaDto> ChangeIdeaTesterStatusAsync(ClaimsPrincipal? user, Guid id);
     }
 
     public class IdeasService : IIdeasService
@@ -82,7 +83,11 @@ namespace eInicjatywa.Services
                 idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
                 idea.CreatedAt,
                 idea.LastUpdatedAt,
-                idea.Id
+                idea.Id,
+                false, // isTester
+                idea.Testers
+                    .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                    .ToList()
             );
         }
 
@@ -154,7 +159,11 @@ namespace eInicjatywa.Services
                     i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
                     i.CreatedAt,
                     i.LastUpdatedAt,
-                    i.Id
+                    i.Id,
+                    userId != Guid.Empty && i.Testers.Any(t => t.Id == userId),
+                    i.Testers
+                        .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                        .ToList()
                 ))
                 .ToListAsync();
 
@@ -187,7 +196,12 @@ namespace eInicjatywa.Services
                 i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
                 i.CreatedAt,
                 i.LastUpdatedAt,
-                i.Id))
+                i.Id,
+                userId != Guid.Empty && i.Testers.Any(t => t.Id == userId),
+                i.Testers
+                    .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                    .ToList()
+            ))
             .FirstOrDefaultAsync();
 
             return dto ?? throw new Exception("Idea does not exist");
@@ -444,6 +458,37 @@ namespace eInicjatywa.Services
 
                 throw new Exception("Error saving fileUrl into a idea record");
             }
+
+            return await GetIdeaByIdAsync(user, id);
+        }
+
+        public async Task<IdeaDto> ChangeIdeaTesterStatusAsync(ClaimsPrincipal? user, Guid id)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+            if (userId == Guid.Empty)
+                throw new Exception("Not authenticated");
+
+            var idea = await _context.Ideas
+                .Include(i => i.Testers.Where(t => t.Id == userId))
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (idea is null)
+                throw new Exception("Idea not found");
+
+            var existingTester = idea.Testers.FirstOrDefault();
+
+            if (existingTester is not null)
+            {
+                idea.Testers.Remove(existingTester);
+            }
+            else
+            {
+                var tester = await _context.Users.FindAsync(userId)
+                    ?? throw new Exception("User not found");
+                idea.Testers.Add(tester);
+            }
+
+            await _context.SaveChangesAsync();
 
             return await GetIdeaByIdAsync(user, id);
         }

@@ -16,6 +16,9 @@ namespace eInicjatywa.Dtos
         List<Guid> CategoryIds,
         DateTime CreatedAt,
         DateTime UpdatedAt,
-        Guid Id
+        Guid Id,
+
+        bool isTester,
+        List<MiniUserDto> Testers
     );
 }

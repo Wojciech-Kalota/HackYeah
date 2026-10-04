@@ -63,6 +63,24 @@ public class AppDbContext : DbContext
             .HasForeignKey(i => i.AuthorId)
             .OnDelete(DeleteBehavior.Cascade);
 
+
+        modelBuilder.Entity<Idea>()
+            .HasMany(i => i.Voters)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "IdeaVotes",
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasOne<Idea>().WithMany().HasForeignKey("IdeaId").OnDelete(DeleteBehavior.Cascade));
+
+
+        modelBuilder.Entity<Idea>()
+            .HasMany(i => i.Testers)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "IdeaTesters",
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasOne<Idea>().WithMany().HasForeignKey("IdeaId").OnDelete(DeleteBehavior.Cascade));
+
         modelBuilder.Entity<User>()
             .HasOne(u => u.District)
             .WithMany(d => d.Users)
