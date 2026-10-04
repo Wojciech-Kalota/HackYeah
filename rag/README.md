@@ -30,12 +30,23 @@ Opcjonalna lokalna baza: ustaw POSTGRES_PASSWORD w .env, potem:
 docker compose up -d postgres
 ```
 
-Compose udostępnia PostgreSQL 17 na localhost:5432 i trwały wolumin.
+Compose udostępnia PostgreSQL 17 na localhost:5433 i trwały wolumin.
 Hasło musi odpowiadać DATABASE_URL. Model koncepcji zawiera problem, audience,
 solution, category i context. solution opisuje rozwiązanie i sposób działania.
 Nie uzupełniamy brakującego rozwiązania domysłami. Kategorie otrzymujemy w każdym POST jako listę {id,label}; model wybiera jedno ID.
 
 ## Uruchomienie API
+
+Najprościej uruchomić PostgreSQL i API razem w Dockerze:
+
+```powershell
+docker compose up -d --build
+```
+
+API jest wtedy dostępne na `http://127.0.0.1:8000`. Po zmianie `.env`
+uruchom ponownie `docker compose up -d api`, aby kontener wczytał nowe zmienne.
+
+Alternatywnie API można uruchomić lokalnie:
 
 ```powershell
 .\.venv-win\Scripts\python.exe -m uvicorn rops_rag.api:load_app --factory --host 127.0.0.1 --port 8000 --workers 1

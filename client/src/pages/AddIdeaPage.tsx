@@ -106,6 +106,10 @@ export function AddIdeaPage() {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ragSubmissionRef = useRef<{
+    id: string;
+    fingerprint: string;
+  } | null>(null);
 
   const generatedTitle = createTitle(idea.desc);
   const generatedCategory = inferCategory(idea.desc);
@@ -191,7 +195,7 @@ export function AddIdeaPage() {
         );
       }) ?? catalog?.statuses[0];
 
-    if (!district || !category || !status) {
+    if (!catalog || !district || !category || !status) {
       setSubmitError(
         'Brakuje skonfigurowanej dzielnicy, kategorii lub statusu. Administrator musi najpierw uzupełnić słowniki.',
       );
@@ -201,6 +205,27 @@ export function AddIdeaPage() {
     setSubmitting(true);
     setSubmitError('');
     try {
+      const ragCategories = catalog.categories.map((item) => ({
+        id: item.id,
+        label: item.name,
+      }));
+      const ragFingerprint = JSON.stringify({
+        text: context,
+        categories: [...ragCategories].sort((left, right) =>
+          left.id.localeCompare(right.id),
+        ),
+      });
+      if (ragSubmissionRef.current?.fingerprint !== ragFingerprint) {
+        ragSubmissionRef.current = {
+          id: crypto.randomUUID(),
+          fingerprint: ragFingerprint,
+        };
+      }
+      await api.rag.analyze({
+        submission_id: ragSubmissionRef.current.id,
+        text: context,
+        categories: ragCategories,
+      });
       await api.ideas.create({
         title: submissionTitle,
         description: context,

@@ -72,7 +72,7 @@ export function ReportsPage() {
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         return sort === 'najstarsze' ? -difference : difference;
       });
-  }, [category, district, query, sort, status]);
+  }, [category, district, query, reports, sort, status]);
 
   const hasFilters = Boolean(
     query || district !== 'all' || category !== 'all' || status !== 'all',
