@@ -37,7 +37,7 @@ namespace eInicjatywa.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetIdeas([FromBody] IdeaFilterDto? filter = null)
+        public async Task<IActionResult> GetIdeas([FromQuery] IdeaFilterDto? filter = null)
         {
             try
             {
