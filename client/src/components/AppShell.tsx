@@ -14,10 +14,17 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { uiTheme } from '../styles/theme';
 import { RouteAccessibility } from './RouteAccessibility';
 import { SkipLink } from './SkipLink';
@@ -61,6 +68,12 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const logoutButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (profileOpen) logoutButtonRef.current?.focus();
+  }, [profileOpen]);
 
   if (!user) {
     return (
@@ -95,35 +108,20 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div className="relative">
-      {profileOpen && (
-        <div
-          className={`${uiTheme.surface.card} absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden p-1.5 shadow-xl shadow-slate-900/10`}
-          id="citizen-profile-menu"
-        >
-          <div className="border-b border-slate-100 px-3 py-2.5">
-            <p className="text-xs font-bold text-slate-900">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="mt-0.5 truncate text-[10px] text-slate-500">
-              {user.district ?? 'Brak przypisanej dzielnicy'}
-            </p>
-          </div>
-          <button
-            className={`${uiTheme.button.danger} w-full justify-start px-3 text-left text-xs`}
-            onClick={handleLogout}
-            type="button"
-          >
-            <LogOut size={16} /> Wyloguj się
-          </button>
-        </div>
-      )}
-
+    <div
+      className="relative"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !profileOpen) return;
+        setProfileOpen(false);
+        profileButtonRef.current?.focus();
+      }}
+    >
       <button
         aria-controls="citizen-profile-menu"
         aria-expanded={profileOpen}
         className={`${uiTheme.surface.muted} ${uiTheme.focusRing} flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-blue-100`}
         onClick={() => setProfileOpen((current) => !current)}
+        ref={profileButtonRef}
         type="button"
       >
         <span className="bg-app-primary grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white shadow-sm shadow-blue-800/20">
@@ -142,6 +140,29 @@ function CitizenProfile({ onClose }: { onClose?: () => void }) {
           size={17}
         />
       </button>
+      {profileOpen && (
+        <div
+          className={`${uiTheme.surface.card} absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden p-1.5 shadow-xl shadow-slate-900/10`}
+          id="citizen-profile-menu"
+        >
+          <div className="border-b border-slate-100 px-3 py-2.5">
+            <p className="text-xs font-bold text-slate-900">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-500">
+              {user.district ?? 'Brak przypisanej dzielnicy'}
+            </p>
+          </div>
+          <button
+            className={`${uiTheme.button.danger} w-full justify-start px-3 text-left text-xs`}
+            onClick={handleLogout}
+            ref={logoutButtonRef}
+            type="button"
+          >
+            <LogOut size={16} /> Wyloguj się
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -160,7 +181,11 @@ function Sidebar({
       label: 'Główne',
       items: [
         { label: 'Pulpit', icon: LayoutDashboard, to: '/mieszkaniec' },
-        { label: 'Wszystkie pomysły', icon: Lightbulb, to: '/pomysly' },
+        {
+          label: 'Wszystkie pomysły',
+          icon: Lightbulb,
+          to: '/pomysly?district=all',
+        },
       ],
     },
     {
@@ -213,13 +238,6 @@ function Sidebar({
     const [pathname, query] = to.split('?');
     if (query)
       return location.pathname === pathname && location.search === `?${query}`;
-    if (to === '/pomysly') {
-      return (
-        location.pathname.startsWith('/pomysly') &&
-        location.search !== '?sort=najnowsze' &&
-        location.search !== '?status=completed'
-      );
-    }
     if (to.includes('#')) {
       const [hashPathname, hash] = to.split('#');
       return location.pathname === hashPathname && location.hash === `#${hash}`;
@@ -300,23 +318,19 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileDialogRef = useRef<HTMLDivElement>(null);
 
-  function closeMenu() {
+  const closeMenu = useCallback(() => {
     setMenuOpen(false);
-    requestAnimationFrame(() => menuButtonRef.current?.focus());
-  }
+  }, []);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    closeButtonRef.current?.focus();
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeMenu();
-    }
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [menuOpen]);
+  useFocusTrap({
+    active: menuOpen,
+    containerRef: mobileDialogRef,
+    initialFocusRef: closeButtonRef,
+    returnFocusRef: menuButtonRef,
+    onEscape: closeMenu,
+  });
 
   return (
     <div className={uiTheme.layout.page}>
@@ -336,9 +350,14 @@ export function AppShell() {
             aria-label="Zamknij menu"
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
             onClick={closeMenu}
+            tabIndex={-1}
             type="button"
           />
-          <div className="relative h-full w-72 shadow-2xl">
+          <div
+            className="relative h-full w-72 shadow-2xl"
+            ref={mobileDialogRef}
+            tabIndex={-1}
+          >
             <Sidebar closeButtonRef={closeButtonRef} onClose={closeMenu} />
           </div>
         </div>

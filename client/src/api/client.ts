@@ -47,6 +47,58 @@ function json(method: string, body?: unknown): RequestInit {
   };
 }
 
+function ideaFiltersQuery(filters: IdeaFilters = {}) {
+  const params = new URLSearchParams();
+  filters.statusIds?.forEach((id) => params.append('StatusIds', id));
+  filters.districtIds?.forEach((id) => params.append('DistrictIds', id));
+  filters.categoryIds?.forEach((id) => params.append('CategoryIds', id));
+  // IdeaFilterDto.Name is non-nullable, so send whitespace when no search is
+  // active; the backend treats it as an empty filter via IsNullOrWhiteSpace.
+  params.set('Name', filters.name?.trim() || ' ');
+  if (filters.authoredByMe) params.set('AuthoredByMe', 'true');
+  if (filters.page) params.set('Page', String(filters.page));
+  if (filters.pageSize) params.set('PageSize', String(filters.pageSize));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function normalizeIdeasPage(
+  response: PagedResult<ApiIdea> | ApiIdea[],
+  filters: IdeaFilters,
+): PagedResult<ApiIdea> {
+  if (!Array.isArray(response)) return response;
+
+  const normalizedName = filters.name?.trim().toLocaleLowerCase('pl');
+  const filtered = response.filter((idea) => {
+    const matchesStatus =
+      !filters.statusIds?.length || filters.statusIds.includes(idea.statusId);
+    const matchesDistrict =
+      !filters.districtIds?.length ||
+      filters.districtIds.includes(idea.districtId);
+    const matchesCategory =
+      !filters.categoryIds?.length ||
+      idea.categoryIds.some((id) => filters.categoryIds?.includes(id));
+    const matchesName =
+      !normalizedName ||
+      `${idea.title} ${idea.description}`
+        .toLocaleLowerCase('pl')
+        .includes(normalizedName);
+    return matchesStatus && matchesDistrict && matchesCategory && matchesName;
+  });
+  const page = Math.max(filters.page ?? 1, 1);
+  const pageSize = Math.max((filters.pageSize ?? filtered.length) || 1, 1);
+  const start = (page - 1) * pageSize;
+  const items = filtered.slice(start, start + pageSize);
+  return {
+    items,
+    currentPage: page,
+    pageSize,
+    pageCount: items.length,
+    totalCount: filtered.length,
+    totalPages: Math.ceil(filtered.length / pageSize),
+  };
+}
+
 export type Role = 'ADMIN_USER' | 'NORMAL_USER';
 
 export type ApiUser = {
@@ -81,15 +133,38 @@ export type ApiIdea = {
   description: string;
   imageUrl: string | null;
   districtId: string;
-  categoryId: string;
+  categoryId?: string;
   statusId: string;
   authorId: string;
   categoryIds: string[];
   createdAt: string;
-  lastUpdatedAt: string;
+  lastUpdatedAt?: string;
+  updatedAt?: string;
 };
 
-export type IdeaRequest = Omit<ApiIdea, 'id' | 'createdAt' | 'lastUpdatedAt'>;
+export type IdeaRequest = Omit<
+  ApiIdea,
+  'id' | 'createdAt' | 'lastUpdatedAt' | 'updatedAt'
+>;
+
+export type IdeaFilters = {
+  statusIds?: string[];
+  districtIds?: string[];
+  categoryIds?: string[];
+  name?: string;
+  authoredByMe?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+export type PagedResult<T> = {
+  items: T[];
+  currentPage: number;
+  pageSize: number;
+  pageCount: number;
+  totalCount: number;
+  totalPages: number;
+};
 
 export type ApiComment = { id: string; text: string; userId: string };
 
@@ -144,12 +219,17 @@ export const api = {
   },
 
   ideas: {
-    list: () => request<ApiIdea[]>('/api/ideas'),
+    list: async (filters: IdeaFilters = {}) => {
+      const response = await request<PagedResult<ApiIdea> | ApiIdea[]>(
+        `/api/ideas${ideaFiltersQuery(filters)}`,
+      );
+      return normalizeIdeasPage(response, filters);
+    },
     get: (id: string) => request<ApiIdea>(`/api/ideas/${id}`),
     create: (body: IdeaRequest) =>
       request<ApiIdea>('/api/ideas', json('POST', body)),
     update: (id: string, body: IdeaRequest) =>
-      request<ApiIdea>(`/api/ideas/${id}`, json('PATCH', body)),
+      request<ApiIdea>(`/api/ideas/${id}`, json('PUT', body)),
     delete: (id: string) =>
       request<void>(`/api/ideas/${id}`, { method: 'DELETE' }),
     comments: {

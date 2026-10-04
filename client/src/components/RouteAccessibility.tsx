@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const appName = 'Głos Miasta Kraków';
@@ -22,11 +22,18 @@ function getPageName(pathname: string) {
 export function RouteAccessibility() {
   const { pathname } = useLocation();
   const [announcement, setAnnouncement] = useState('');
+  const previousPathname = useRef(pathname);
 
   useEffect(() => {
     const pageName = getPageName(pathname);
     document.title = `${pageName} | ${appName}`;
     setAnnouncement(`Załadowano stronę: ${pageName}`);
+    if (previousPathname.current !== pathname) {
+      requestAnimationFrame(() =>
+        document.getElementById('main-content')?.focus({ preventScroll: true }),
+      );
+      previousPathname.current = pathname;
+    }
   }, [pathname]);
 
   return (
