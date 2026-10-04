@@ -36,6 +36,12 @@ class Database:
         with self.connection.transaction():
             for statement in statements:
                 self.connection.execute(statement)
+            # Nullable for legacy/demo records without an assessment.
+            for table in ("submissions", "concepts", "submission_concepts"):
+                self.connection.execute(sql.SQL(
+                    "ALTER TABLE {} ADD COLUMN IF NOT EXISTS score DOUBLE PRECISION "
+                    "CHECK (score >= 0 AND score <= 100)"
+                ).format(sql.Identifier(table)))
             constraint = self.connection.execute(
                 "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint "
                 "WHERE conrelid='concepts'::regclass AND conname='concepts_category_check'"
@@ -56,9 +62,10 @@ class Database:
                 raise ValueError("Ten identyfikator należy do innego tekstu zgłoszenia")
             return False
 
-    def insert_concept(self, concept):
+    def insert_concept(self, concept, *, score=None):
         values = asdict(concept)
-        return self.connection.execute("INSERT INTO concepts(problem,audience,solution,category,context) VALUES (%(problem)s,%(audience)s,%(solution)s,%(category)s,%(context)s) RETURNING id", values).fetchone()["id"]
+        values["score"] = score
+        return self.connection.execute("INSERT INTO concepts(problem,audience,solution,category,context,score) VALUES (%(problem)s,%(audience)s,%(solution)s,%(category)s,%(context)s,%(score)s) RETURNING id", values).fetchone()["id"]
 
     def save_match(self, submission_id, *, concept=None, existing_id=None, reason):
         if (concept is None) == (existing_id is None):
@@ -67,7 +74,7 @@ class Database:
             raise ValueError("Uzasadnienie jest wymagane")
         with self.connection.transaction():
             cid = self.insert_concept(concept) if concept is not None else existing_id
-            self.connection.execute("INSERT INTO submission_concepts VALUES (%s,%s,%s) ON CONFLICT(submission_id,concept_id) DO NOTHING", (submission_id, cid, reason))
+            self.connection.execute("INSERT INTO submission_concepts(submission_id,concept_id,reason) VALUES (%s,%s,%s) ON CONFLICT(submission_id,concept_id) DO NOTHING", (submission_id, cid, reason))
         return cid
 
     def list_concepts(self):

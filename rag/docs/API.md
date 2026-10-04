@@ -138,3 +138,12 @@ czas oczekiwania; dozwolony jest POST JSON i jego preflight OPTIONS.
 Oceny korzystają z progów i przykładów kalibracyjnych: ważność wynika z konkretnej szkody, a zasięg z opisanego wdrożenia. Brak zasięgu oznacza poziom 2; brak opisanej szkody poziom 2 ważności. Nie zakładamy automatycznie regionalnego wdrożenia. Przy pustym rozwiązaniu koszt i czas pozostają na poziomie 3. Wynik jest orientacyjnym rankingiem, a nie wyceną.
 
 Powtórzenie tego samego `submission_id` zwraca zapisaną odpowiedź. Do sprawdzenia nowych ocen użyj nowego `submission_id`; restart serwera nie przelicza zapisanych wyników.
+
+Score zapisujemy jako osobne kolumny PostgreSQL: `submissions.score` (średnia
+zgłoszenia), `concepts.score` (ocena przy utworzeniu koncepcji) oraz
+`submission_concepts.score` (ocena koncepcji w danym zgłoszeniu). Duplikat nie
+nadpisuje pierwotnej oceny koncepcji. Wynik odpowiedzi nadal zawiera ocenę
+bieżącego zgłoszenia. Kandydaci wyszukiwania zawierają również `concept.score`.
+Kolumny dodawane są automatycznie przy połączeniu z bazą; konto bazy potrzebuje
+uprawnień ALTER do tych tabel. Wcześniejsze rekordy i dane demo mają NULL;
+nie są automatycznie przeliczane. Zachowane odpowiedzi pozostają bez zmian.

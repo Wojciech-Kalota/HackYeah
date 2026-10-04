@@ -7,6 +7,8 @@ namespace eInicjatywa.Dtos
         string Title,
         string Description,
         string? ImageUrl,
+        int votes,
+        bool hasVoted,
 
         Guid DistrictId,
         Guid StatusId,

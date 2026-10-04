@@ -32,6 +32,9 @@ class PipelineTests(TestCase):
         self.assertTrue(self.pipeline.process("b","Pomysł",CATEGORIES)["replayed"])
         self.assertEqual(self.extractor.extract.call_count,2)
         self.assertEqual(len(self.db.list_concepts()),1)
+        self.assertEqual(self.db.list_concepts()[0]["score"],50)
+        self.assertEqual(self.db.connection.execute("SELECT score FROM submissions WHERE id='a'").fetchone()["score"],50)
+        self.assertEqual(self.db.connection.execute("SELECT score FROM submission_concepts WHERE submission_id='b'").fetchone()["score"],50)
 
     def test_changed_categories_conflict(self):
         self.pipeline.process("a","Pomysł",CATEGORIES)
@@ -52,3 +55,14 @@ class PipelineTests(TestCase):
         result=self.pipeline.process("a","Pomysł",CATEGORIES)
         self.assertEqual(result["decisions"][0]["decision"]["kind"],"new")
         self.assertEqual(self.db.list_concepts()[0]["solution"],"")
+
+    def test_duplicate_keeps_original_concept_score(self):
+        first = self.pipeline.process("a", "Pomysł", CATEGORIES)
+        cid = first["decisions"][0]["concept_id"]
+        self.extractor.extract.return_value.concepts[0].assessment.importance = 5
+        self.comparator.compare.return_value = Decision(kind="duplicate", candidate_id=cid, reason="Podobny")
+        second = self.pipeline.process("b", "Pomysł", CATEGORIES)
+        self.assertEqual(second["score"], 70)
+        self.assertEqual(self.db.list_concepts()[0]["score"], 50)
+        self.assertEqual(self.db.connection.execute("SELECT score FROM submission_concepts WHERE submission_id='b'").fetchone()["score"], 70)
+        self.assertEqual(self.db.connection.execute("SELECT score FROM submissions WHERE id='b'").fetchone()["score"], 70)

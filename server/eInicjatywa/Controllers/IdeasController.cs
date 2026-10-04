@@ -19,7 +19,6 @@ namespace eInicjatywa.Controllers
             _ideasService = ideasService;
         }
 
-
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaWriteDto ideaDto)
@@ -27,6 +26,21 @@ namespace eInicjatywa.Controllers
             try
             {
                 var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}")]
+        [Authorize]
+        public async Task<IActionResult> AddImage([FromRoute] Guid id, [FromForm] IFormFile file)
+        {
+            try
+            {
+                var results = await _ideasService.AddImageAsync(User, id, file);
                 return Ok(results);
             }
             catch(Exception ex)
@@ -71,7 +85,7 @@ namespace eInicjatywa.Controllers
         {
             try
             {
-                var results = await _ideasService.GetIdeaByIdAsync(id);
+                var results = await _ideasService.GetIdeaByIdAsync(User, id);
                 return Ok(results);
             }
             catch(Exception ex)
@@ -180,6 +194,21 @@ namespace eInicjatywa.Controllers
             {
                 await _ideasService.DeleteCommentAsync(User, id);
                 return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/change-vote")]
+        [Authorize]
+        public async Task<IActionResult> ChangeIdeaVote([FromRoute] Guid id)
+        {
+            try
+            {
+                var result = await _ideasService.ChangeIdeaVoteAsync(User, id);
+                return Ok(result);
             }
             catch(Exception ex)
             {

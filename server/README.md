@@ -43,5 +43,5 @@ docker build -f backend_einicjatywa.Dockerfile -t backend_einicjatywa_image .
 ## Launch Backend Container
 
 ```dockerfile
-docker run -d --name backend_einicjatywa_container --network einicjatywa_network --env-file .env -p 8080:8080 backend_einicjatywa_image
+docker run -d --name backend_einicjatywa_container --network einicjatywa_network --env-file .env -v einicjatywa_backend_volume:/app/storage -p 8080:8080 backend_einicjatywa_image
 ```
