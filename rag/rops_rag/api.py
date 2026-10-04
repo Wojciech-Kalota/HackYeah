@@ -3,7 +3,7 @@ import psycopg
 from pathlib import Path
 from threading import Lock
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -68,7 +68,7 @@ class UpstreamError(RuntimeError):
     pass
 
 
-def create_app(processor=None):
+def create_app(processor=None, database_factory=None):
     app = FastAPI(title="ROPS RAG", version="0.1.0",
                   description="Ekstrakcja, wyszukiwanie, porównanie i zapis pomysłów")
     origins = [origin.strip() for origin in os.getenv(
@@ -88,6 +88,35 @@ def create_app(processor=None):
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    def read_database(operation):
+        from .database import Database
+        db = None
+        try:
+            if database_factory is None and not os.getenv("DATABASE_URL"):
+                raise ServiceConfigurationError("Brak DATABASE_URL")
+            db = (database_factory or Database)()
+            return operation(db)
+        except ServiceConfigurationError:
+            raise HTTPException(503, detail={"code":"configuration", "message":"Ustaw DATABASE_URL."})
+        except psycopg.Error:
+            raise HTTPException(503, detail={"code":"database_unavailable", "message":"Baza jest niedostępna."})
+        finally:
+            if db is not None:
+                db.close()
+
+    @app.get("/api/ideas")
+    def list_ideas(limit: int = Query(20, ge=1, le=100),
+                   offset: int = Query(0, ge=0),
+                   category: str | None = Query(None, min_length=1, max_length=100)):
+        return read_database(lambda db: db.get_concepts_page(limit=limit, offset=offset, category=category))
+
+    @app.get("/api/ideas/{concept_id}")
+    def get_idea(concept_id: int = ApiPath(..., ge=1, le=9223372036854775807)):
+        result = read_database(lambda db: db.get_concept(concept_id))
+        if result is None:
+            raise HTTPException(404, detail={"code":"not_found", "message":"Nie znaleziono pomysłu."})
+        return result
 
     @app.post("/api/ideas/analyze")
     def analyze(request: AnalyzeRequest):
