@@ -12,6 +12,7 @@ import {
   Trophy,
   Wrench,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
@@ -20,6 +21,8 @@ import { PageMain } from '../components/PageMain';
 import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import type { DashboardStat, DashboardStatId } from '../types/domain';
+
+const OBSERVED_DISTRICT_KEY = 'glos-miasta:observed-district';
 
 const statStyles: Record<
   DashboardStatId,
@@ -87,13 +90,48 @@ function formatDate(date: string) {
 
 export function HomePage() {
   const { user } = useAuth();
-  const { reports, ideas, loading, error, reload } = useReportsData();
-  const district = user?.district ?? 'Wszystkie dzielnice';
+  const { reports, ideas, catalog, loading, error, reload } = useReportsData();
+  const [observedDistrict, setObservedDistrict] = useState(
+    () => localStorage.getItem(OBSERVED_DISTRICT_KEY) ?? 'all',
+  );
+  const districtNames = useMemo(
+    () =>
+      catalog.districts
+        .map((district) => district.name)
+        .sort((a, b) => a.localeCompare(b, 'pl')),
+    [catalog.districts],
+  );
+
+  useEffect(() => {
+    const savedDistrict = localStorage.getItem(OBSERVED_DISTRICT_KEY);
+    if (!savedDistrict && user?.district) setObservedDistrict(user.district);
+  }, [user?.district]);
+
+  useEffect(() => {
+    if (
+      observedDistrict !== 'all' &&
+      districtNames.length > 0 &&
+      !districtNames.includes(observedDistrict)
+    ) {
+      setObservedDistrict('all');
+      localStorage.removeItem(OBSERVED_DISTRICT_KEY);
+    }
+  }, [districtNames, observedDistrict]);
+
+  function selectObservedDistrict(district: string) {
+    setObservedDistrict(district);
+    localStorage.setItem(OBSERVED_DISTRICT_KEY, district);
+  }
+
+  const reportsListHref = `/pomysly?district=${encodeURIComponent(observedDistrict)}`;
   const myReports = reports.filter(
     (_report, index) => ideas[index]?.authorId === user?.id,
   );
   const neighborhoodReports = reports
-    .filter((report) => !user?.district || report.district === user.district)
+    .filter(
+      (report) =>
+        observedDistrict === 'all' || report.district === observedDistrict,
+    )
     .sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
@@ -101,38 +139,41 @@ export function HomePage() {
   const completedProject = neighborhoodReports.find(
     (report) => report.status === 'completed',
   );
-  const stats: DashboardStat[] = [
-    {
-      id: 'submitted',
-      label: 'Twoje zgłoszenia',
-      value: myReports.length,
-      description: 'Wszystkie pomysły przypisane do Twojego konta',
-      badge: 'Twój wkład',
-    },
-    {
-      id: 'under_review',
-      label: 'W analizie',
-      value: myReports.filter((report) => report.status === 'under_review')
-        .length,
-      description: 'Pomysły aktualnie oceniane przez miasto',
-      badge: 'Aktywne',
-    },
-    {
-      id: 'in_progress',
-      label: 'W realizacji',
-      value: myReports.filter((report) => report.status === 'in_progress')
-        .length,
-      description: 'Pomysły na etapie realizacji',
-      badge: 'Etap prac',
-    },
-    {
-      id: 'completed',
-      label: 'Zrealizowane',
-      value: myReports.filter((report) => report.status === 'completed').length,
-      description: 'Zakończone pomysły mieszkańca',
-      badge: 'Sukces',
-    },
-  ];
+  const stats: DashboardStat[] = user
+    ? [
+        {
+          id: 'submitted',
+          label: 'Twoje zgłoszenia',
+          value: myReports.length,
+          description: 'Wszystkie pomysły przypisane do Twojego konta',
+          badge: 'Twój wkład',
+        },
+        {
+          id: 'under_review',
+          label: 'W analizie',
+          value: myReports.filter((report) => report.status === 'under_review')
+            .length,
+          description: 'Pomysły aktualnie oceniane przez miasto',
+          badge: 'Aktywne',
+        },
+        {
+          id: 'in_progress',
+          label: 'W realizacji',
+          value: myReports.filter((report) => report.status === 'in_progress')
+            .length,
+          description: 'Pomysły na etapie realizacji',
+          badge: 'Etap prac',
+        },
+        {
+          id: 'completed',
+          label: 'Zrealizowane',
+          value: myReports.filter((report) => report.status === 'completed')
+            .length,
+          description: 'Zakończone pomysły mieszkańca',
+          badge: 'Sukces',
+        },
+      ]
+    : [];
 
   return (
     <PageMain aria-busy={loading} className={uiTheme.layout.content}>
@@ -148,37 +189,45 @@ export function HomePage() {
         </div>
 
         <section
-          className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 pr-5 xl:min-w-[350px]`}
+          className={`${uiTheme.surface.card} flex min-w-0 items-center gap-3 p-3 xl:min-w-[350px]`}
         >
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800">
             <MapPin size={20} />
           </span>
-          <div className="min-w-0">
-            <p className="text-app-text-subtle text-[10px] font-bold tracking-wider uppercase">
+          <div className="min-w-0 flex-1">
+            <label
+              className="text-app-text-subtle block text-[10px] font-bold tracking-wider uppercase"
+              htmlFor="observed-district"
+            >
               Obserwowana okolica
-            </p>
-            <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
-              {district}
-            </p>
+            </label>
+            <select
+              className={`${uiTheme.field} mt-1 h-9 rounded-lg py-0 text-xs font-semibold`}
+              id="observed-district"
+              onChange={(event) => selectObservedDistrict(event.target.value)}
+              value={observedDistrict}
+            >
+              <option value="all">Wszystkie dzielnice</option>
+              {districtNames.map((district) => (
+                <option key={district} value={district}>
+                  {district}
+                </option>
+              ))}
+            </select>
           </div>
-          <Link
-            aria-label="Przeglądaj pomysły z okolicy"
-            className={`${uiTheme.iconButton} ml-auto size-9`}
-            to="/pomysly?district=all"
-          >
-            <ChevronRight size={18} />
-          </Link>
         </section>
       </div>
 
-      <section
-        className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-        aria-label="Podsumowanie"
-      >
-        {stats.map((stat) => (
-          <StatCard key={stat.id} stat={stat} />
-        ))}
-      </section>
+      {user && (
+        <section
+          className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          aria-label="Podsumowanie Twoich pomysłów"
+        >
+          {stats.map((stat) => (
+            <StatCard key={stat.id} stat={stat} />
+          ))}
+        </section>
+      )}
 
       {error && (
         <div
@@ -209,7 +258,7 @@ export function HomePage() {
             </div>
             <Link
               className={`${uiTheme.text.link} text-xs`}
-              to="/pomysly?district=all"
+              to={reportsListHref}
             >
               Zobacz wszystkie
             </Link>

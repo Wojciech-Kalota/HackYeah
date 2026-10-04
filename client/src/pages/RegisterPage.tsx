@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { getApiErrorMessage } from '../api/client';
-import { useAuth } from '../auth/AuthContext';
+import { RegistrationCompletedError, useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { uiTheme } from '../styles/theme';
@@ -16,6 +16,7 @@ export function RegisterPage() {
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -24,12 +25,34 @@ export function RegisterPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    if (!firstName || !lastName) {
+      setError('Imię i nazwisko nie mogą składać się wyłącznie ze spacji.');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Podane hasła nie są takie same.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
-      await register(form);
+      await register({
+        email: form.email,
+        password: form.password,
+        firstName,
+        lastName,
+      });
       navigate('/mieszkaniec', { replace: true });
     } catch (submitError) {
+      if (submitError instanceof RegistrationCompletedError) {
+        navigate('/logowanie', {
+          replace: true,
+          state: { email: submitError.email, registered: true },
+        });
+        return;
+      }
       setError(getApiErrorMessage(submitError));
     } finally {
       setSubmitting(false);
@@ -131,6 +154,23 @@ export function RegisterPage() {
               <span className="text-app-text-subtle mt-1 block text-xs">
                 Minimum 8 znaków.
               </span>
+            </label>
+            <label className={`${uiTheme.text.label} sm:col-span-2`}>
+              Powtórz hasło
+              <input
+                autoComplete="new-password"
+                className={`${uiTheme.field} mt-2`}
+                minLength={8}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    confirmPassword: event.target.value,
+                  }))
+                }
+                required
+                type="password"
+                value={form.confirmPassword}
+              />
             </label>
             {error && (
               <p
