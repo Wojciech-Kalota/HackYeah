@@ -70,7 +70,7 @@ namespace eInicjatywa.Controllers
         {
             try
             {
-                var results = await _ideasService.GetIdeaByIdAsync(id);
+                var results = await _ideasService.GetIdeaByIdAsync(User, id);
                 return Ok(results);
             }
             catch(Exception ex)

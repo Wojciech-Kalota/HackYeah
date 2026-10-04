@@ -10,7 +10,7 @@ namespace eInicjatywa.Services
     {
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
         Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
-        Task<IdeaDto> GetIdeaByIdAsync(Guid id);
+        Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id);
         Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
@@ -75,6 +75,7 @@ namespace eInicjatywa.Services
                 idea.Description,
                 idea.ImageUrl,
                 0, // votes
+                false, // hasVoted
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
@@ -146,6 +147,7 @@ namespace eInicjatywa.Services
                     i.Description,
                     i.ImageUrl,
                     i.Voters.Count,
+                    userId != Guid.Empty && i.Voters.Any(v => v.Id == userId),
                     i.DistrictId,
                     i.StatusId,
                     i.AuthorId,
@@ -166,30 +168,29 @@ namespace eInicjatywa.Services
             );
         }
 
-        public async Task<IdeaDto> GetIdeaByIdAsync(Guid id)
+        public async Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id)
         {
-            var idea = await _context.Ideas
-                .AsNoTracking()
-                .Include(existingIdea => existingIdea.IdeaCategorys)
-                .FirstOrDefaultAsync(existingIdea => existingIdea.Id == id);
-            if(idea == null)
-            {
-                throw new Exception("Idea does not exist");
-            }
-            return new IdeaDto
-            (
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.Voters.Count,
-                idea.DistrictId,
-                idea.StatusId,
-                idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                idea.CreatedAt,
-                idea.LastUpdatedAt,
-                idea.Id
-            );
+            Guid userId = await _utilsService.GetUserId(user);
+
+            var dto = await _context.Ideas
+            .AsNoTracking()
+            .Where(i => i.Id == id)
+            .Select(i => new IdeaDto(
+                i.Title,
+                i.Description,
+                i.ImageUrl,
+                i.Voters.Count,
+                userId != Guid.Empty && i.Voters.Any(v => v.Id == userId),
+                i.DistrictId,
+                i.StatusId,
+                i.AuthorId,
+                i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
+                i.CreatedAt,
+                i.LastUpdatedAt,
+                i.Id))
+            .FirstOrDefaultAsync();
+
+            return dto ?? throw new Exception("Idea does not exist");
         }
 
         public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
@@ -227,20 +228,7 @@ namespace eInicjatywa.Services
                 .ToList();
 
             await _context.SaveChangesAsync();
-            return new IdeaDto
-            (
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.Voters.Count,
-                idea.DistrictId,
-                idea.StatusId,
-                idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                idea.CreatedAt,
-                idea.LastUpdatedAt,
-                idea.Id
-            );
+            return await GetIdeaByIdAsync(user, id);
         }
 
         public async Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id)
@@ -387,12 +375,16 @@ namespace eInicjatywa.Services
 
         public async Task<IdeaDto> AddImageAsync(ClaimsPrincipal? user, Guid ideaId, IFormFile file)
         {
+            Guid userId = await _utilsService.GetUserId(user);
 
             var idea = await _context.Ideas.FirstOrDefaultAsync(i => i.Id == ideaId);
             if(idea == null)
             {
                 throw new Exception("No Idea");
             }
+
+            if (idea.AuthorId != userId && !await _utilsService.HasAdminRole(user))
+                throw new Exception("You cannot update this idea");
 
             try
             {
@@ -453,20 +445,7 @@ namespace eInicjatywa.Services
                 throw new Exception("Error saving fileUrl into a idea record");
             }
 
-            return new IdeaDto
-            (
-                idea.Title,
-                idea.Description,
-                idea.ImageUrl,
-                idea.Voters.Count,
-                idea.DistrictId,
-                idea.StatusId,
-                idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
-                idea.CreatedAt,
-                idea.LastUpdatedAt,
-                idea.Id
-            );
+            return await GetIdeaByIdAsync(user, id);
         }
     }
 }
