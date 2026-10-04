@@ -38,7 +38,7 @@ class Pipeline:
             extraction=self.extractor.extract(text,categories)
             result={"contract_version":3,"submission_id":submission_id,"replayed":False,"categories":categories,
                     "score":extraction.score(),"extraction":extraction.public_dump(),"decisions":[]}
-            conn.execute("INSERT INTO submissions(id,original_text) VALUES (%s,%s)",(submission_id,text))
+            conn.execute("INSERT INTO submissions(id,original_text,score) VALUES (%s,%s,%s)",(submission_id,text,extraction.score()))
             if extraction.status=="ok":
                 for extracted in extraction.concepts:
                     if extracted.category not in {item["id"] for item in categories}:
@@ -54,11 +54,11 @@ class Pipeline:
                     elif decision.kind=="new":
                         vector=self.retriever.embedder.embed(concept.retrieval_text())
                         validate_vector(vector)
-                        cid=self.db.insert_concept(concept)
+                        cid=self.db.insert_concept(concept, score=extracted.assessment.score())
                         conn.execute("INSERT INTO concept_embeddings VALUES (%s,%s,%s,%s)",
                             (cid,self.retriever.embedder.model,text_hash(concept.retrieval_text()),json.dumps(vector,allow_nan=False)))
                     if cid is not None:
-                        conn.execute("INSERT INTO submission_concepts VALUES (%s,%s,%s) ON CONFLICT(submission_id,concept_id) DO NOTHING",(submission_id,cid,decision.reason))
+                        conn.execute("INSERT INTO submission_concepts(submission_id,concept_id,reason,score) VALUES (%s,%s,%s,%s) ON CONFLICT(submission_id,concept_id) DO NOTHING",(submission_id,cid,decision.reason,extracted.assessment.score()))
                     result["decisions"].append({"input_concept":extracted.public_dump(),
                         "score":extracted.assessment.score(),"decision":decision.model_dump(),"concept_id":cid,"candidates":candidates})
             counts={row["id"]:row["liczba_zgloszen"] for row in self.db.list_concepts()}
