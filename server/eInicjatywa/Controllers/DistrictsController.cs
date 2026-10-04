@@ -33,11 +33,11 @@ namespace eInicjatywa.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetDistricts()
+        public async Task<IActionResult> GetDistricts([FromQuery] bool? krakow = null)
         {
             try
             {
-                var response = await _districtService.GetDistrict(User);
+                var response = await _districtService.GetDistrict(User, krakow);
                 return Ok(response);
             }
             catch(Exception ex)

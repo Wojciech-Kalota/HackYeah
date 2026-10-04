@@ -20,7 +20,14 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import {
   Link,
   useLocation,
@@ -34,6 +41,7 @@ import { api, getApiErrorMessage, type ApiComment } from '../api/client';
 import { ideaStatus } from '../api/reports';
 import { useReportsData } from '../api/useReports';
 import { useAuth } from '../auth/AuthContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
@@ -177,7 +185,10 @@ const navigationSections: Array<{
 
 function AdminLogo() {
   return (
-    <Link className="flex items-center gap-3" to="/administrator/panel">
+    <Link
+      className={`flex items-center gap-3 rounded-xl ${uiTheme.focusRing}`}
+      to="/administrator/panel"
+    >
       <span className="bg-app-primary grid size-10 place-items-center rounded-xl text-white shadow-sm shadow-blue-800/20">
         <img
           alt=""
@@ -207,6 +218,8 @@ function AdminSidebar({
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const activeFilter =
     (new URLSearchParams(location.search).get(
@@ -228,6 +241,10 @@ function AdminSidebar({
     onClose?.();
     navigate('/administrator', { replace: true });
   }
+
+  useEffect(() => {
+    if (profileOpen) logoutButtonRef.current?.focus();
+  }, [profileOpen]);
 
   return (
     <aside className="app-sidebar-panel flex h-full flex-col px-4 py-5">
@@ -292,7 +309,14 @@ function AdminSidebar({
         ))}
       </nav>
 
-      <div className="relative mt-auto border-t border-slate-100 pt-4">
+      <div
+        className="relative mt-auto border-t border-slate-100 pt-4"
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape' || !profileOpen) return;
+          setProfileOpen(false);
+          profileButtonRef.current?.focus();
+        }}
+      >
         {profileOpen && (
           <div
             className={`${uiTheme.surface.card} absolute right-0 bottom-[calc(100%+8px)] left-0 overflow-hidden p-1.5 shadow-xl shadow-slate-900/10`}
@@ -307,6 +331,7 @@ function AdminSidebar({
             <button
               className={`${uiTheme.button.danger} w-full justify-start px-3 text-xs`}
               onClick={() => void handleLogout()}
+              ref={logoutButtonRef}
               type="button"
             >
               <LogOut size={16} /> Wyloguj się
@@ -319,6 +344,7 @@ function AdminSidebar({
           aria-expanded={profileOpen}
           className={`${uiTheme.surface.muted} ${uiTheme.focusRing} flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-blue-100`}
           onClick={() => setProfileOpen((current) => !current)}
+          ref={profileButtonRef}
           type="button"
         >
           <span className="bg-app-primary grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white shadow-sm shadow-blue-800/20">
@@ -601,7 +627,6 @@ function AdminProjectsView() {
               key={report.id}
               nested
               report={report}
-              showProjectId
               showVotingNotice={false}
             />
           ))}
@@ -641,11 +666,11 @@ function AdminProjectDetailsView() {
   }, [id]);
 
   if (loading)
-    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
+    return <PageMain className={uiTheme.layout.content}>Ładowanie…</PageMain>;
 
   if (!report) {
     return (
-      <main
+      <PageMain
         className={`${uiTheme.layout.content} grid min-h-[70vh] place-items-center`}
       >
         <div className="text-center">
@@ -660,14 +685,12 @@ function AdminProjectDetailsView() {
             <ArrowLeft size={16} /> Wróć do rejestru
           </Link>
         </div>
-      </main>
+      </PageMain>
     );
   }
 
-  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
-
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <Link
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-800"
         to="/administrator/projekty"
@@ -678,9 +701,6 @@ function AdminProjectDetailsView() {
       <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold tracking-wide text-blue-800 uppercase">
-              Projekt {projectNumber}
-            </span>
             <span
               className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
             >
@@ -813,7 +833,7 @@ function AdminProjectDetailsView() {
           </section>
         </aside>
       </div>
-    </main>
+    </PageMain>
   );
 }
 
@@ -833,11 +853,11 @@ function AdminProjectDecisionView() {
   }, [report]);
 
   if (loading)
-    return <main className={uiTheme.layout.content}>Ładowanie…</main>;
+    return <PageMain className={uiTheme.layout.content}>Ładowanie…</PageMain>;
 
   if (!report) {
     return (
-      <main
+      <PageMain
         className={`${uiTheme.layout.content} grid min-h-[70vh] place-items-center`}
       >
         <div className="text-center">
@@ -852,11 +872,9 @@ function AdminProjectDecisionView() {
             <ArrowLeft size={16} /> Wróć do rejestru
           </Link>
         </div>
-      </main>
+      </PageMain>
     );
   }
-
-  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
 
   async function saveDecision() {
     if (!idea) return;
@@ -890,7 +908,7 @@ function AdminProjectDecisionView() {
   }
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="mx-auto max-w-3xl">
         <Link
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-800"
@@ -900,12 +918,7 @@ function AdminProjectDecisionView() {
         </Link>
 
         <div className="mt-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
-              Projekt {projectNumber}
-            </p>
-          </div>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
             Podejmij decyzję
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
@@ -974,7 +987,7 @@ function AdminProjectDecisionView() {
           </div>
         </section>
       </div>
-    </main>
+    </PageMain>
   );
 }
 
@@ -989,7 +1002,7 @@ function AdminAnalyticsView() {
   const highestValue = Math.max(...statusSummary.map((item) => item.value), 1);
 
   return (
-    <main className={uiTheme.layout.content}>
+    <PageMain className={uiTheme.layout.content}>
       <div className="flex items-center gap-2 text-xs font-semibold text-blue-800">
         <BarChart3 size={14} /> Analiza
       </div>
@@ -1030,7 +1043,7 @@ function AdminAnalyticsView() {
           ))}
         </div>
       </section>
-    </main>
+    </PageMain>
   );
 }
 
@@ -1060,23 +1073,19 @@ export function AdminPage({
           : 'projects';
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileDialogRef = useRef<HTMLDivElement>(null);
 
-  function closeMenu() {
+  const closeMenu = useCallback(() => {
     setMenuOpen(false);
-    requestAnimationFrame(() => menuButtonRef.current?.focus());
-  }
+  }, []);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    closeButtonRef.current?.focus();
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeMenu();
-    }
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [menuOpen]);
+  useFocusTrap({
+    active: menuOpen,
+    containerRef: mobileDialogRef,
+    initialFocusRef: closeButtonRef,
+    returnFocusRef: menuButtonRef,
+    onEscape: closeMenu,
+  });
 
   return (
     <div className={uiTheme.layout.page}>
@@ -1096,9 +1105,14 @@ export function AdminPage({
             aria-label="Zamknij menu"
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
             onClick={closeMenu}
+            tabIndex={-1}
             type="button"
           />
-          <div className="relative h-full w-72 shadow-2xl">
+          <div
+            className="relative h-full w-72 shadow-2xl"
+            ref={mobileDialogRef}
+            tabIndex={-1}
+          >
             <AdminSidebar
               closeButtonRef={closeButtonRef}
               currentView={sidebarView}
@@ -1217,7 +1231,6 @@ export function AdminPage({
                           key={report.id}
                           nested
                           report={report}
-                          showProjectId
                           showVotingNotice={false}
                         />
                       ))}

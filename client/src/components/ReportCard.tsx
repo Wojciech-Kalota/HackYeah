@@ -31,13 +31,11 @@ export function ReportCard({
   report,
   detailsHref = `/pomysly/${report.id}`,
   nested = false,
-  showProjectId = false,
   showVotingNotice = true,
 }: {
   report: Report;
   detailsHref?: string;
   nested?: boolean;
-  showProjectId?: boolean;
   showVotingNotice?: boolean;
 }) {
   return (
@@ -67,14 +65,6 @@ export function ReportCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            {showProjectId && (
-              <>
-                <span className="text-[10px] font-bold text-blue-700">
-                  BO-{String(report.id).padStart(3, '0')}
-                </span>
-                <span className="text-[10px] text-slate-300">•</span>
-              </>
-            )}
             <span className="text-[10px] font-medium text-slate-500">
               {report.category}
             </span>

@@ -1,5 +1,5 @@
-import { CheckCircle2, Lightbulb, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckCircle2, Lightbulb, Plus, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
@@ -22,19 +22,27 @@ export function MyIdeasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    void loadReports()
-      .then((result) =>
-        setIdeas(
-          result.reports.filter(
-            (_report, index) => result.ideas[index].authorId === user.id,
-          ),
+    setLoading(true);
+    setError('');
+    try {
+      const result = await loadReports({ authoredByMe: true, pageSize: 100 });
+      setIdeas(
+        result.reports.filter(
+          (_report, index) => result.ideas[index].authorId === user.id,
         ),
-      )
-      .catch((loadError) => setError(getApiErrorMessage(loadError)))
-      .finally(() => setLoading(false));
+      );
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
   const requestedStatus = searchParams.get('status');
   const activeStatus = IDEA_STATUS_OPTIONS.some(
     (option) => option.value === requestedStatus,
@@ -45,9 +53,12 @@ export function MyIdeasPage() {
     ? ideas.filter((idea) => idea.status === activeStatus)
     : ideas;
   const activeFilter = activeStatus ?? 'all';
+  const analysisStatus = searchParams.get('analiza');
+  const score = searchParams.get('wynik');
+  const duplicateCount = Number(searchParams.get('duplikaty') ?? 0);
 
   return (
-    <PageMain className={uiTheme.layout.content}>
+    <PageMain aria-busy={loading} className={uiTheme.layout.content}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className={`${uiTheme.text.heading} text-3xl md:text-4xl`}>
@@ -63,19 +74,45 @@ export function MyIdeasPage() {
       </div>
 
       {searchParams.get('dodano') === 'true' && (
-        <div
+        <section
           aria-live="polite"
-          className="mt-6 flex items-center gap-3 rounded-2xl bg-emerald-100 p-4 text-sm font-medium text-emerald-900"
+          className="mt-6 rounded-2xl bg-emerald-100 p-4 text-emerald-950"
           role="status"
         >
-          <CheckCircle2 size={19} /> Pomysł został zapisany.
-        </div>
+          <div className="flex items-center gap-3 text-sm font-semibold">
+            <CheckCircle2 size={19} /> Pomysł został zapisany i przekazany do
+            analizy.
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 pl-8 text-xs text-emerald-900">
+            {analysisStatus === 'no_concepts' ? (
+              <span>Nie wykryto odrębnej koncepcji w opisie.</span>
+            ) : (
+              <>
+                {score && <span>Orientacyjny priorytet: {score}/100</span>}
+                <span>
+                  Podobne koncepcje:{' '}
+                  {Number.isFinite(duplicateCount) ? duplicateCount : 0}
+                </span>
+              </>
+            )}
+          </div>
+        </section>
       )}
 
       {error && (
-        <p className="mt-6 text-sm font-medium text-red-700" role="alert">
-          {error}
-        </p>
+        <div
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-800"
+          role="alert"
+        >
+          <p className="font-medium">{error}</p>
+          <button
+            className={`${uiTheme.button.ghost} px-3 py-2 text-xs text-red-800 hover:bg-red-100`}
+            onClick={() => void reload()}
+            type="button"
+          >
+            <RefreshCw size={15} /> Spróbuj ponownie
+          </button>
+        </div>
       )}
       {loading && <p className="mt-6 text-sm text-slate-500">Ładowanie…</p>}
 
