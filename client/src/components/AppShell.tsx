@@ -55,7 +55,7 @@ function CitizenLogo() {
         />
       </span>
       <span className="leading-tight">
-        <span className="text-app-text block font-bold">Głos Miasta</span>
+        <span className="text-app-text block font-bold">E-Inicjatywa</span>
         <span className="text-app-text-muted block text-[10px] font-semibold tracking-[0.2em] uppercase">
           Kraków
         </span>

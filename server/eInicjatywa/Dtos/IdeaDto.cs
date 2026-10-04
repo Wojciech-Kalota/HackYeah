@@ -17,5 +17,8 @@ namespace eInicjatywa.Dtos
         DateTime CreatedAt,
         DateTime UpdatedAt,
         Guid Id
-    );
+    )
+    {
+        public Guid? DuplicateOfId { get; init; }
+    }
 }

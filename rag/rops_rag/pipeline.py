@@ -58,9 +58,20 @@ class Pipeline:
                         conn.execute("INSERT INTO concept_embeddings VALUES (%s,%s,%s,%s)",
                             (cid,self.retriever.embedder.model,text_hash(concept.retrieval_text()),json.dumps(vector,allow_nan=False)))
                     if cid is not None:
+                        canonical_submission_id=submission_id
+                        if decision.kind=="duplicate":
+                            canonical=conn.execute(
+                                "SELECT sc.submission_id FROM submission_concepts sc "
+                                "JOIN submissions s ON s.id=sc.submission_id "
+                                "WHERE sc.concept_id=%s ORDER BY s.created_at, s.id LIMIT 1",
+                                (cid,)).fetchone()
+                            if canonical:
+                                canonical_submission_id=canonical["submission_id"]
                         conn.execute("INSERT INTO submission_concepts(submission_id,concept_id,reason,score) VALUES (%s,%s,%s,%s) ON CONFLICT(submission_id,concept_id) DO NOTHING",(submission_id,cid,decision.reason,extracted.assessment.score()))
                     result["decisions"].append({"input_concept":extracted.public_dump(),
-                        "score":extracted.assessment.score(),"decision":decision.model_dump(),"concept_id":cid,"candidates":candidates})
+                        "score":extracted.assessment.score(),"decision":decision.model_dump(),"concept_id":cid,
+                        "canonical_submission_id":canonical_submission_id if cid is not None else None,
+                        "candidates":candidates})
             counts={row["id"]:row["liczba_zgloszen"] for row in self.db.list_concepts()}
             for item in result["decisions"]:
                 item["liczba_zgloszen"]=counts.get(item["concept_id"])

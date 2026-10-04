@@ -1,0 +1,127 @@
+name: einicjatywa
+
+services:
+  backend-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${BACKEND_DB_NAME:-einicjatywa}
+      POSTGRES_USER: ${BACKEND_DB_USER:-einicjatywa}
+      POSTGRES_PASSWORD: ${BACKEND_DB_PASSWORD:?Ustaw BACKEND_DB_PASSWORD}
+    volumes:
+      - backend_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 768m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    build:
+      context: ./server
+      dockerfile: redis_einicjatywa.Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Ustaw REDIS_PASSWORD}
+      REDIS_MAXMEMORY: 128mb
+      REDIS_MAXMEMORY_POLICY: allkeys-lru
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 192m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: backend_einicjatywa.Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Local_Database_Postgres: "Host=backend-db;Port=5432;Database=${BACKEND_DB_NAME:-einicjatywa};Username=${BACKEND_DB_USER:-einicjatywa};Password=${BACKEND_DB_PASSWORD}"
+      ConnectionStrings__Local_Cache_Redis: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
+    depends_on:
+      backend-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 640m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rag-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${RAG_DB_NAME:-rops}
+      POSTGRES_USER: ${RAG_DB_USER:-rops}
+      POSTGRES_PASSWORD: ${RAG_DB_PASSWORD:?Ustaw RAG_DB_PASSWORD}
+    volumes:
+      - rag_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 768m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rag-api:
+    build:
+      context: ./rag
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://${RAG_DB_USER:-rops}:${RAG_DB_PASSWORD}@rag-db:5432/${RAG_DB_NAME:-rops}"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Ustaw OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      OPENAI_COMPARISON_MODEL: ${OPENAI_COMPARISON_MODEL:-${OPENAI_MODEL:-gpt-4.1-mini}}
+      CORS_ORIGINS: ""
+    depends_on:
+      rag-db:
+        condition: service_healthy
+    mem_limit: 768m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/frontend.Dockerfile
+      args:
+        VITE_API_URL: /
+        VITE_RAG_API_URL: /
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - rag-api
+    ports:
+      - "80:80"
+    mem_limit: 128m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  backend_postgres:
+  rag_postgres:
+
