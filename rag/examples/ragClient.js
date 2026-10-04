@@ -39,3 +39,26 @@ export async function analyzeSubmission(apiBaseUrl, submission) {
 // const pending = createSubmission(text, categories);
 // const result = await analyzeSubmission("http://127.0.0.1:8000", pending);
 // Retry using pending; do not regenerate its submission_id.
+
+// Read stored RAG concepts; these IDs are numbers, not application UUIDs.
+async function readIdeasJson(url) {
+  const response = await fetch(url);
+  const body = await response.json();
+  if (!response.ok) {
+    const error = new Error(body.detail?.message ?? `HTTP ${response.status}`);
+    error.status = response.status;
+    error.detail = body.detail;
+    throw error;
+  }
+  return body;
+}
+
+export function listIdeas(apiBaseUrl, { limit = 20, offset = 0, category } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (category !== undefined && category !== null) params.set("category", category);
+  return readIdeasJson(`${apiBaseUrl.replace(/\/$/, "")}/api/ideas?${params}`);
+}
+
+export function getIdea(apiBaseUrl, conceptId) {
+  return readIdeasJson(`${apiBaseUrl.replace(/\/$/, "")}/api/ideas/${encodeURIComponent(conceptId)}`);
+}

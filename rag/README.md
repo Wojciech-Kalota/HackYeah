@@ -148,3 +148,13 @@ bieżącego zgłoszenia. Kandydaci wyszukiwania zawierają również `concept.sc
 Kolumny dodawane są automatycznie przy połączeniu z bazą; konto bazy potrzebuje
 uprawnień ALTER do tych tabel. Wcześniejsze rekordy i dane demo mają NULL;
 nie są automatycznie przeliczane. Zachowane odpowiedzi pozostają bez zmian.
+
+## Odczyt pomysłów dla frontendu
+
+- `GET /api/ideas?limit=20&offset=0` — lista ze score i liczbą zgłoszeń.
+- `GET /api/ideas?category=1` — filtr po ID kategorii.
+- `GET /api/ideas/42` — szczegóły pomysłu; 404, jeśli nie istnieje.
+
+Odczyt i aktualny POST używają tabel `rops_rag`, bez zależności od tabel EF Core.
+GET potrzebuje tylko DATABASE_URL; nie wywołuje OpenAI. Kontrakt i przykłady
+odpowiedzi znajdują się w docs/API.md. Po skopiowaniu zmian zrestartuj API.

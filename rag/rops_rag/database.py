@@ -83,5 +83,34 @@ class Database:
             row["created_at"] = row["created_at"].isoformat()
         return rows
 
+    def get_concepts_page(self, *, limit=20, offset=0, category=None):
+        # Stable snapshot for the count and page, including concurrent submissions.
+        where = "WHERE c.category=%s" if category is not None else ""
+        params = (category,) if category is not None else ()
+        with self.connection.transaction():
+            self.connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            total = self.connection.execute(
+                "SELECT COUNT(*) AS total FROM concepts c " + where, params
+            ).fetchone()["total"]
+            rows = self.connection.execute(
+                "SELECT c.*, (SELECT COUNT(*) FROM submission_concepts sc "
+                "WHERE sc.concept_id=c.id) AS liczba_zgloszen FROM concepts c "
+                + where + " ORDER BY c.created_at DESC,c.id DESC LIMIT %s OFFSET %s",
+                params + (limit, offset),
+            ).fetchall()
+        for row in rows:
+            row["created_at"] = row["created_at"].isoformat()
+        return {"items": rows, "total": total, "limit": limit, "offset": offset}
+
+    def get_concept(self, concept_id):
+        row = self.connection.execute(
+            "SELECT c.*, (SELECT COUNT(*) FROM submission_concepts sc "
+            "WHERE sc.concept_id=c.id) AS liczba_zgloszen "
+            "FROM concepts c WHERE c.id=%s", (concept_id,),
+        ).fetchone()
+        if row:
+            row["created_at"] = row["created_at"].isoformat()
+        return row
+
     def close(self):
         self.connection.close()

@@ -147,3 +147,46 @@ bieżącego zgłoszenia. Kandydaci wyszukiwania zawierają również `concept.sc
 Kolumny dodawane są automatycznie przy połączeniu z bazą; konto bazy potrzebuje
 uprawnień ALTER do tych tabel. Wcześniejsze rekordy i dane demo mają NULL;
 nie są automatycznie przeliczane. Zachowane odpowiedzi pozostają bez zmian.
+
+## GET /api/ideas — pomysły z tabel RAG
+
+Czyta `rops_rag.concepts` i zlicza powiązania `submission_concepts`.
+Nie wymaga tabel `public.Ideas`, autora, statusu ani klucza OpenAI.
+
+Parametry query: `limit` (domyślnie 20, zakres 1–100), `offset` (domyślnie 0,
+minimum 0), opcjonalnie `category` (dokładne ID kategorii, 1–100 znaków).
+Sortowanie: najnowsze created_at, potem malejące id.
+
+Przykład: `/api/ideas?limit=20&offset=0&category=1`.
+
+```json
+{
+  "items": [{
+    "id": 42,
+    "problem": "Samotność",
+    "audience": "Seniorzy",
+    "solution": "Rozmowy z wolontariuszem",
+    "category": "1",
+    "context": "",
+    "created_at": "2026-10-04T12:00:00+00:00",
+    "score": 70.0,
+    "liczba_zgloszen": 2
+  }],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+`total` to liczba wszystkich pomysłów pasujących do filtra, nie długość strony.
+Pusta lista daje 200 z items=[]. Score pochodzi z concepts.score i może być
+null w starszych rekordach. ID jest naszym liczbowym concept_id, nie UUID Idea.
+Endpoint nie zwraca surowych zgłoszeń ani zapisanych odpowiedzi analiz.
+
+## GET /api/ideas/{concept_id} — szczegóły
+
+Zwraca pojedynczy obiekt w takim samym formacie jak element items.
+Brak pomysłu: 404, detail={code:"not_found",message:"Nie znaleziono pomysłu."}.
+Nieprawidłowe parametry: 422. Brak konfiguracji lub niedostępna baza: 503.
+Endpointy GET nie zmieniają danych pomysłów ani liczników. Połączenie nadal
+inicjalizuje/migruje pomocniczy schemat zgodnie z klasą Database.
