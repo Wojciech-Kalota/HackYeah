@@ -9,7 +9,7 @@ namespace eInicjatywa.Services
     public interface IIdeasService
     {
         Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
-        Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null);
+        Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
         Task<IdeaDto> GetIdeaByIdAsync(Guid id);
         Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
@@ -84,7 +84,7 @@ namespace eInicjatywa.Services
 
         private const int MaxPageSize = 100;
 
-        public async Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null)
+        public async Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null)
         {
             var page = Math.Max(filter?.Page ?? 1, 1);
             var pageSize = Math.Clamp(filter?.PageSize ?? 20, 1, MaxPageSize);
@@ -108,6 +108,18 @@ namespace eInicjatywa.Services
 
                 query = query.Where(i => i.IdeaCategorys
                     .Any(ic => filter.CategoryIds.Contains(ic.CategoryId)));
+            }
+
+            if(originals != null)
+            {
+                if(originals == true)
+                {
+                    query = query.Where(i => i.DuplicateOfId == null);   
+                }
+                if(originals == false)
+                {
+                    query = query.Where(i => i.DuplicateOfId != null);   
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(filter?.Name))
