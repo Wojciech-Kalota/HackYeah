@@ -10,8 +10,8 @@ namespace eInicjatywa.Services
     {
         public Task<CategoryDto> AddCategory(ClaimsPrincipal? claimsPrincipal,CategoryAddDto categoryAddDto);
         public Task<List<CategoryDto>> GetCategorys(ClaimsPrincipal? claimsPrincipal);
-        public Task<CategoryDto?> UpdateCategory(Guid id, CategoryDto dto);
-        public Task<bool> DeleteCategory(Guid id);
+        public Task<CategoryDto> UpdateCategory(Guid id, CategoryDto dto);
+        public Task DeleteCategory(Guid id);
     }
 
     public class CategoryService : ICategoryService
@@ -47,25 +47,28 @@ namespace eInicjatywa.Services
             return await _db.Categories.AsNoTracking().Select(c => new CategoryDto(c.Id,c.Name)).ToListAsync();
         }
 
-        public async Task<CategoryDto?> UpdateCategory(Guid id, CategoryDto dto)
+        public async Task<CategoryDto> UpdateCategory(Guid id, CategoryDto dto)
         {
-            var category = await _db.Categories.FindAsync(id);
-            if (category == null) return null;
-            if (await _db.Categories.AnyAsync(c => c.Id != id && c.Name == dto.Name))
-                throw new Exception("Category already exists");
-
+            var category = await _db.Categories.FirstOrDefaultAsync(c => c.Id == id);
+            if(category == null)
+            {
+                throw new Exception("There is no category");
+            }
             category.Name = dto.Name;
             await _db.SaveChangesAsync();
             return new CategoryDto(category.Id, category.Name);
         }
 
-        public async Task<bool> DeleteCategory(Guid id)
+        public async Task DeleteCategory(Guid id)
         {
-            var category = await _db.Categories.FindAsync(id);
-            if (category == null) return false;
+            var category = await _db.Categories.FirstOrDefaultAsync(c => c.Id==id);
+            if (category == null)
+            {
+                throw new Exception("the is nothing to delete");
+            } 
             _db.Categories.Remove(category);
             await _db.SaveChangesAsync();
-            return true;
+            return;
         }
     }
 }

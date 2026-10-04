@@ -18,6 +18,7 @@ namespace eInicjatywa.Controllers
             _userService = userService;
         }
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> RegisterUser(RegisterDto request)
         {
             try
@@ -32,6 +33,7 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpGet("me")]
+        [Authorize]
         public async Task<IActionResult> GetUser()
         {
             try

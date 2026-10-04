@@ -10,8 +10,8 @@ namespace eInicjatywa.Services
     {
         public Task<StatusDto> AddStatus(ClaimsPrincipal? claimsPrincipal,StatusAddDto dto);
         public Task<List<StatusDto>> GetStatus(ClaimsPrincipal? claimsPrincipal);
-        public Task<StatusDto?> UpdateStatus(Guid id, StatusDto dto);
-        public Task<bool> DeleteStatus(Guid id);
+        public Task<StatusDto> UpdateStatus(Guid id, StatusDto dto);
+        public Task DeleteStatus(Guid id);
     }
 
     public class StatusService : IStatusService
@@ -47,25 +47,28 @@ namespace eInicjatywa.Services
             return await _db.Statuses.AsNoTracking().Select(s => new StatusDto(s.Id,s.Name)).ToListAsync();
         }
 
-        public async Task<StatusDto?> UpdateStatus(Guid id, StatusDto dto)
+        public async Task<StatusDto> UpdateStatus(Guid id, StatusDto dto)
         {
-            var status = await _db.Statuses.FindAsync(id);
-            if (status == null) return null;
-            if (await _db.Statuses.AnyAsync(s => s.Id != id && s.Name == dto.Name))
-                throw new Exception("Status already exists");
-
+            var status = await _db.Statuses.FirstOrDefaultAsync(s=> s.Id==id);
+            if (status == null)
+            {
+                throw new Exception("Nothing to update");
+            }
             status.Name = dto.Name;
             await _db.SaveChangesAsync();
             return new StatusDto(status.Id, status.Name);
         }
 
-        public async Task<bool> DeleteStatus(Guid id)
+        public async Task DeleteStatus(Guid id)
         {
             var status = await _db.Statuses.FindAsync(id);
-            if (status == null) return false;
+            if (status == null)
+            {
+                throw new Exception("Nothing to delete");
+            }
             _db.Statuses.Remove(status);
             await _db.SaveChangesAsync();
-            return true;
+            return;
         }
     }
 }

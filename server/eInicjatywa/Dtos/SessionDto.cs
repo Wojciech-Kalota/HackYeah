@@ -4,7 +4,8 @@ namespace eInicjatywa.Dtos
     (
         Guid UserId,
         DateTime CreatedAt,
-        DateTime ExpiresAt
+        DateTime ExpiresAt,
+        List<string> Roles
     );
 
     public record InternalSessionDto
@@ -12,6 +13,7 @@ namespace eInicjatywa.Dtos
         Guid Token,
         Guid UserId,
         DateTime CreatedAt,
-        DateTime ExpiresAt
+        DateTime ExpiresAt,
+        List<string> Roles
     );
 }

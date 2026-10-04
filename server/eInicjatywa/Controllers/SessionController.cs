@@ -18,6 +18,7 @@ namespace eInicjatywa.Controllers
             _sessionService = sessionService;
         }
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
             try
@@ -28,6 +29,14 @@ namespace eInicjatywa.Controllers
                     new Claim(ClaimTypes.NameIdentifier, response.UserId.ToString()),
                     new Claim("SessionToken", response.Token.ToString())
                 };
+                
+                if (response.Roles != null)
+                {
+                    foreach (var role in response.Roles)
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, role));
+                    }
+                }
                 var authProperties = new AuthenticationProperties
                 {
                     IsPersistent = true, 
@@ -39,7 +48,7 @@ namespace eInicjatywa.Controllers
                     new ClaimsPrincipal(identity), 
                     authProperties
                 );
-                return Ok(new SessionDto(response.UserId, response.CreatedAt, response.ExpiresAt));
+                return Ok(new SessionDto(response.UserId, response.CreatedAt, response.ExpiresAt, response.Roles));
             }
             catch(Exception ex)
             {

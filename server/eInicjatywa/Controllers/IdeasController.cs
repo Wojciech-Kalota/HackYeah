@@ -24,70 +24,132 @@ namespace eInicjatywa.Controllers
         [Authorize]
         public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
         {
-            var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
-            return Ok(results);
+            try
+            {
+                var results = await _ideasService.CreateIdeaAsync(User, ideaDto);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetIdeas()
+        [AllowAnonymous]
+        public async Task<IActionResult> GetIdeas([FromBody] IdeaFilterDto? filter = null)
         {
-            var results = await _ideasService.GetIdeasAsync();
-            return Ok(results);
+            try
+            {
+                var results = await _ideasService.GetIdeasAsync(User, filter);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetIdea(Guid id)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetIdea([FromRoute] Guid id)
         {
-            var results = await _ideasService.GetIdeaByIdAsync(id);
-            return results == null ? NotFound() : Ok(results);
+            try
+            {
+                var results = await _ideasService.GetIdeaByIdAsync(id);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
-        [HttpPatch("{id}")]
+        [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateIdea(Guid id, [FromBody] IdeaDto ideaDto)
+        public async Task<IActionResult> UpdateIdea([FromRoute] Guid id, [FromBody] IdeaDto ideaDto)
         {
-            var result = await _ideasService.UpdateIdeaAsync(User, id, ideaDto);
-            return result == null ? NotFound() : Ok(result);
+            try
+            {
+                var result = await _ideasService.UpdateIdeaAsync(User, id, ideaDto);
+                return Ok(result);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteIdea(Guid id)
+        public async Task<IActionResult> DeleteIdea([FromRoute] Guid id)
         {
-            var results = await _ideasService.DeleteIdeaAsync(User, id);
-            return results ? NoContent() : BadRequest();
+            try
+            {
+                await _ideasService.DeleteIdeaAsync(User, id);
+                return Ok();   
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);   
+            }
         }
 
         [HttpPost("{id}/comments")]
         [Authorize]
-        public async Task<IActionResult> AddComment(Guid id, [FromBody] CommentDto commentDto)
+        public async Task<IActionResult> AddComment([FromRoute] Guid id, [FromBody] CommentDto commentDto)
         {
-            var results = await _ideasService.AddCommentAsync(User, id, commentDto);
-            return Ok(results);
+            try
+            {
+                var results = await _ideasService.AddCommentAsync(User, id, commentDto);
+                return Ok(results);    
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            
         }
 
         [HttpGet("{id}/comments")]
-        public async Task<IActionResult> GetComments(Guid id)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetComments([FromRoute] Guid id)
         {
-            var results = await _ideasService.GetCommentsByIdeaIdAsync(id);
-            return Ok(results);
+            try
+            {
+                var results = await _ideasService.GetCommentsByIdeaIdAsync(id);
+                return Ok(results);    
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            
         }
 
         [HttpPut("{id}/comments")]
         [Authorize]
-        public async Task<IActionResult> UpdateComment(Guid id, [FromBody] CommentDto commentDto)
+        public async Task<IActionResult> UpdateComment([FromRoute] Guid id, [FromBody] CommentDto commentDto)
         {
-            var result = await _ideasService.UpdateCommentAsync(User, id, commentDto);
-            return result == null ? NotFound() : Ok(result);
+            try
+            {
+                var result = await _ideasService.UpdateCommentAsync(User, id, commentDto);
+                return Ok(result);   
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}/comments")]
         [Authorize]
-        public async Task<IActionResult> DeleteComment(Guid id)
+        public async Task<IActionResult> DeleteComment([FromRoute] Guid id)
         {
-            try{
-                var results = await _ideasService.DeleteCommentAsync(User, id);
-                return results ? NoContent() : BadRequest();
+            try
+            {
+                await _ideasService.DeleteCommentAsync(User, id);
+                return Ok();
             }
             catch(Exception ex)
             {

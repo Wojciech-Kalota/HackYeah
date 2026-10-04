@@ -32,6 +32,7 @@ namespace eInicjatywa.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCategories()
         {
             try
@@ -45,7 +46,7 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpPatch("{id}")]
+        [HttpPut("{id}")]
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryDto categoryDto)
         {
@@ -64,7 +65,15 @@ namespace eInicjatywa.Controllers
         [Authorize(Roles = "ADMIN_USER")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
-            return await _categoryService.DeleteCategory(id) ? NoContent() : NotFound();
+            try
+            {
+                await _categoryService.DeleteCategory(id);
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

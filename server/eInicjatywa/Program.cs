@@ -98,7 +98,13 @@ builder.Services.AddAuthentication("SessionCookie")
                     new Claim(ClaimTypes.NameIdentifier, cachedSession.UserId.ToString()),
                     new Claim("SessionToken", cachedSession.Token.ToString())
                 };
-                claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+                if (cachedSession.Roles != null)
+                {
+                    foreach (var role in cachedSession.Roles)
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, role));
+                    }
+                }
 
                 var identity = new ClaimsIdentity(claims, "SessionCookie");
                 context.ReplacePrincipal(new ClaimsPrincipal(identity));
@@ -113,6 +119,9 @@ builder.Services.AddAuthentication("SessionCookie")
 });
 
 builder.Services.AddAuthorization();
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
