@@ -18,15 +18,21 @@ import { uiTheme } from '../styles/theme';
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const [email, setEmail] = useState('mieszkaniec@krakow.pl');
+  const location = useLocation();
+  const locationState = location.state as {
+    from?: string;
+    email?: string;
+    registered?: boolean;
+  } | null;
+  const [email, setEmail] = useState(
+    locationState?.email ?? 'mieszkaniec@krakow.pl',
+  );
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
-  const destination =
-    (location.state as { from?: string } | null)?.from ?? '/mieszkaniec';
+  const destination = locationState?.from ?? '/mieszkaniec';
 
   if (user) return <Navigate replace to="/mieszkaniec" />;
 
@@ -122,6 +128,14 @@ export function LoginPage() {
                 </div>
 
                 <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+                  {locationState?.registered && (
+                    <p
+                      className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900"
+                      role="status"
+                    >
+                      Konto zostało utworzone. Zaloguj się podanym hasłem.
+                    </p>
+                  )}
                   <label className="block">
                     <span className="mb-2 block text-sm font-semibold text-slate-700">
                       Adres e-mail

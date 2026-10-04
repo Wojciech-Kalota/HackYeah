@@ -254,7 +254,14 @@ export const api = {
 };
 
 export function getApiErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Nie udało się połączyć z serwerem.';
+  if (!(error instanceof Error)) return 'Nie udało się połączyć z serwerem.';
+
+  const normalized = error.message.toLocaleLowerCase('en');
+  if (normalized.includes('useralready exists'))
+    return 'Konto z tym adresem e-mail już istnieje.';
+  if (normalized.includes('invalid creadentials'))
+    return 'Nieprawidłowy adres e-mail lub hasło.';
+  if (normalized.includes('invalid credentials'))
+    return 'Nieprawidłowy adres e-mail lub hasło.';
+  return error.message;
 }
