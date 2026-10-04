@@ -141,7 +141,52 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "IdeaVotes" (
+            "IdeaId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            CONSTRAINT "PK_IdeaVotes" PRIMARY KEY ("IdeaId", "UserId"),
+            CONSTRAINT "FK_IdeaVotes_Ideas_IdeaId"
+                FOREIGN KEY ("IdeaId") REFERENCES "Ideas" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_IdeaVotes_Users_UserId"
+                FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
 
+        CREATE INDEX IF NOT EXISTS "IX_IdeaVotes_UserId"
+            ON "IdeaVotes" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "IdeaTesters" (
+            "IdeaId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            CONSTRAINT "PK_IdeaTesters" PRIMARY KEY ("IdeaId", "UserId"),
+            CONSTRAINT "FK_IdeaTesters_Ideas_IdeaId"
+                FOREIGN KEY ("IdeaId") REFERENCES "Ideas" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_IdeaTesters_Users_UserId"
+                FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS "IX_IdeaTesters_UserId"
+            ON "IdeaTesters" ("UserId");
+
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'Users'
+                  AND column_name = 'IdeaId'
+            ) THEN
+                EXECUTE '
+                    INSERT INTO "IdeaVotes" ("IdeaId", "UserId")
+                    SELECT "IdeaId", "Id"
+                    FROM "Users"
+                    WHERE "IdeaId" IS NOT NULL
+                    ON CONFLICT DO NOTHING';
+            END IF;
+        END
+        $$;
+        """);
 }
 
 if (!app.Environment.IsDevelopment())
