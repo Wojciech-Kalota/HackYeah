@@ -34,6 +34,14 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+export class RegistrationCompletedError extends Error {
+  constructor(public readonly email: string) {
+    super(
+      'Konto zostało utworzone, ale automatyczne logowanie nie powiodło się.',
+    );
+  }
+}
+
 function mapUser(user: ApiUser): CitizenUser {
   return {
     id: user.id,
@@ -75,17 +83,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return currentUser;
       },
       register: async ({ email, password, firstName, lastName }) => {
+        const normalizedEmail = email.trim().toLocaleLowerCase('pl');
         await api.register({
-          email,
+          email: normalizedEmail,
           password,
-          nameFirst: firstName,
-          nameLast: lastName,
+          nameFirst: firstName.trim(),
+          nameLast: lastName.trim(),
           roles: ['NORMAL_USER'],
         });
-        await api.login(email, password);
-        const currentUser = mapUser(await api.me());
-        setUser(currentUser);
-        return currentUser;
+        try {
+          await api.login(normalizedEmail, password);
+          const currentUser = mapUser(await api.me());
+          setUser(currentUser);
+          return currentUser;
+        } catch {
+          throw new RegistrationCompletedError(normalizedEmail);
+        }
       },
       logout: async () => {
         try {

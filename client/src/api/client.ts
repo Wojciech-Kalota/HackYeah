@@ -2,6 +2,10 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 ).replace(/\/$/, '');
 
+const RAG_API_BASE_URL = (
+  import.meta.env.VITE_RAG_API_URL ?? 'http://localhost:8000'
+).replace(/\/$/, '');
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -38,6 +42,38 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.headers.get('content-type')?.includes('application/json')
     ? (JSON.parse(text) as T)
     : (text as T);
+}
+
+async function ragRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${RAG_API_BASE_URL}${path}`, {
+    ...init,
+    credentials: 'omit',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text || `Błąd RAG HTTP ${response.status}`;
+    try {
+      const parsed = JSON.parse(text) as {
+        detail?: string | { message?: string };
+        title?: string;
+      };
+      message =
+        typeof parsed.detail === 'string'
+          ? parsed.detail
+          : (parsed.detail?.message ?? parsed.title ?? message);
+    } catch {
+      // FastAPI może zwrócić treść inną niż JSON.
+    }
+    throw new ApiError(message.replace(/^"|"$/g, ''), response.status);
+  }
+
+  return JSON.parse(text) as T;
 }
 
 function json(method: string, body?: unknown): RequestInit {
@@ -168,6 +204,14 @@ export type PagedResult<T> = {
 
 export type ApiComment = { id: string; text: string; userId: string };
 
+export type RagCategory = { id: string; label: string };
+
+export type RagAnalyzeResponse = {
+  submission_id: string;
+  replayed: boolean;
+  score: number | null;
+};
+
 export const api = {
   health: () => request<string>('/api/utils/health'),
 
@@ -178,6 +222,15 @@ export const api = {
   login: (email: string, password: string) =>
     request<Session>('/api/session', json('POST', { email, password })),
   logout: () => request<void>('/api/session', { method: 'DELETE' }),
+
+  rag: {
+    analyze: (body: {
+      submission_id: string;
+      text: string;
+      categories: RagCategory[];
+    }) =>
+      ragRequest<RagAnalyzeResponse>('/api/ideas/analyze', json('POST', body)),
+  },
 
   categories: {
     list: () => request<NamedResource[]>('/api/categories'),
@@ -254,7 +307,14 @@ export const api = {
 };
 
 export function getApiErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Nie udało się połączyć z serwerem.';
+  if (!(error instanceof Error)) return 'Nie udało się połączyć z serwerem.';
+
+  const normalized = error.message.toLocaleLowerCase('en');
+  if (normalized.includes('useralready exists'))
+    return 'Konto z tym adresem e-mail już istnieje.';
+  if (normalized.includes('invalid creadentials'))
+    return 'Nieprawidłowy adres e-mail lub hasło.';
+  if (normalized.includes('invalid credentials'))
+    return 'Nieprawidłowy adres e-mail lub hasło.';
+  return error.message;
 }
