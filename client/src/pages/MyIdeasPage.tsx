@@ -27,7 +27,7 @@ export function MyIdeasPage() {
     setLoading(true);
     setError('');
     try {
-      const result = await loadReports();
+      const result = await loadReports({ authoredByMe: true, pageSize: 100 });
       setIdeas(
         result.reports.filter(
           (_report, index) => result.ideas[index].authorId === user.id,

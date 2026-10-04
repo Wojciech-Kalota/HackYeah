@@ -1,4 +1,9 @@
-import { api, type ApiIdea, type NamedResource } from './client';
+import {
+  api,
+  type ApiIdea,
+  type IdeaFilters,
+  type NamedResource,
+} from './client';
 import type { IdeaStatus, Report, ReportStatus } from '../types/domain';
 
 export type ApiCatalog = {
@@ -31,7 +36,7 @@ export function mapIdeaToReport(
   catalog: ApiCatalog,
   comments = 0,
 ): Report {
-  const byId = (items: NamedResource[], id: string) =>
+  const byId = (items: NamedResource[], id?: string) =>
     items.find((item) => item.id === id)?.name;
   return {
     id: idea.id,
@@ -43,7 +48,7 @@ export function mapIdeaToReport(
     description: idea.description,
     status: normalizeStatus(byId(catalog.statuses, idea.statusId)),
     comments,
-    updatedAt: idea.lastUpdatedAt || idea.createdAt,
+    updatedAt: idea.updatedAt || idea.lastUpdatedAt || idea.createdAt,
     image: idea.imageUrl ?? '',
   };
 }
@@ -61,12 +66,47 @@ export type ReportsData = {
   ideas: ApiIdea[];
   catalog: ApiCatalog;
   reports: Report[];
+  currentPage: number;
+  pageSize: number;
+  pageCount: number;
+  totalCount: number;
+  totalPages: number;
 };
 
-let pendingReportsRequest: Promise<ReportsData> | null = null;
+export type ReportQuery = {
+  district?: string;
+  category?: string;
+  status?: ReportStatus;
+  query?: string;
+  authoredByMe?: boolean;
+  page?: number;
+  pageSize?: number;
+};
 
-async function fetchReports(): Promise<ReportsData> {
-  const [ideas, catalog] = await Promise.all([api.ideas.list(), loadCatalog()]);
+const pendingReportsRequests = new Map<string, Promise<ReportsData>>();
+
+async function fetchReports(options: ReportQuery): Promise<ReportsData> {
+  const catalog = await loadCatalog();
+  const districtId = catalog.districts.find(
+    (item) => item.name === options.district,
+  )?.id;
+  const categoryId = catalog.categories.find(
+    (item) => item.name === options.category,
+  )?.id;
+  const statusId = catalog.statuses.find(
+    (item) => ideaStatus(item.name) === options.status,
+  )?.id;
+  const filters: IdeaFilters = {
+    districtIds: districtId ? [districtId] : undefined,
+    categoryIds: categoryId ? [categoryId] : undefined,
+    statusIds: statusId ? [statusId] : undefined,
+    name: options.query,
+    authoredByMe: options.authoredByMe,
+    page: options.page ?? 1,
+    pageSize: options.pageSize ?? 100,
+  };
+  const ideasPage = await api.ideas.list(filters);
+  const ideas = ideasPage.items;
   const commentResults = await Promise.allSettled(
     ideas.map((idea) => api.ideas.comments.list(idea.id)),
   );
@@ -81,14 +121,22 @@ async function fetchReports(): Promise<ReportsData> {
         comments.status === 'fulfilled' ? comments.value.length : 0,
       );
     }),
+    currentPage: ideasPage.currentPage,
+    pageSize: ideasPage.pageSize,
+    pageCount: ideasPage.pageCount,
+    totalCount: ideasPage.totalCount,
+    totalPages: ideasPage.totalPages,
   };
 }
 
-export function loadReports(): Promise<ReportsData> {
-  if (pendingReportsRequest) return pendingReportsRequest;
+export function loadReports(options: ReportQuery = {}): Promise<ReportsData> {
+  const requestKey = JSON.stringify(options);
+  const pendingRequest = pendingReportsRequests.get(requestKey);
+  if (pendingRequest) return pendingRequest;
 
-  pendingReportsRequest = fetchReports().finally(() => {
-    pendingReportsRequest = null;
+  const request = fetchReports(options).finally(() => {
+    pendingReportsRequests.delete(requestKey);
   });
-  return pendingReportsRequest;
+  pendingReportsRequests.set(requestKey, request);
+  return request;
 }
