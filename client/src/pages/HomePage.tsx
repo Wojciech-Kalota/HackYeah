@@ -23,7 +23,19 @@ import { statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
 import type { DashboardStat, DashboardStatId } from '../types/domain';
 
-const OBSERVED_DISTRICT_KEY = 'glos-miasta:observed-district';
+const OBSERVED_DISTRICT_KEY = 'e-inicjatywa:observed-district';
+const LEGACY_OBSERVED_DISTRICT_KEY = 'glos-miasta:observed-district';
+
+function loadObservedDistrict() {
+  const district =
+    localStorage.getItem(OBSERVED_DISTRICT_KEY) ??
+    localStorage.getItem(LEGACY_OBSERVED_DISTRICT_KEY);
+  if (district) {
+    localStorage.setItem(OBSERVED_DISTRICT_KEY, district);
+    localStorage.removeItem(LEGACY_OBSERVED_DISTRICT_KEY);
+  }
+  return district ?? 'all';
+}
 
 const statStyles: Record<
   DashboardStatId,
@@ -93,7 +105,7 @@ export function HomePage() {
   const { user } = useAuth();
   const { reports, ideas, catalog, loading, error, reload } = useReportsData();
   const [observedDistrict, setObservedDistrict] = useState(
-    () => localStorage.getItem(OBSERVED_DISTRICT_KEY) ?? 'all',
+    loadObservedDistrict,
   );
   const districtNames = useMemo(
     () =>
@@ -122,6 +134,7 @@ export function HomePage() {
   function selectObservedDistrict(district: string) {
     setObservedDistrict(district);
     localStorage.setItem(OBSERVED_DISTRICT_KEY, district);
+    localStorage.removeItem(LEGACY_OBSERVED_DISTRICT_KEY);
   }
 
   const reportsListHref = `/pomysly?district=${encodeURIComponent(observedDistrict)}`;

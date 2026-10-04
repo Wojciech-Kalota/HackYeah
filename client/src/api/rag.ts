@@ -5,7 +5,8 @@ const RAG_API_BASE_URL = (
 ).replace(/\/$/, '');
 
 const RAG_TIMEOUT_MS = 15 * 60 * 1000;
-const PENDING_SUBMISSION_KEY = 'glos-miasta:pending-rag-submission';
+const PENDING_SUBMISSION_KEY = 'e-inicjatywa:pending-rag-submission';
+const LEGACY_PENDING_SUBMISSION_KEY = 'glos-miasta:pending-rag-submission';
 
 export type RagCategory = {
   id: string;
@@ -37,6 +38,7 @@ export type RagDecision = {
   };
   score: number;
   concept_id: number | null;
+  canonical_submission_id?: string | null;
   liczba_zgloszen: number | null;
 };
 
@@ -69,10 +71,36 @@ export function createRagSubmission(
   categories: NamedResource[],
 ): RagSubmission {
   return {
-    submission_id: crypto.randomUUID(),
+    submission_id: createUuid(),
     text,
     categories: normalizeCategories(categories),
   };
+}
+
+function createUuid() {
+  const browserCrypto = globalThis.crypto;
+  if (typeof browserCrypto?.randomUUID === 'function') {
+    return browserCrypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  if (typeof browserCrypto?.getRandomValues === 'function') {
+    browserCrypto.getRandomValues(bytes);
+  } else {
+    // Identyfikator nie jest sekretem; ten wariant utrzymuje kompatybilność
+    // ze starszymi przeglądarkami bez Web Crypto.
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  // RFC 4122 UUID v4: ustaw bity wersji i wariantu.
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const value = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
 function normalizeCategories(categories: NamedResource[]) {
@@ -83,8 +111,12 @@ function normalizeCategories(categories: NamedResource[]) {
 
 export function loadPendingRagSubmission(): RagSubmission | null {
   try {
-    const value = sessionStorage.getItem(PENDING_SUBMISSION_KEY);
+    const value =
+      sessionStorage.getItem(PENDING_SUBMISSION_KEY) ??
+      sessionStorage.getItem(LEGACY_PENDING_SUBMISSION_KEY);
     if (!value) return null;
+    sessionStorage.setItem(PENDING_SUBMISSION_KEY, value);
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
     const parsed = JSON.parse(value) as Partial<RagSubmission>;
     if (
       typeof parsed.submission_id !== 'string' ||
@@ -97,6 +129,7 @@ export function loadPendingRagSubmission(): RagSubmission | null {
       )
     ) {
       sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+      sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
       return null;
     }
     return parsed as RagSubmission;
@@ -108,6 +141,7 @@ export function loadPendingRagSubmission(): RagSubmission | null {
 export function savePendingRagSubmission(submission: RagSubmission) {
   try {
     sessionStorage.setItem(PENDING_SUBMISSION_KEY, JSON.stringify(submission));
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
   } catch {
     // Stan React nadal zachowuje identyfikator podczas bieżącej sesji strony.
   }
@@ -116,6 +150,7 @@ export function savePendingRagSubmission(submission: RagSubmission) {
 export function clearPendingRagSubmission() {
   try {
     sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
   } catch {
     // Brak dostępu do storage nie powinien blokować zakończonego zgłoszenia.
   }

@@ -7,7 +7,13 @@ import { PanoramaLayer } from './components/PanoramaLayer';
 import './index.css';
 import { router } from './router';
 
-if (localStorage.getItem('glos-miasta:theme') === 'contrast') {
+const savedTheme =
+  localStorage.getItem('e-inicjatywa:theme') ??
+  localStorage.getItem('glos-miasta:theme');
+
+if (savedTheme === 'contrast') {
+  localStorage.setItem('e-inicjatywa:theme', savedTheme);
+  localStorage.removeItem('glos-miasta:theme');
   document.documentElement.dataset.theme = 'contrast';
 }
 

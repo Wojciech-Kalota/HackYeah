@@ -8,10 +8,12 @@ namespace eInicjatywa.Services
 {
     public interface IIdeasService
     {
-        Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
+        Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaWriteDto ideaDto);
         Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
+        Task<PagedResult<IdeaDto>> GetOriginalIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null);
         Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id);
-        Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
+        Task<IEnumerable<IdeaDto>> GetDuplicatesByIdeaIdAsync(ClaimsPrincipal? user, Guid id);
+        Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaWriteDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
         Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto);
@@ -20,6 +22,7 @@ namespace eInicjatywa.Services
         Task DeleteCommentAsync(ClaimsPrincipal? user, Guid commentId);
         Task<VoteResultDto> ChangeIdeaVoteAsync(ClaimsPrincipal? user, Guid id);
         Task<IdeaDto> AddImageAsync(ClaimsPrincipal? user, Guid ideaId, IFormFile file);
+        Task<IdeaDto> ChangeIdeaTesterStatusAsync(ClaimsPrincipal? user, Guid id);
     }
 
     public class IdeasService : IIdeasService
@@ -33,13 +36,39 @@ namespace eInicjatywa.Services
             _utilsService = utilsService;
         }
 
-        public async Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto)
+        public async Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaWriteDto ideaDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             if (userId == Guid.Empty)
                 throw new Exception("Not authenticated");
 
             var categoryIds = ideaDto.CategoryIds;
+
+            if (ideaDto.Id is Guid requestedIdeaId)
+            {
+                var existingIdea = await _context.Ideas
+                    .AsNoTracking()
+                    .Include(existing => existing.IdeaCategorys)
+                    .FirstOrDefaultAsync(existing => existing.Id == requestedIdeaId);
+                if (existingIdea != null)
+                {
+                    var sameCategories = existingIdea.IdeaCategorys
+                        .Select(item => item.CategoryId)
+                        .OrderBy(id => id)
+                        .SequenceEqual(categoryIds.OrderBy(id => id));
+                    if (existingIdea.AuthorId != userId ||
+                        existingIdea.Title != ideaDto.Title ||
+                        existingIdea.Description != ideaDto.Description ||
+                        existingIdea.DistrictId != ideaDto.DistrictId ||
+                        existingIdea.StatusId != ideaDto.StatusId ||
+                        !sameCategories)
+                    {
+                        throw new Exception("Idea identifier is already in use");
+                    }
+
+                    return ToDto(existingIdea);
+                }
+            }
 
             if (!await _context.Districts.AnyAsync(d => d.Id == ideaDto.DistrictId))
                 throw new Exception("District does not exist");
@@ -53,13 +82,29 @@ namespace eInicjatywa.Services
             if (existingCategoryIds.Count != categoryIds.Count)
                 throw new Exception("One or more categories do not exist");
 
+            Guid? duplicateOfId = null;
+            if (ideaDto.DuplicateOfId is Guid requestedDuplicateId)
+            {
+                if (requestedDuplicateId == ideaDto.Id)
+                    throw new Exception("Idea cannot duplicate itself");
+
+                var duplicateTarget = await _context.Ideas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(existing => existing.Id == requestedDuplicateId);
+                if (duplicateTarget == null)
+                    throw new Exception("Original idea does not exist");
+                duplicateOfId = duplicateTarget.DuplicateOfId ?? duplicateTarget.Id;
+            }
+
             var idea = new Idea
             {
+                Id = ideaDto.Id ?? Guid.CreateVersion7(),
                 Title = ideaDto.Title,
                 Description = ideaDto.Description,
                 ImageUrl = ideaDto.ImageUrl,
                 DistrictId = ideaDto.DistrictId,
                 StatusId = ideaDto.StatusId,
+                DuplicateOfId = duplicateOfId,
                 AuthorId = userId
             };
 
@@ -69,8 +114,12 @@ namespace eInicjatywa.Services
 
             _context.Ideas.Add(idea);
             await _context.SaveChangesAsync();
-            return new IdeaDto
-            (
+            return ToDto(idea);
+        }
+
+        private static IdeaDto ToDto(Idea idea)
+        {
+            return new IdeaDto(
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
@@ -79,10 +128,15 @@ namespace eInicjatywa.Services
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
+                idea.IdeaCategorys.Select(category => category.CategoryId).ToList(),
                 idea.CreatedAt,
                 idea.LastUpdatedAt,
-                idea.Id
+                idea.Id,
+                false, // isTester
+                idea.Testers
+                    .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                    .ToList(),
+                idea.DuplicateOfId
             );
         }
 
@@ -154,7 +208,12 @@ namespace eInicjatywa.Services
                     i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
                     i.CreatedAt,
                     i.LastUpdatedAt,
-                    i.Id
+                    i.Id,
+                    userId != Guid.Empty && i.Testers.Any(t => t.Id == userId),
+                    i.Testers
+                        .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                        .ToList(),
+                    i.DuplicateOfId
                 ))
                 .ToListAsync();
 
@@ -166,6 +225,11 @@ namespace eInicjatywa.Services
                 totalCount,
                 totalPages
             );
+        }
+
+        public Task<PagedResult<IdeaDto>> GetOriginalIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null)
+        {
+            return GetIdeasAsync(user, filter, true);
         }
 
         public async Task<IdeaDto> GetIdeaByIdAsync(ClaimsPrincipal? user, Guid id)
@@ -187,13 +251,55 @@ namespace eInicjatywa.Services
                 i.IdeaCategorys.Select(ic => ic.CategoryId).ToList(),
                 i.CreatedAt,
                 i.LastUpdatedAt,
-                i.Id))
+                i.Id,
+                userId != Guid.Empty && i.Testers.Any(t => t.Id == userId),
+                i.Testers
+                    .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                    .ToList(),
+                i.DuplicateOfId
+            ))
             .FirstOrDefaultAsync();
 
             return dto ?? throw new Exception("Idea does not exist");
         }
 
-        public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
+        public async Task<IEnumerable<IdeaDto>> GetDuplicatesByIdeaIdAsync(ClaimsPrincipal? user, Guid id)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+
+            if (!await _context.Ideas.AsNoTracking().AnyAsync(idea => idea.Id == id))
+            {
+                throw new Exception("Idea does not exist");
+            }
+
+            return await _context.Ideas
+                .AsNoTracking()
+                .Where(idea => idea.DuplicateOfId == id)
+                .OrderByDescending(idea => idea.CreatedAt)
+                .Select(idea => new IdeaDto(
+                    idea.Title,
+                    idea.Description,
+                    idea.ImageUrl,
+                    idea.Voters.Count,
+                    false,
+                    idea.DistrictId,
+                    idea.StatusId,
+                    idea.AuthorId,
+                    idea.IdeaCategorys.Select(category => category.CategoryId).ToList(),
+                    idea.CreatedAt,
+                    idea.LastUpdatedAt,
+                    idea.Id,
+                    userId != Guid.Empty && idea.Testers.Any(t => t.Id == userId),
+                    idea.Testers
+                        .Select(t => new MiniUserDto(t.Id, t.Email, t.Name, t.Surname))
+                        .ToList(),
+                    idea.DuplicateOfId
+
+                ))
+                .ToListAsync();
+        }
+
+        public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaWriteDto ideaDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             var idea = await _context.Ideas
@@ -251,7 +357,7 @@ namespace eInicjatywa.Services
                 {
                     var _path = idea.ImageUrl;
                     var _physicalPath = Path.Combine("/app/storage", _path);
-                    
+
                     if (File.Exists(_physicalPath))
                     {
                         File.Delete(_physicalPath);
@@ -392,7 +498,7 @@ namespace eInicjatywa.Services
             }
             catch
             {
-                throw new Exception("Error when creating a folder holding files");    
+                throw new Exception("Error when creating a folder holding files");
             }
 
             if(!string.IsNullOrEmpty(idea.ImageUrl))
@@ -401,7 +507,7 @@ namespace eInicjatywa.Services
                 {
                     var _path = idea.ImageUrl;
                     var _physicalPath = Path.Combine("/app/storage", _path);
-                    
+
                     if (File.Exists(_physicalPath))
                     {
                         File.Delete(_physicalPath);
@@ -417,9 +523,9 @@ namespace eInicjatywa.Services
             var extension = Path.GetExtension(file.FileName);
             var path = $"{id}{extension}";
             var physicalPath = Path.Combine("/app/storage", path);
-            
+
             try
-            {       
+            {
                 await using (var stream = new FileStream(physicalPath, FileMode.CreateNew))
                 {
                     await file.CopyToAsync(stream);
@@ -446,6 +552,37 @@ namespace eInicjatywa.Services
             }
 
             return await GetIdeaByIdAsync(user, ideaId);
+        }
+
+        public async Task<IdeaDto> ChangeIdeaTesterStatusAsync(ClaimsPrincipal? user, Guid id)
+        {
+            Guid userId = await _utilsService.GetUserId(user);
+            if (userId == Guid.Empty)
+                throw new Exception("Not authenticated");
+
+            var idea = await _context.Ideas
+                .Include(i => i.Testers.Where(t => t.Id == userId))
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (idea is null)
+                throw new Exception("Idea not found");
+
+            var existingTester = idea.Testers.FirstOrDefault();
+
+            if (existingTester is not null)
+            {
+                idea.Testers.Remove(existingTester);
+            }
+            else
+            {
+                var tester = await _context.Users.FindAsync(userId)
+                    ?? throw new Exception("User not found");
+                idea.Testers.Add(tester);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetIdeaByIdAsync(user, id);
         }
     }
 }

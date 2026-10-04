@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const appName = 'Głos Miasta Kraków';
+const appName = 'E-Inicjatywa Kraków';
 
 function getPageName(pathname: string) {
   if (pathname === '/') return 'Wybór panelu';

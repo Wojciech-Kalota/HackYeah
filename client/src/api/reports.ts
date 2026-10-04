@@ -110,7 +110,9 @@ async function fetchReports(options: ReportQuery): Promise<ReportsData> {
     page: options.page ?? 1,
     pageSize: options.pageSize ?? 100,
   };
-  const ideasPage = await api.ideas.list(filters);
+  const ideasPage = options.authoredByMe
+    ? await api.ideas.list(filters)
+    : await api.ideas.listOriginals(filters);
   const ideas = ideasPage.items;
   const commentResults = await Promise.allSettled(
     ideas.map((idea) => api.ideas.comments.list(idea.id)),

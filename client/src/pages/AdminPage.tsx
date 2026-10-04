@@ -37,8 +37,13 @@ import {
 } from 'react-router-dom';
 
 import { AdminCatalogsView } from '../components/AdminCatalogsView';
-import { api, getApiErrorMessage, type ApiComment } from '../api/client';
-import { ideaStatus } from '../api/reports';
+import {
+  api,
+  getApiErrorMessage,
+  type ApiComment,
+  type ApiIdea,
+} from '../api/client';
+import { ideaStatus, mapIdeaToReport } from '../api/reports';
 import { useReportsData } from '../api/useReports';
 import { useAuth } from '../auth/AuthContext';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -197,7 +202,7 @@ function AdminLogo() {
         />
       </span>
       <span className="leading-tight">
-        <span className="block font-bold text-blue-950">Głos Miasta</span>
+        <span className="block font-bold text-blue-950">E-Inicjatywa</span>
         <span className="block text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
           Kraków
         </span>
@@ -652,10 +657,16 @@ function AdminProjectsView() {
 
 function AdminProjectDetailsView() {
   const { id } = useParams();
-  const { reports, loading } = useReportsData();
+  const { reports, catalog, loading } = useReportsData();
   const report = reports.find((item) => String(item.id) === id);
   const [comments, setComments] = useState<ApiComment[]>([]);
+  const [duplicateIdeas, setDuplicateIdeas] = useState<ApiIdea[]>([]);
   const [commentsError, setCommentsError] = useState('');
+  const [duplicatesError, setDuplicatesError] = useState('');
+  const duplicates = useMemo(
+    () => duplicateIdeas.map((idea) => mapIdeaToReport(idea, catalog)),
+    [catalog, duplicateIdeas],
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -663,6 +674,15 @@ function AdminProjectDetailsView() {
       .list(id)
       .then(setComments)
       .catch((error) => setCommentsError(getApiErrorMessage(error)));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    setDuplicatesError('');
+    void api.ideas
+      .listDuplicates(id)
+      .then(setDuplicateIdeas)
+      .catch((error) => setDuplicatesError(getApiErrorMessage(error)));
   }, [id]);
 
   if (loading)
@@ -795,6 +815,42 @@ function AdminProjectDetailsView() {
               ))}
             </div>
           </section>
+
+          <section className={`${uiTheme.surface.card} p-5 md:p-7`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-blue-800 uppercase">
+                  Powiązane zgłoszenia
+                </p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950">
+                  Duplikaty ({duplicates.length})
+                </h2>
+              </div>
+            </div>
+            {duplicatesError && (
+              <p className="mt-5 text-sm font-medium text-red-700" role="alert">
+                {duplicatesError}
+              </p>
+            )}
+            {!duplicates.length && !duplicatesError && (
+              <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
+                Brak powiązanych duplikatów tego pomysłu.
+              </p>
+            )}
+            {duplicates.length > 0 && (
+              <div className="mt-5 space-y-3">
+                {duplicates.map((duplicate) => (
+                  <ReportCard
+                    detailsHref={`/pomysly/${duplicate.id}`}
+                    key={duplicate.id}
+                    nested
+                    report={duplicate}
+                    showVotingNotice={false}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-6">
@@ -828,6 +884,12 @@ function AdminProjectDetailsView() {
                   {comments.length}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">Komentarzy</p>
+              </div>
+              <div className="rounded-xl bg-slate-50/60 p-3 backdrop-blur-sm">
+                <p className="text-2xl font-bold text-slate-950">
+                  {duplicates.length}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">Duplikatów</p>
               </div>
             </div>
           </section>

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { PageMain } from '../components/PageMain';
 import { uiTheme } from '../styles/theme';
 
-const THEME_STORAGE_KEY = 'glos-miasta:theme';
+const THEME_STORAGE_KEY = 'e-inicjatywa:theme';
+const LEGACY_THEME_STORAGE_KEY = 'glos-miasta:theme';
 
 export function AccessibilityPage() {
   const [highContrast, setHighContrast] = useState(
@@ -12,8 +13,12 @@ export function AccessibilityPage() {
   );
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const savedTheme =
+      localStorage.getItem(THEME_STORAGE_KEY) ??
+      localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
     if (savedTheme !== 'contrast') return;
+    localStorage.setItem(THEME_STORAGE_KEY, savedTheme);
+    localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
     document.documentElement.dataset.theme = 'contrast';
     setHighContrast(true);
   }, []);
@@ -24,9 +29,11 @@ export function AccessibilityPage() {
     if (enabled) {
       document.documentElement.dataset.theme = 'contrast';
       localStorage.setItem(THEME_STORAGE_KEY, 'contrast');
+      localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
     } else {
       delete document.documentElement.dataset.theme;
       localStorage.removeItem(THEME_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
     }
   }
 

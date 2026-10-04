@@ -21,7 +21,7 @@ namespace eInicjatywa.Controllers
 
         [HttpPost]
         [Authorize]
-        public async Task<IActionResult> CreateIdea([FromBody] IdeaDto ideaDto)
+        public async Task<IActionResult> CreateIdea([FromBody] IdeaWriteDto ideaDto)
         {
             try
             {
@@ -64,7 +64,22 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("originals")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetOriginalIdeas([FromQuery] IdeaFilterDto? filter = null)
+        {
+            try
+            {
+                var results = await _ideasService.GetOriginalIdeasAsync(User, filter);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("{id:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetIdea([FromRoute] Guid id)
         {
@@ -79,9 +94,24 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpPut("{id}")]
+        [HttpGet("{id:guid}/duplicates")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetDuplicates([FromRoute] Guid id)
+        {
+            try
+            {
+                var results = await _ideasService.GetDuplicatesByIdeaIdAsync(User, id);
+                return Ok(results);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("{id:guid}")]
         [Authorize]
-        public async Task<IActionResult> UpdateIdea([FromRoute] Guid id, [FromBody] IdeaDto ideaDto)
+        public async Task<IActionResult> UpdateIdea([FromRoute] Guid id, [FromBody] IdeaWriteDto ideaDto)
         {
             try
             {
@@ -94,7 +124,7 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
         [Authorize]
         public async Task<IActionResult> DeleteIdea([FromRoute] Guid id)
         {
@@ -109,7 +139,7 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpPost("{id}/comments")]
+        [HttpPost("{id:guid}/comments")]
         [Authorize]
         public async Task<IActionResult> AddComment([FromRoute] Guid id, [FromBody] CommentDto commentDto)
         {
@@ -125,7 +155,7 @@ namespace eInicjatywa.Controllers
             
         }
 
-        [HttpGet("{id}/comments")]
+        [HttpGet("{id:guid}/comments")]
         [AllowAnonymous]
         public async Task<IActionResult> GetComments([FromRoute] Guid id)
         {
@@ -141,7 +171,7 @@ namespace eInicjatywa.Controllers
             
         }
 
-        [HttpPut("{id}/comments")]
+        [HttpPut("{id:guid}/comments")]
         [Authorize]
         public async Task<IActionResult> UpdateComment([FromRoute] Guid id, [FromBody] CommentDto commentDto)
         {
@@ -156,7 +186,7 @@ namespace eInicjatywa.Controllers
             }
         }
 
-        [HttpDelete("{id}/comments")]
+        [HttpDelete("{id:guid}/comments")]
         [Authorize]
         public async Task<IActionResult> DeleteComment([FromRoute] Guid id)
         {

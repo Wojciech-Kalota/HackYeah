@@ -26,4 +26,5 @@ public class Idea
     public ICollection<Idea> Duplicates { get; set; } = new List<Idea>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<User> Voters { get; set; } = new List<User>();
+    public ICollection<User> Testers { get; set; } = new List<User>();
 }

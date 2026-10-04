@@ -123,7 +123,6 @@ export function AddIdeaPage() {
   const [pendingRagSubmission, setPendingRagSubmission] =
     useState<RagSubmission | null>(() => loadPendingRagSubmission());
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const generatedTitle = createTitle(idea.desc);
   const generatedCategory = inferCategory(idea.desc);
   const submissionTitle = idea.title.trim() || generatedTitle;
@@ -235,9 +234,14 @@ export function AddIdeaPage() {
       const analyzedCategoryId = analysis.extraction.concepts[0]?.category;
       const analyzedCategory =
         categories.find((item) => item.id === analyzedCategoryId) ?? category;
+      const duplicateOfId = analysis.decisions.find(
+        (item) => item.decision.kind === 'duplicate',
+      )?.canonical_submission_id;
 
       setSubmissionStage('saving');
-      const createdIdea = await api.ideas.create({
+      await api.ideas.create({
+        id: ragSubmission.submission_id,
+        duplicateOfId: duplicateOfId ?? null,
         title: submissionTitle,
         description: context,
         imageUrl: null,

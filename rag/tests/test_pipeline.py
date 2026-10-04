@@ -24,8 +24,10 @@ class PipelineTests(TestCase):
     def test_new_duplicate_and_replay(self):
         first=self.pipeline.process("a","Pomysł",CATEGORIES)
         cid=first["decisions"][0]["concept_id"]
+        self.assertEqual(first["decisions"][0]["canonical_submission_id"],"a")
         self.comparator.compare.return_value=Decision(kind="duplicate",candidate_id=cid,reason="Ten sam")
         second=self.pipeline.process("b","Pomysł",CATEGORIES)
+        self.assertEqual(second["decisions"][0]["canonical_submission_id"],"a")
         self.assertEqual(second["decisions"][0]["liczba_zgloszen"],2)
         self.assertTrue(self.pipeline.process("b","Pomysł",CATEGORIES)["replayed"])
         self.assertEqual(self.extractor.extract.call_count,2)
