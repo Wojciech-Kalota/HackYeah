@@ -627,7 +627,6 @@ function AdminProjectsView() {
               key={report.id}
               nested
               report={report}
-              showProjectId
               showVotingNotice={false}
             />
           ))}
@@ -690,8 +689,6 @@ function AdminProjectDetailsView() {
     );
   }
 
-  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
-
   return (
     <PageMain className={uiTheme.layout.content}>
       <Link
@@ -704,9 +701,6 @@ function AdminProjectDetailsView() {
       <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold tracking-wide text-blue-800 uppercase">
-              Projekt {projectNumber}
-            </span>
             <span
               className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${uiTheme.status[report.status]}`}
             >
@@ -882,8 +876,6 @@ function AdminProjectDecisionView() {
     );
   }
 
-  const projectNumber = `BO-${String(report.id).padStart(3, '0')}`;
-
   async function saveDecision() {
     if (!idea) return;
     const selectedStatus = catalog.statuses.find(
@@ -926,12 +918,7 @@ function AdminProjectDecisionView() {
         </Link>
 
         <div className="mt-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
-              Projekt {projectNumber}
-            </p>
-          </div>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
             Podejmij decyzję
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
@@ -1244,7 +1231,6 @@ export function AdminPage({
                           key={report.id}
                           nested
                           report={report}
-                          showProjectId
                           showVotingNotice={false}
                         />
                       ))}

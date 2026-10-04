@@ -122,6 +122,10 @@ export function AddIdeaPage() {
   const [pendingRagSubmission, setPendingRagSubmission] =
     useState<RagSubmission | null>(() => loadPendingRagSubmission());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ragSubmissionRef = useRef<{
+    id: string;
+    fingerprint: string;
+  } | null>(null);
 
   const generatedTitle = createTitle(idea.desc);
   const generatedCategory = inferCategory(idea.desc);
@@ -207,7 +211,7 @@ export function AddIdeaPage() {
         );
       }) ?? catalog?.statuses[0];
 
-    if (!district || !category || !status) {
+    if (!catalog || !district || !category || !status) {
       setSubmitError(
         'Brakuje skonfigurowanej dzielnicy, kategorii lub statusu. Administrator musi najpierw uzupełnić słowniki.',
       );
