@@ -19,6 +19,7 @@ import { api, getApiErrorMessage, type ApiComment } from '../api/client';
 import { loadCatalog, mapIdeaToReport } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
 import { PageMain } from '../components/PageMain';
+import { ReportCard } from '../components/ReportCard';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
 import type { IdeaStatus, Report } from '../types/domain';
@@ -95,6 +96,7 @@ function MainIdeaPanel({ report }: { report: IdeaDetails }) {
 
 type CommentsProps = {
   comments: ApiComment[];
+  duplicates: Report[];
   currentUserId?: string;
   isAdmin: boolean;
   reportId: string | number;
@@ -105,6 +107,7 @@ type CommentsProps = {
 
 function CommentsSection({
   comments,
+  duplicates,
   currentUserId,
   isAdmin,
   reportId,
@@ -179,7 +182,7 @@ function CommentsSection({
             )}
             {item === 'comments'
               ? `Komentarze (${comments.length})`
-              : 'Duplikaty (0)'}
+              : `Duplikaty (${duplicates.length})`}
           </button>
         ))}
       </div>
@@ -190,10 +193,21 @@ function CommentsSection({
           id="duplicates-panel"
           role="tabpanel"
         >
-          <p className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-            Brak informacji o podobnych zgłoszeniach. Backend nie udostępnia
-            jeszcze relacji duplikatów.
-          </p>
+          {duplicates.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {duplicates.map((duplicate) => (
+                <ReportCard
+                  key={duplicate.id}
+                  report={duplicate}
+                  showVotingNotice={false}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+              Brak powiązanych duplikatów tego pomysłu.
+            </p>
+          )}
         </div>
       ) : (
         <div aria-labelledby="comments-tab" id="comments-panel" role="tabpanel">
@@ -350,6 +364,7 @@ export function IdeaDetailsPage() {
   const [report, setReport] = useState<IdeaDetails>();
   const [authorId, setAuthorId] = useState('');
   const [comments, setComments] = useState<ApiComment[]>([]);
+  const [duplicates, setDuplicates] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
@@ -359,14 +374,18 @@ export function IdeaDetailsPage() {
     setLoading(true);
     setError('');
     try {
-      const [idea, catalog, apiComments] = await Promise.all([
+      const [idea, catalog, apiComments, apiDuplicates] = await Promise.all([
         api.ideas.get(id),
         loadCatalog(),
         api.ideas.comments.list(id),
+        api.ideas.listDuplicates(id),
       ]);
       setReport(mapIdeaToReport(idea, catalog, apiComments.length));
       setAuthorId(idea.authorId);
       setComments(apiComments);
+      setDuplicates(
+        apiDuplicates.map((duplicate) => mapIdeaToReport(duplicate, catalog)),
+      );
     } catch (loadError) {
       setReport(undefined);
       setError(getApiErrorMessage(loadError));
@@ -488,6 +507,7 @@ export function IdeaDetailsPage() {
       <CommentsSection
         comments={comments}
         currentUserId={user?.id}
+        duplicates={duplicates}
         isAdmin={Boolean(user?.roles.includes('ADMIN_USER'))}
         onAdd={addComment}
         onDelete={deleteComment}

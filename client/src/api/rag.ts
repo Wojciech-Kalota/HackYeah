@@ -5,7 +5,8 @@ const RAG_API_BASE_URL = (
 ).replace(/\/$/, '');
 
 const RAG_TIMEOUT_MS = 15 * 60 * 1000;
-const PENDING_SUBMISSION_KEY = 'glos-miasta:pending-rag-submission';
+const PENDING_SUBMISSION_KEY = 'e-inicjatywa:pending-rag-submission';
+const LEGACY_PENDING_SUBMISSION_KEY = 'glos-miasta:pending-rag-submission';
 
 export type RagCategory = {
   id: string;
@@ -37,6 +38,7 @@ export type RagDecision = {
   };
   score: number;
   concept_id: number | null;
+  canonical_submission_id?: string | null;
   liczba_zgloszen: number | null;
 };
 
@@ -83,8 +85,12 @@ function normalizeCategories(categories: NamedResource[]) {
 
 export function loadPendingRagSubmission(): RagSubmission | null {
   try {
-    const value = sessionStorage.getItem(PENDING_SUBMISSION_KEY);
+    const value =
+      sessionStorage.getItem(PENDING_SUBMISSION_KEY) ??
+      sessionStorage.getItem(LEGACY_PENDING_SUBMISSION_KEY);
     if (!value) return null;
+    sessionStorage.setItem(PENDING_SUBMISSION_KEY, value);
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
     const parsed = JSON.parse(value) as Partial<RagSubmission>;
     if (
       typeof parsed.submission_id !== 'string' ||
@@ -97,6 +103,7 @@ export function loadPendingRagSubmission(): RagSubmission | null {
       )
     ) {
       sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+      sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
       return null;
     }
     return parsed as RagSubmission;
@@ -108,6 +115,7 @@ export function loadPendingRagSubmission(): RagSubmission | null {
 export function savePendingRagSubmission(submission: RagSubmission) {
   try {
     sessionStorage.setItem(PENDING_SUBMISSION_KEY, JSON.stringify(submission));
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
   } catch {
     // Stan React nadal zachowuje identyfikator podczas bieżącej sesji strony.
   }
@@ -116,6 +124,7 @@ export function savePendingRagSubmission(submission: RagSubmission) {
 export function clearPendingRagSubmission() {
   try {
     sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+    sessionStorage.removeItem(LEGACY_PENDING_SUBMISSION_KEY);
   } catch {
     // Brak dostępu do storage nie powinien blokować zakończonego zgłoszenia.
   }

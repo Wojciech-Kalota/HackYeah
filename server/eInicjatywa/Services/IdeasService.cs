@@ -8,10 +8,12 @@ namespace eInicjatywa.Services
 {
     public interface IIdeasService
     {
-        Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto);
+        Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaWriteDto ideaDto);
         Task<PagedResult<IdeaDto>> GetIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null, bool? originals = null);
+        Task<PagedResult<IdeaDto>> GetOriginalIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null);
         Task<IdeaDto> GetIdeaByIdAsync(Guid id);
-        Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaDto ideaDto);
+        Task<IEnumerable<IdeaDto>> GetDuplicatesByIdeaIdAsync(Guid id);
+        Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user,Guid id, IdeaWriteDto ideaDto);
         Task DeleteIdeaAsync(ClaimsPrincipal? user, Guid id);
 
         Task<CommentDto> AddCommentAsync(ClaimsPrincipal? user, Guid ideaId, CommentDto commentDto);
@@ -31,13 +33,39 @@ namespace eInicjatywa.Services
             _utilsService = utilsService;
         }
 
-        public async Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaDto ideaDto)
+        public async Task<IdeaDto> CreateIdeaAsync(ClaimsPrincipal? user, IdeaWriteDto ideaDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             if (userId == Guid.Empty)
                 throw new Exception("Not authenticated");
 
             var categoryIds = ideaDto.CategoryIds;
+
+            if (ideaDto.Id is Guid requestedIdeaId)
+            {
+                var existingIdea = await _context.Ideas
+                    .AsNoTracking()
+                    .Include(existing => existing.IdeaCategorys)
+                    .FirstOrDefaultAsync(existing => existing.Id == requestedIdeaId);
+                if (existingIdea != null)
+                {
+                    var sameCategories = existingIdea.IdeaCategorys
+                        .Select(item => item.CategoryId)
+                        .OrderBy(id => id)
+                        .SequenceEqual(categoryIds.OrderBy(id => id));
+                    if (existingIdea.AuthorId != userId ||
+                        existingIdea.Title != ideaDto.Title ||
+                        existingIdea.Description != ideaDto.Description ||
+                        existingIdea.DistrictId != ideaDto.DistrictId ||
+                        existingIdea.StatusId != ideaDto.StatusId ||
+                        !sameCategories)
+                    {
+                        throw new Exception("Idea identifier is already in use");
+                    }
+
+                    return ToDto(existingIdea);
+                }
+            }
 
             if (!await _context.Districts.AnyAsync(d => d.Id == ideaDto.DistrictId))
                 throw new Exception("District does not exist");
@@ -51,13 +79,29 @@ namespace eInicjatywa.Services
             if (existingCategoryIds.Count != categoryIds.Count)
                 throw new Exception("One or more categories do not exist");
 
+            Guid? duplicateOfId = null;
+            if (ideaDto.DuplicateOfId is Guid requestedDuplicateId)
+            {
+                if (requestedDuplicateId == ideaDto.Id)
+                    throw new Exception("Idea cannot duplicate itself");
+
+                var duplicateTarget = await _context.Ideas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(existing => existing.Id == requestedDuplicateId);
+                if (duplicateTarget == null)
+                    throw new Exception("Original idea does not exist");
+                duplicateOfId = duplicateTarget.DuplicateOfId ?? duplicateTarget.Id;
+            }
+
             var idea = new Idea
             {
+                Id = ideaDto.Id ?? Guid.CreateVersion7(),
                 Title = ideaDto.Title,
                 Description = ideaDto.Description,
                 ImageUrl = ideaDto.ImageUrl,
                 DistrictId = ideaDto.DistrictId,
                 StatusId = ideaDto.StatusId,
+                DuplicateOfId = duplicateOfId,
                 AuthorId = userId
             };
 
@@ -67,19 +111,23 @@ namespace eInicjatywa.Services
 
             _context.Ideas.Add(idea);
             await _context.SaveChangesAsync();
-            return new IdeaDto
-            (
+            return ToDto(idea);
+        }
+
+        private static IdeaDto ToDto(Idea idea)
+        {
+            return new IdeaDto(
                 idea.Title,
                 idea.Description,
                 idea.ImageUrl,
                 idea.DistrictId,
                 idea.StatusId,
                 idea.AuthorId,
-                idea.IdeaCategorys.Select(ic => ic.Categorie.Id).ToList(),
+                idea.IdeaCategorys.Select(category => category.CategoryId).ToList(),
                 idea.CreatedAt,
                 idea.LastUpdatedAt,
                 idea.Id
-            );
+            ) { DuplicateOfId = idea.DuplicateOfId };
         }
 
         private const int MaxPageSize = 100;
@@ -159,6 +207,11 @@ namespace eInicjatywa.Services
             );
         }
 
+        public Task<PagedResult<IdeaDto>> GetOriginalIdeasAsync(ClaimsPrincipal? user, IdeaFilterDto? filter = null)
+        {
+            return GetIdeasAsync(user, filter, true);
+        }
+
         public async Task<IdeaDto> GetIdeaByIdAsync(Guid id)
         {
             var idea = await _context.Ideas
@@ -184,7 +237,33 @@ namespace eInicjatywa.Services
             );
         }
 
-        public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaDto ideaDto)
+        public async Task<IEnumerable<IdeaDto>> GetDuplicatesByIdeaIdAsync(Guid id)
+        {
+            if (!await _context.Ideas.AsNoTracking().AnyAsync(idea => idea.Id == id))
+            {
+                throw new Exception("Idea does not exist");
+            }
+
+            return await _context.Ideas
+                .AsNoTracking()
+                .Where(idea => idea.DuplicateOfId == id)
+                .OrderByDescending(idea => idea.CreatedAt)
+                .Select(idea => new IdeaDto(
+                    idea.Title,
+                    idea.Description,
+                    idea.ImageUrl,
+                    idea.DistrictId,
+                    idea.StatusId,
+                    idea.AuthorId,
+                    idea.IdeaCategorys.Select(category => category.CategoryId).ToList(),
+                    idea.CreatedAt,
+                    idea.LastUpdatedAt,
+                    idea.Id
+                ))
+                .ToListAsync();
+        }
+
+        public async Task<IdeaDto> UpdateIdeaAsync(ClaimsPrincipal? user, Guid id, IdeaWriteDto ideaDto)
         {
             Guid userId = await _utilsService.GetUserId(user);
             var idea = await _context.Ideas

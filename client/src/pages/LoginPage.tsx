@@ -72,7 +72,7 @@ export function LoginPage() {
                     />
                   </span>
                   <span className="leading-tight">
-                    <span className="block text-sm font-bold">Głos Miasta</span>
+                    <span className="block text-sm font-bold">E-Inicjatywa</span>
                     <span className="block text-[9px] font-semibold tracking-[0.22em] text-blue-200 uppercase">
                       Kraków
                     </span>

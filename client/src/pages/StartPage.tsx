@@ -43,7 +43,7 @@ export function StartPage() {
               />
             </div>
             <p className="text-app-primary-strong mt-5 text-sm font-bold tracking-[0.18em] uppercase">
-              Głos Miasta · Kraków
+              E-Inicjatywa · Kraków
             </p>
             <h1 className={`${uiTheme.text.heading} mt-3 text-3xl md:text-4xl`}>
               Wybierz swój widok
