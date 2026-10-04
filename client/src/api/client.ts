@@ -30,8 +30,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     let message = text || `Błąd HTTP ${response.status}`;
     try {
-      const parsed = JSON.parse(text) as { detail?: string; title?: string };
-      message = parsed.detail ?? parsed.title ?? message;
+      const parsed = JSON.parse(text) as {
+        detail?: string;
+        title?: string;
+        errors?: Record<string, string[]>;
+      };
+      const validationMessage = Object.values(parsed.errors ?? {})
+        .flat()
+        .join(' ');
+      message = validationMessage || parsed.detail || parsed.title || message;
     } catch {
       // The API also returns plain-text validation messages.
     }
@@ -88,12 +95,12 @@ function ideaFiltersQuery(filters: IdeaFilters = {}) {
   filters.statusIds?.forEach((id) => params.append('StatusIds', id));
   filters.districtIds?.forEach((id) => params.append('DistrictIds', id));
   filters.categoryIds?.forEach((id) => params.append('CategoryIds', id));
-  // IdeaFilterDto.Name is non-nullable, so send whitespace when no search is
-  // active; the backend treats it as an empty filter via IsNullOrWhiteSpace.
-  params.set('Name', filters.name?.trim() || ' ');
+  if (filters.name?.trim()) params.set('Name', filters.name.trim());
   if (filters.authoredByMe) params.set('AuthoredByMe', 'true');
   if (filters.page) params.set('Page', String(filters.page));
   if (filters.pageSize) params.set('PageSize', String(filters.pageSize));
+  if (filters.originals !== undefined)
+    params.set('originals', String(filters.originals));
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -165,6 +172,7 @@ export type NamedResource = { id: string; name: string };
 
 export type ApiIdea = {
   id: string;
+  duplicateOfId?: string | null;
   title: string;
   description: string;
   imageUrl: string | null;
@@ -183,6 +191,8 @@ export type IdeaRequest = Omit<
   'id' | 'createdAt' | 'lastUpdatedAt' | 'updatedAt'
 >;
 
+export type CreateIdeaRequest = IdeaRequest & { id: string };
+
 export type IdeaFilters = {
   statusIds?: string[];
   districtIds?: string[];
@@ -191,6 +201,7 @@ export type IdeaFilters = {
   authoredByMe?: boolean;
   page?: number;
   pageSize?: number;
+  originals?: boolean;
 };
 
 export type PagedResult<T> = {
@@ -278,8 +289,24 @@ export const api = {
       );
       return normalizeIdeasPage(response, filters);
     },
+    listOriginals: async (filters: IdeaFilters = {}) => {
+      const response = await request<PagedResult<ApiIdea> | ApiIdea[]>(
+        `/api/ideas${ideaFiltersQuery({ ...filters, originals: true })}`,
+      );
+      return normalizeIdeasPage(response, filters);
+    },
     get: (id: string) => request<ApiIdea>(`/api/ideas/${id}`),
-    create: (body: IdeaRequest) =>
+    listDuplicates: async (id: string) => {
+      try {
+        return await request<ApiIdea[]>(`/api/ideas/${id}/duplicates`);
+      } catch (error) {
+        // Pozwala otworzyć szczegóły podczas wdrażania wersji backendu,
+        // która nie udostępnia jeszcze endpointu relacji duplikatów.
+        if (error instanceof ApiError && error.status === 404) return [];
+        throw error;
+      }
+    },
+    create: (body: CreateIdeaRequest) =>
       request<ApiIdea>('/api/ideas', json('POST', body)),
     update: (id: string, body: IdeaRequest) =>
       request<ApiIdea>(`/api/ideas/${id}`, json('PUT', body)),

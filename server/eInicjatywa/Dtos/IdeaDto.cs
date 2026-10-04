@@ -19,6 +19,7 @@ namespace eInicjatywa.Dtos
         Guid Id,
 
         bool isTester,
-        List<MiniUserDto> Testers
+        List<MiniUserDto> Testers,
+        Guid? DuplicateOfId
     );
 }

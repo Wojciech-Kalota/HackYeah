@@ -48,6 +48,7 @@ crypto.randomUUID() raz dla zgłoszenia; ponowienia używają tego samego ID i d
     "decision":{"kind":"new","candidate_id":null,"reason":"Brak odpowiednika."},
     "score":65.0,
     "concept_id":42,
+    "canonical_submission_id":"test-001",
     "candidates":[],
     "liczba_zgloszen":1
   }]
@@ -69,6 +70,8 @@ Przy duplicate zachowujemy dane istniejącej koncepcji; input_concept pokazuje
 opis zgłoszenia i może mieć puste solution.
 candidate_id jest ID kandydata dla duplicate, dla new null.
 concept_id to ID przypisanej koncepcji; liczba_zgloszen to licznik po przetworzeniu.
+canonical_submission_id wskazuje pierwsze zgłoszenie przypisane do koncepcji.
+Frontend używa go jako DuplicateOfId przy zapisie duplikatu w głównym API.
 ID koncepcji i liczniki to liczby całkowite; ID kategorii są string.
 JavaScript zachowuje dokładność liczb całkowitych do Number.MAX_SAFE_INTEGER.
 contract_version=3 oznacza ten format odpowiedzi.
