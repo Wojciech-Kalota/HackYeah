@@ -2,8 +2,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft,
   BarChart3,
-  Bookmark,
-  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -11,15 +9,14 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  ListTree,
   MapPin,
   Menu,
   MessageSquare,
   Save,
   Search,
-  Settings,
   ShieldCheck,
   Sparkles,
-  ThumbsUp,
   UserRound,
   X,
 } from 'lucide-react';
@@ -29,10 +26,11 @@ import {
   useLocation,
   useParams,
   useSearchParams,
+  useNavigate,
 } from 'react-router-dom';
 
-import { AiScoreBadge } from '../components/AiScoreBadge';
-import { api, getApiErrorMessage } from '../api/client';
+import { AdminCatalogsView } from '../components/AdminCatalogsView';
+import { api, getApiErrorMessage, type ApiComment } from '../api/client';
 import { ideaStatus } from '../api/reports';
 import { useReportsData } from '../api/useReports';
 import { useAuth } from '../auth/AuthContext';
@@ -41,7 +39,7 @@ import { PageMain } from '../components/PageMain';
 import { RouteAccessibility } from '../components/RouteAccessibility';
 import { SkipLink } from '../components/SkipLink';
 import { uiTheme } from '../styles/theme';
-import { exampleIdeaRelations, type ReportStatus } from '../utils/dummyData';
+import type { Report, ReportStatus } from '../types/domain';
 
 type AdminStat = {
   label: string;
@@ -53,50 +51,61 @@ type AdminStat = {
   href: string;
 };
 
-const adminStats: AdminStat[] = [
-  {
-    label: 'Nowe pomysły',
-    value: 12,
-    description: 'Od ostatniego logowania',
-    badge: 'Nowe',
-    icon: FileText,
-    iconClass: 'bg-blue-100 text-blue-800',
-    href: '/administrator/projekty?status=submitted',
-  },
-  {
-    label: 'Zapisane do przejrzenia',
-    value: 7,
-    description: 'Twoja lista',
-    badge: 'Zapisane',
-    icon: Bookmark,
-    iconClass: 'bg-violet-100 text-violet-700',
-    href: '/administrator/projekty?status=saved',
-  },
-  {
-    label: 'Nierozstrzygnięte',
-    value: 23,
-    description: 'Wymagają decyzji',
-    badge: 'Do decyzji',
-    icon: CircleAlert,
-    iconClass: 'bg-orange-100 text-orange-700',
-    href: '/administrator/projekty?status=unresolved',
-  },
-  {
-    label: 'Rozstrzygnięte',
-    value: 84,
-    description: 'W tym miesiącu',
-    badge: 'Zakończone',
-    icon: CheckCircle2,
-    iconClass: 'bg-emerald-100 text-emerald-800',
-    href: '/administrator/projekty?status=resolved',
-  },
-];
+function getAdminStats(reports: Report[]): AdminStat[] {
+  const unresolved = reports.filter(
+    (report) =>
+      report.status === 'submitted' || report.status === 'under_review',
+  ).length;
+  const resolved = reports.filter((report) =>
+    ['accepted', 'in_progress', 'completed', 'rejected'].includes(
+      report.status,
+    ),
+  ).length;
+  return [
+    {
+      label: 'Wszystkie pomysły',
+      value: reports.length,
+      description: 'Pełny rejestr zgłoszeń',
+      badge: 'Rejestr',
+      icon: FileText,
+      iconClass: 'bg-blue-100 text-blue-800',
+      href: '/administrator/projekty',
+    },
+    {
+      label: 'Nowe pomysły',
+      value: reports.filter((report) => report.status === 'submitted').length,
+      description: 'Oczekują na rozpoczęcie analizy',
+      badge: 'Nowe',
+      icon: Sparkles,
+      iconClass: 'bg-violet-100 text-violet-700',
+      href: '/administrator/projekty?status=submitted',
+    },
+    {
+      label: 'Nierozstrzygnięte',
+      value: unresolved,
+      description: 'Wymagają decyzji',
+      badge: 'Do decyzji',
+      icon: CircleAlert,
+      iconClass: 'bg-orange-100 text-orange-700',
+      href: '/administrator/projekty?status=unresolved',
+    },
+    {
+      label: 'Rozstrzygnięte',
+      value: resolved,
+      description: 'Po podjęciu decyzji',
+      badge: 'Obsłużone',
+      icon: CheckCircle2,
+      iconClass: 'bg-emerald-100 text-emerald-800',
+      href: '/administrator/projekty?status=resolved',
+    },
+  ];
+}
 
 type AdminNavigationItem = {
   label: string;
   icon: LucideIcon;
   href: string;
-  activeOn: 'dashboard' | 'projects' | 'analytics';
+  activeOn: 'dashboard' | 'projects' | 'analytics' | 'catalogs';
   filter?: AdminProjectFilter;
   badge?: string;
 };
@@ -125,15 +134,6 @@ const navigationSections: Array<{
         href: '/administrator/projekty',
         activeOn: 'projects',
         filter: 'all',
-        badge: '8',
-      },
-      {
-        label: 'Zapisane do przejrzenia',
-        icon: Bookmark,
-        href: '/administrator/projekty?status=saved',
-        activeOn: 'projects',
-        filter: 'saved',
-        badge: '7',
       },
       {
         label: 'Nierozstrzygnięte',
@@ -141,7 +141,6 @@ const navigationSections: Array<{
         href: '/administrator/projekty?status=unresolved',
         activeOn: 'projects',
         filter: 'unresolved',
-        badge: '23',
       },
       {
         label: 'Rozstrzygnięte',
@@ -160,6 +159,17 @@ const navigationSections: Array<{
         icon: BarChart3,
         href: '/administrator/statystyki',
         activeOn: 'analytics',
+      },
+    ],
+  },
+  {
+    label: 'Konfiguracja',
+    items: [
+      {
+        label: 'Słowniki systemowe',
+        icon: ListTree,
+        href: '/administrator/slowniki',
+        activeOn: 'catalogs',
       },
     ],
   },
@@ -190,10 +200,12 @@ function AdminSidebar({
   onClose,
   closeButtonRef,
 }: {
-  currentView: 'dashboard' | 'projects' | 'analytics';
+  currentView: 'dashboard' | 'projects' | 'analytics' | 'catalogs';
   onClose?: () => void;
   closeButtonRef?: RefObject<HTMLButtonElement | null>;
 }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const activeFilter =
@@ -205,9 +217,16 @@ function AdminSidebar({
     if (item.activeOn !== currentView) return false;
     if (item.activeOn !== 'projects') return true;
     if (item.filter === 'all') {
-      return !['saved', 'unresolved', 'resolved'].includes(activeFilter);
+      return !['unresolved', 'resolved'].includes(activeFilter);
     }
     return (item.filter ?? 'all') === activeFilter;
+  }
+
+  async function handleLogout() {
+    await logout();
+    setProfileOpen(false);
+    onClose?.();
+    navigate('/administrator', { replace: true });
   }
 
   return (
@@ -285,20 +304,13 @@ function AdminSidebar({
                 Inspektor · K-0941
               </p>
             </div>
-            <a
-              className={`${uiTheme.button.ghost} mt-1 w-full justify-start px-3 text-xs`}
-              href="#ustawienia"
-              onClick={() => setProfileOpen(false)}
-            >
-              <Settings size={16} /> Ustawienia konta
-            </a>
-            <Link
+            <button
               className={`${uiTheme.button.danger} w-full justify-start px-3 text-xs`}
-              onClick={onClose}
-              to="/administrator"
+              onClick={() => void handleLogout()}
+              type="button"
             >
               <LogOut size={16} /> Wyloguj się
-            </Link>
+            </button>
           </div>
         )}
 
@@ -365,19 +377,16 @@ function StatCard({ stat }: { stat: AdminStat }) {
 }
 
 const reportStatuses = Object.keys(statusLabels) as ReportStatus[];
-type AdminProjectFilter =
-  ReportStatus | 'all' | 'saved' | 'unresolved' | 'resolved';
+type AdminProjectFilter = ReportStatus | 'all' | 'unresolved' | 'resolved';
 
 const adminProjectFilters: AdminProjectFilter[] = [
   'all',
-  'saved',
   'unresolved',
   'resolved',
   ...reportStatuses,
 ];
-const savedProjectIds = new Set<string | number>([1, 2, 3, 5, 6, 7, 8]);
 type ProjectSortKey =
-  'id' | 'title' | 'district' | 'category' | 'status' | 'support' | 'updatedAt';
+  'id' | 'title' | 'district' | 'category' | 'status' | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
 
 function formatAdminDate(date: string) {
@@ -430,16 +439,14 @@ function AdminProjectsView() {
               report.district === currentAdminRegion
             : report.district === region)) &&
         (status === 'all' ||
-          (status === 'saved'
-            ? savedProjectIds.has(report.id)
-            : status === 'unresolved'
-              ? report.status === 'submitted' ||
-                report.status === 'under_review'
-              : status === 'resolved'
-                ? report.status === 'accepted' ||
-                  report.status === 'in_progress' ||
-                  report.status === 'completed'
-                : report.status === status))
+          (status === 'unresolved'
+            ? report.status === 'submitted' || report.status === 'under_review'
+            : status === 'resolved'
+              ? report.status === 'accepted' ||
+                report.status === 'in_progress' ||
+                report.status === 'completed' ||
+                report.status === 'rejected'
+              : report.status === status))
       );
     });
 
@@ -449,9 +456,6 @@ function AdminProjectsView() {
       switch (sortKey) {
         case 'id':
           comparison = String(a.id).localeCompare(String(b.id), 'pl');
-          break;
-        case 'support':
-          comparison = a[sortKey] - b[sortKey];
           break;
         case 'updatedAt':
           comparison =
@@ -560,7 +564,6 @@ function AdminProjectsView() {
                 value={status}
               >
                 <option value="all">Wszystkie statusy</option>
-                <option value="saved">Zapisane do przejrzenia</option>
                 <option value="unresolved">Nierozstrzygnięte</option>
                 <option value="resolved">Rozstrzygnięte</option>
                 {reportStatuses.map((item) => (
@@ -584,7 +587,6 @@ function AdminProjectsView() {
                 value={`${sortKey}:${sortDirection}`}
               >
                 <option value="updatedAt:desc">Najnowsze</option>
-                <option value="support:desc">Najpopularniejsze</option>
                 <option value="title:asc">Nazwa A–Z</option>
                 <option value="title:desc">Nazwa Z–A</option>
               </select>
@@ -600,7 +602,7 @@ function AdminProjectsView() {
               nested
               report={report}
               showProjectId
-              supportIsAction={false}
+              showVotingNotice={false}
             />
           ))}
         </div>
@@ -627,7 +629,16 @@ function AdminProjectDetailsView() {
   const { id } = useParams();
   const { reports, loading } = useReportsData();
   const report = reports.find((item) => String(item.id) === id);
-  const { comments } = exampleIdeaRelations;
+  const [comments, setComments] = useState<ApiComment[]>([]);
+  const [commentsError, setCommentsError] = useState('');
+
+  useEffect(() => {
+    if (!id) return;
+    void api.ideas.comments
+      .list(id)
+      .then(setComments)
+      .catch((error) => setCommentsError(getApiErrorMessage(error)));
+  }, [id]);
 
   if (loading)
     return <main className={uiTheme.layout.content}>Ładowanie…</main>;
@@ -675,7 +686,6 @@ function AdminProjectDetailsView() {
             >
               {statusLabels[report.status]}
             </span>
-            <AiScoreBadge title={report.title} />
           </div>
           <h1 className="mt-3 max-w-4xl text-2xl leading-tight font-bold tracking-tight text-slate-950 md:text-3xl">
             {report.title}
@@ -692,24 +702,23 @@ function AdminProjectDetailsView() {
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <article className={`${uiTheme.surface.card} overflow-hidden`}>
-            <img
-              alt="Ilustracja projektu"
-              className="max-h-[420px] w-full bg-slate-100 object-cover"
-              src={report.image}
-            />
+            {report.image && (
+              <img
+                alt="Ilustracja projektu"
+                className="max-h-[420px] w-full bg-slate-100 object-contain"
+                src={report.image}
+              />
+            )}
             <div className="p-5 md:p-7">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={uiTheme.badge.info}>{report.district}</span>
                 <span className={uiTheme.badge.neutral}>{report.category}</span>
-                <AiScoreBadge title={report.title} />
               </div>
               <h2 className="mt-5 text-lg font-bold text-slate-950">
                 Opis pomysłu
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-                {report.description} Projekt zostanie zweryfikowany pod kątem
-                wykonalności, kosztów, własności terenu oraz zgodności z
-                miejskimi planami inwestycyjnymi.
+                {report.description}
               </p>
               <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
                 <span className="flex items-center gap-2">
@@ -717,10 +726,7 @@ function AdminProjectDetailsView() {
                   {formatAdminDate(report.updatedAt)}
                 </span>
                 <span className="flex items-center gap-2">
-                  <ThumbsUp size={15} /> {report.support} głosów
-                </span>
-                <span className="flex items-center gap-2">
-                  <MessageSquare size={15} /> {report.comments} komentarzy
+                  <MessageSquare size={15} /> {comments.length} komentarzy
                 </span>
               </div>
             </div>
@@ -736,10 +742,21 @@ function AdminProjectDetailsView() {
               </h2>
             </div>
             <div className="mt-5 divide-y divide-slate-100">
+              {commentsError && (
+                <p
+                  className="pb-4 text-sm font-medium text-red-700"
+                  role="alert"
+                >
+                  {commentsError}
+                </p>
+              )}
+              {!comments.length && !commentsError && (
+                <p className="py-4 text-sm text-slate-500">Brak komentarzy.</p>
+              )}
               {comments.map((comment) => (
                 <article
                   className="flex gap-3 py-4 first:pt-0 last:pb-0"
-                  key={`${comment.user_id}-${comment.date}`}
+                  key={comment.id}
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500">
                     <UserRound size={16} />
@@ -747,11 +764,8 @@ function AdminProjectDetailsView() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <p className="text-sm font-semibold text-slate-800">
-                        {comment.user_id}
+                        Użytkownik {comment.userId.slice(0, 8)}
                       </p>
-                      <time className="text-[11px] text-slate-400">
-                        {formatAdminDate(comment.date)}
-                      </time>
                     </div>
                     <p className="mt-1.5 text-sm leading-6 text-slate-600">
                       {comment.text}
@@ -774,7 +788,7 @@ function AdminProjectDetailsView() {
                   Decyzja administracyjna
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Zmień status, przypisz jednostkę i dodaj notatkę.
+                  Zmień status pomysłu i zapisz decyzję.
                 </p>
               </div>
             </div>
@@ -788,16 +802,10 @@ function AdminProjectDetailsView() {
 
           <section className={`${uiTheme.surface.card} p-5`}>
             <h2 className="font-bold text-slate-950">Aktywność pomysłu</h2>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-blue-50/70 p-3 backdrop-blur-sm">
-                <p className="text-2xl font-bold text-blue-950">
-                  {report.support}
-                </p>
-                <p className="mt-1 text-[11px] text-blue-700">Głosów</p>
-              </div>
+            <div className="mt-4 grid gap-3">
               <div className="rounded-xl bg-slate-50/60 p-3 backdrop-blur-sm">
                 <p className="text-2xl font-bold text-slate-950">
-                  {report.comments}
+                  {comments.length}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">Komentarzy</p>
               </div>
@@ -817,9 +825,12 @@ function AdminProjectDecisionView() {
   const [status, setStatus] = useState<ReportStatus>(
     report?.status ?? 'submitted',
   );
-  const [unit, setUnit] = useState('Zarząd Dróg Miasta Krakowa');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  useEffect(() => {
+    if (report) setStatus(report.status);
+  }, [report]);
 
   if (loading)
     return <main className={uiTheme.layout.content}>Ładowanie…</main>;
@@ -893,14 +904,12 @@ function AdminProjectDecisionView() {
             <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">
               Projekt {projectNumber}
             </p>
-            <AiScoreBadge title={report.title} />
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
             Podejmij decyzję
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Ustal dalszy sposób obsługi pomysłu i przekaż go do właściwej
-            jednostki miejskiej.
+            Ustal dalszy etap obsługi pomysłu.
           </p>
         </div>
 
@@ -920,7 +929,7 @@ function AdminProjectDecisionView() {
           </div>
 
           <div className="p-5 md:p-6">
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5">
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-slate-700">
                   Status projektu
@@ -939,42 +948,7 @@ function AdminProjectDecisionView() {
                   ))}
                 </select>
               </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-slate-700">
-                  Jednostka odpowiedzialna
-                </span>
-                <span className="relative block">
-                  <Building2
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-                    size={16}
-                  />
-                  <select
-                    className={`${uiTheme.field} pl-9`}
-                    onChange={(event) => setUnit(event.target.value)}
-                    value={unit}
-                  >
-                    <option>Zarząd Dróg Miasta Krakowa</option>
-                    <option>Zarząd Zieleni Miejskiej</option>
-                    <option>Wydział Gospodarki Komunalnej</option>
-                    <option>Wydział Polityki Społecznej</option>
-                  </select>
-                </span>
-              </label>
             </div>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-bold text-slate-700">
-                Notatka wewnętrzna
-              </span>
-              <textarea
-                className={`${uiTheme.field} min-h-36 resize-y py-3`}
-                placeholder="Dodaj informację dla zespołu..."
-              />
-              <span className="mt-2 block text-[11px] text-slate-400">
-                Notatka jest widoczna wyłącznie dla pracowników urzędu.
-              </span>
-            </label>
 
             <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
               <Link
@@ -1006,6 +980,7 @@ function AdminProjectDecisionView() {
 
 function AdminAnalyticsView() {
   const { reports } = useReportsData();
+  const adminStats = getAdminStats(reports);
   const statusSummary = reportStatuses.map((status) => ({
     status,
     label: statusLabels[status],
@@ -1062,10 +1037,17 @@ function AdminAnalyticsView() {
 export function AdminPage({
   view = 'dashboard',
 }: {
-  view?: 'dashboard' | 'projects' | 'project' | 'decision' | 'analytics';
+  view?:
+    | 'dashboard'
+    | 'projects'
+    | 'project'
+    | 'decision'
+    | 'analytics'
+    | 'catalogs';
 }) {
   const { user } = useAuth();
   const { reports } = useReportsData();
+  const adminStats = getAdminStats(reports);
   const adminRegion = user?.district;
   const [menuOpen, setMenuOpen] = useState(false);
   const sidebarView =
@@ -1073,7 +1055,9 @@ export function AdminPage({
       ? 'dashboard'
       : view === 'analytics'
         ? 'analytics'
-        : 'projects';
+        : view === 'catalogs'
+          ? 'catalogs'
+          : 'projects';
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -1146,6 +1130,8 @@ export function AdminPage({
             <AdminProjectDecisionView />
           ) : view === 'analytics' ? (
             <AdminAnalyticsView />
+          ) : view === 'catalogs' ? (
+            <AdminCatalogsView />
           ) : (
             <PageMain className={uiTheme.layout.content}>
               <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -1175,13 +1161,13 @@ export function AdminPage({
                       {adminRegion ?? 'Wszystkie rejony'}
                     </p>
                   </div>
-                  <button
-                    aria-label="Zmień rejon"
+                  <Link
+                    aria-label="Pokaż pomysły z mojego rejonu"
                     className={`${uiTheme.iconButton} ml-auto size-9`}
-                    type="button"
+                    to="/administrator/projekty"
                   >
                     <ChevronRight size={18} />
-                  </button>
+                  </Link>
                 </section>
               </div>
 
@@ -1232,7 +1218,7 @@ export function AdminPage({
                           nested
                           report={report}
                           showProjectId
-                          supportIsAction={false}
+                          showVotingNotice={false}
                         />
                       ))}
                   </div>

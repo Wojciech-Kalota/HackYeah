@@ -42,7 +42,7 @@ class Pipeline:
             if extraction.status=="ok":
                 for extracted in extraction.concepts:
                     if extracted.category not in {item["id"] for item in categories}:
-                        raise ValueError("Kategoria spoza listy backendu")
+                        raise ValueError("Kategoria spoza listy kategorii żądania")
                     concept=extracted.to_concept()
                     candidates=self.retriever.search(concept)
                     decision=self.comparator.compare(concept,candidates)

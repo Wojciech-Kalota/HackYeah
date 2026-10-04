@@ -1,7 +1,7 @@
 # ROPS RAG
 
 Usługa Python analizuje pomysły społeczne i zapisuje wyniki w PostgreSQL.
-.NET przesyła tekst, identyfikator zgłoszenia i listę kategorii.
+Frontend przesyła tekst, identyfikator zgłoszenia i listę kategorii.
 Proces: ekstrakcja LLM → wyszukiwanie embeddingów → porównanie LLM → zapis.
 
 ## Instalacja
@@ -42,10 +42,22 @@ Nie uzupełniamy brakującego rozwiązania domysłami. Kategorie otrzymujemy w k
 ```
 
 [Swagger](http://127.0.0.1:8000/docs), [kontrakt API](docs/API.md),
-[klient .NET 8](examples/RagClient.cs).
-.NET wywołuje API i odbiera potwierdzenie wyniku; nie zapisuje drugi raz
-koncepcji ani liczników. API działa lokalnie, bez uwierzytelniania i CORS.
-Przy różnych hostach skonfiguruj prywatne połączenie i kontrolę dostępu.
+[klient JavaScript](examples/ragClient.js).
+Frontend wywołuje API; Python zapisuje koncepcje i zwiększa liczniki w PostgreSQL.
+Klucz OpenAI i DATABASE_URL pozostają wyłącznie w usłudze Python.
+
+W `.env` ustaw `CORS_ORIGINS` na adres frontendu, np. `http://localhost:5173`.
+Kilka adresów rozdziel przecinkami, bez ścieżek i końcowego ukośnika.
+Domyślnie dozwolone są localhost i 127.0.0.1 na portach 5173 oraz 3000.
+Pusta wartość wyłącza CORS. Po zmianie zrestartuj API. CORS nie zastępuje
+uwierzytelniania; MVP nie ma uwierzytelniania.
+
+Frontend generuje `submission_id` przez `crypto.randomUUID()` raz dla nowego
+zgłoszenia i zachowuje całe żądanie na czas ponowień. Kategorie pobiera ze
+źródła kategorii projektu i przesyła jako listę `{id,label}`. RAG nie udostępnia
+endpointu do pobierania kategorii. Przykład klienta używa `fetch` i zapisuje
+żądanie w pamięci; jeśli ma przetrwać odświeżenie strony, aplikacja musi je
+zachować np. w `sessionStorage`.
 
 ## Polecenia lokalne
 

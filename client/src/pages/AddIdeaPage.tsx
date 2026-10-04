@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import { api, getApiErrorMessage } from '../api/client';
 import { loadCatalog, type ApiCatalog } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
-import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { IDEA_CATEGORIES } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
@@ -110,6 +109,7 @@ export function AddIdeaPage() {
 
   const generatedTitle = createTitle(idea.desc);
   const generatedCategory = inferCategory(idea.desc);
+  const submissionTitle = idea.title.trim() || generatedTitle;
 
   useEffect(() => {
     void loadCatalog()
@@ -123,6 +123,12 @@ export function AddIdeaPage() {
               (district) => district.name === user?.district,
             )?.name ||
             loadedCatalog.districts[0]?.name ||
+            '',
+          category:
+            loadedCatalog.categories.find(
+              (category) => category.name === current.category,
+            )?.name ||
+            loadedCatalog.categories[0]?.name ||
             '',
         }));
       })
@@ -173,7 +179,7 @@ export function AddIdeaPage() {
       (item) => item.name === idea.district,
     );
     const category = catalog?.categories.find(
-      (item) => item.name === generatedCategory,
+      (item) => item.name === idea.category,
     );
     const status =
       catalog?.statuses.find((item) => {
@@ -196,7 +202,7 @@ export function AddIdeaPage() {
     setSubmitError('');
     try {
       await api.ideas.create({
-        title: generatedTitle,
+        title: submissionTitle,
         description: context,
         imageUrl: null,
         districtId: district.id,
@@ -474,6 +480,16 @@ export function AddIdeaPage() {
                   {imageError}
                 </p>
               )}
+              {imageFile && !imageError && (
+                <p
+                  className="mt-2 text-xs font-medium text-amber-800"
+                  role="status"
+                >
+                  To jest podgląd lokalny. Serwer nie udostępnia jeszcze
+                  endpointu do zapisu plików, więc zdjęcie nie zostanie wysłane
+                  z pomysłem.
+                </p>
+              )}
             </div>
 
             <div className="mt-7 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
@@ -486,7 +502,21 @@ export function AddIdeaPage() {
               </button>
               <button
                 className={uiTheme.button.primary}
-                onClick={() => setStep(3)}
+                onClick={() => {
+                  const inferredCategory = catalog?.categories.find(
+                    (category) => category.name === generatedCategory,
+                  )?.name;
+                  setIdea((current) => ({
+                    ...current,
+                    title: current.title || generatedTitle,
+                    category:
+                      inferredCategory ||
+                      current.category ||
+                      catalog?.categories[0]?.name ||
+                      '',
+                  }));
+                  setStep(3);
+                }}
                 type="button"
               >
                 Dalej <ArrowRight size={17} />
@@ -512,20 +542,40 @@ export function AddIdeaPage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-blue-100 bg-white/45 p-5 md:p-6">
-              <h3 className="text-xl leading-snug font-bold text-slate-950">
-                {generatedTitle}
-              </h3>
-              <div className="mt-3">
-                <AiScoreBadge title={generatedTitle} />
-              </div>
+              <label className={uiTheme.text.label}>
+                Tytuł pomysłu
+                <input
+                  className={`${uiTheme.field} mt-2 text-base font-semibold`}
+                  maxLength={150}
+                  onChange={(event) =>
+                    setIdea({ ...idea, title: event.target.value })
+                  }
+                  required
+                  value={idea.title}
+                />
+              </label>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 {idea.desc}
               </p>
               <dl className="mt-5 grid gap-3 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-xs text-slate-500">Kategoria</dt>
-                  <dd className="mt-1 font-semibold text-slate-800">
-                    {generatedCategory}
+                  <dd className="mt-1">
+                    <select
+                      aria-label="Kategoria pomysłu"
+                      className={`${uiTheme.field} h-10 py-1.5 text-sm font-semibold`}
+                      onChange={(event) =>
+                        setIdea({ ...idea, category: event.target.value })
+                      }
+                      required
+                      value={idea.category}
+                    >
+                      {catalog?.categories.map((category) => (
+                        <option key={category.id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
                   </dd>
                 </div>
                 <div>
@@ -552,9 +602,9 @@ export function AddIdeaPage() {
                     </span>
                   )}
                   {imageFile && (
-                    <span className="rounded-full bg-slate-100 px-3 py-1.5">
-                      <ImagePlus className="mr-1 inline" size={12} /> Dodano
-                      zdjęcie
+                    <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-900">
+                      <ImagePlus className="mr-1 inline" size={12} /> Zdjęcie
+                      tylko w podglądzie
                     </span>
                   )}
                 </div>

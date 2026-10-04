@@ -5,12 +5,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getApiErrorMessage } from '../api/client';
 import { loadReports } from '../api/reports';
-import { AiScoreBadge } from '../components/AiScoreBadge';
 import { PageMain } from '../components/PageMain';
 import { IDEA_STATUS_OPTIONS } from '../constants/ideaOptions';
 import { uiTheme } from '../styles/theme';
-import type { IdeaStatus } from '../types/domain';
-import type { Report } from '../utils/dummyData';
+import type { IdeaStatus, Report } from '../types/domain';
 
 const ideaFilters: Array<{ value: 'all' | IdeaStatus; label: string }> = [
   { value: 'all', label: 'Wszystkie' },
@@ -147,7 +145,6 @@ export function MyIdeasPage() {
                     <span className={uiTheme.badge.neutral}>
                       {idea.category}
                     </span>
-                    <AiScoreBadge title={idea.title} />
                   </div>
                   <h2 className="mt-4 font-semibold">{idea.title}</h2>
                   <p className={`${uiTheme.text.body} mt-2 line-clamp-3`}>

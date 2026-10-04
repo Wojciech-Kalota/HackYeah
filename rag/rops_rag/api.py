@@ -4,6 +4,7 @@ from pathlib import Path
 from threading import Lock
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .extraction import ExtractionError
@@ -70,6 +71,17 @@ class UpstreamError(RuntimeError):
 def create_app(processor=None):
     app = FastAPI(title="ROPS RAG", version="0.1.0",
                   description="Ekstrakcja, wyszukiwanie, porównanie i zapis pomysłów")
+    origins = [origin.strip() for origin in os.getenv(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",") if origin.strip()]
+    if "*" in origins:
+        raise ServiceConfigurationError("CORS_ORIGINS wymaga konkretnych adresów frontendu zamiast *")
+    if origins:
+        app.add_middleware(
+            CORSMiddleware, allow_origins=origins, allow_credentials=False,
+            allow_methods=["GET", "POST"], allow_headers=["Content-Type"],
+            expose_headers=["Retry-After"],
+        )
     gate = Lock()
     run = processor or process_request
 

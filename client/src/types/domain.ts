@@ -15,27 +15,27 @@ export type Idea = {
   img?: string;
 };
 
-export type Comment = {
-  user_id: string;
-  date: string;
-  text: string;
-};
+export type ReportStatus = IdeaStatus;
 
-export type Upvote = {
-  user_id: string;
-  date: string;
-  quantity?: number;
-};
-
-export type Duplicate = {
-  idea_id: string;
+export type Report = {
+  id: number | string;
+  district: string;
+  category: string;
   title: string;
-  desc: string;
-  img?: string;
+  description: string;
+  status: ReportStatus;
+  comments: number;
+  updatedAt: string;
+  image: string;
 };
 
-export type StoredIdea = Idea & {
-  id: string;
-  user_id: string;
-  created_at: string;
+export type DashboardStatId =
+  'submitted' | 'under_review' | 'in_progress' | 'completed';
+
+export type DashboardStat = {
+  id: DashboardStatId;
+  label: string;
+  value: number;
+  description: string;
+  badge: string;
 };

@@ -1,14 +1,13 @@
 import { Plus, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
-import { getApiErrorMessage } from '../api/client';
-import { loadReports } from '../api/reports';
+import { useReportsData } from '../api/useReports';
 import { PageMain } from '../components/PageMain';
 import { ReportCard, statusLabels } from '../components/ReportCard';
 import { uiTheme } from '../styles/theme';
-import type { Report, ReportStatus } from '../utils/dummyData';
+import type { ReportStatus } from '../types/domain';
 
 const statuses = Object.keys(statusLabels) as ReportStatus[];
 
@@ -18,23 +17,14 @@ function isReportStatus(value: string | null): value is ReportStatus {
 
 export function ReportsPage() {
   const { user } = useAuth();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { reports, catalog, loading, error } = useReportsData();
   const [searchParams, setSearchParams] = useSearchParams();
-  const districts = [
-    ...new Set(reports.map((report) => report.district)),
-  ].sort();
-  const categories = [
-    ...new Set(reports.map((report) => report.category)),
-  ].sort();
-
-  useEffect(() => {
-    void loadReports()
-      .then((result) => setReports(result.reports))
-      .catch((loadError) => setError(getApiErrorMessage(loadError)))
-      .finally(() => setLoading(false));
-  }, []);
+  const districts = catalog.districts
+    .map((item) => item.name)
+    .sort((a, b) => a.localeCompare(b, 'pl'));
+  const categories = catalog.categories
+    .map((item) => item.name)
+    .sort((a, b) => a.localeCompare(b, 'pl'));
   const query = searchParams.get('q') ?? '';
   const residentDistrict = user?.district ?? 'all';
   const defaultDistrict = districts.includes(residentDistrict)
@@ -45,7 +35,7 @@ export function ReportsPage() {
   const statusParam = searchParams.get('status');
   const status = isReportStatus(statusParam) ? statusParam : 'all';
   const sort =
-    searchParams.get('sort') === 'popularne' ? 'popularne' : 'najnowsze';
+    searchParams.get('sort') === 'najstarsze' ? 'najstarsze' : 'najnowsze';
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -77,11 +67,11 @@ export function ReportsPage() {
           (status === 'all' || report.status === status)
         );
       })
-      .sort((a, b) =>
-        sort === 'popularne'
-          ? b.support - a.support
-          : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
+      .sort((a, b) => {
+        const difference =
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        return sort === 'najstarsze' ? -difference : difference;
+      });
   }, [category, district, query, sort, status]);
 
   const hasFilters = Boolean(
@@ -117,12 +107,12 @@ export function ReportsPage() {
               Opisz swoją inicjatywę i przekaż ją do oceny miasta.
             </p>
           </div>
-          <button
+          <Link
             className={`${uiTheme.button.secondary} bg-white px-4 py-2 text-xs`}
-            type="button"
+            to={user ? '/dodaj-pomysl' : '/logowanie'}
           >
             Rozpocznij
-          </button>
+          </Link>
         </section>
       )}
 
@@ -227,7 +217,7 @@ export function ReportsPage() {
               value={sort}
             >
               <option value="najnowsze">Najnowsze</option>
-              <option value="popularne">Najpopularniejsze</option>
+              <option value="najstarsze">Najstarsze</option>
             </select>
           </label>
         </div>
